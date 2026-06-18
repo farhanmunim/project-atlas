@@ -186,7 +186,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
   font-size:10px;border-radius:var(--rp);transition:background .12s,color .12s,border-color .12s;display:inline-flex;align-items:center;gap:5px}
 .chip .cdot{width:7px;height:7px;border-radius:50%;flex:none}
 .chip:hover{color:var(--paper);border-color:var(--line-2)}
-.chip[aria-pressed="true"]{background:color-mix(in srgb,var(--acc) 16%,transparent);color:var(--acc);border-color:color-mix(in srgb,var(--acc) 40%,var(--line))}
+.chip[aria-pressed="true"]{background:color-mix(in srgb,var(--amber) 16%,var(--panel-3));color:var(--paper);border-color:color-mix(in srgb,var(--amber) 50%,var(--line));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 35%,transparent)}
 .chip .n{color:var(--paper-4);font-size:9px}
 .clearbtn{width:24px;height:24px;flex:none;border-radius:var(--r1);border:1px solid color-mix(in srgb,var(--alert) 55%,transparent);background:var(--alert);color:#fff;display:inline-grid;place-items:center;transition:filter .12s var(--ease)}
 .clearbtn:hover{filter:brightness(1.12)}
@@ -387,6 +387,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .mcard .msub{font-size:9.5px;color:var(--paper-4);margin-top:2px}
 .xlink{margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)}
 .xlink a{color:var(--cyan)}
+.mnote{margin-top:var(--s2);font-size:10px;color:var(--paper-3)}   /* secondary note under a metric */
 /* thin meter bar (concept .meter) — one bar style across the panel */
 .pbar{display:flex;height:6px;border-radius:6px;overflow:hidden;background:var(--panel-3)}
 .pbar>i{display:block;height:100%}
@@ -1729,13 +1730,20 @@ function garagePopupHtml(g){
 }
 // one fleet-mix component (thin meter + legend) reused everywhere a propulsion split shows
 function fleetMixHtml(prop,opts={}){
-  const tot=Object.values(prop).reduce((a,b)=>a+b,0); if(!tot) return "";
-  const zev=Math.round((prop.electric+prop.hydrogen)/tot*100);
+  const known=Object.values(prop).reduce((a,b)=>a+b,0); if(!known) return "";
+  // When a total is supplied (e.g. the route universe), surface the untagged
+  // remainder so the parts reconcile to the total rather than to known only.
+  const total = opts.total!=null ? opts.total : known;
+  const untagged = Math.max(0, total - known);
+  const zev=Math.round((prop.electric+prop.hydrogen)/known*100);
   const parts=Object.entries(prop).filter(([,n])=>n);
+  if(untagged>0) parts.push(["untagged",untagged]);
+  const col=k=>k==="untagged"?"var(--line-3)":PCOL[k];
+  const lbl=k=>k==="untagged"?"Untagged":PROP_DEFS[k];
   const heading = opts.heading===false ? "" : `<div class="metric-h">Fleet mix <span class="mono" style="color:var(--green)">${zev}% ZEV</span></div>`;
   return heading+
-    `<div class="pbar">${parts.map(([k,n])=>`<i style="width:${(n/tot*100).toFixed(1)}%;background:${PCOL[k]}" title="${PROP_DEFS[k]}: ${n}"></i>`).join("")}</div>
-    <div class="plegend">${parts.map(([k,n])=>`<span><span class="d" style="background:${PCOL[k]}"></span>${PROP_DEFS[k]} ${n}</span>`).join("")}</div>`;
+    `<div class="pbar">${parts.map(([k,n])=>`<i style="width:${(n/total*100).toFixed(1)}%;background:${col(k)}" title="${lbl(k)}: ${n}"></i>`).join("")}</div>
+    <div class="plegend">${parts.map(([k,n])=>`<span><span class="d" style="background:${col(k)}"></span>${lbl(k)} ${n}</span>`).join("")}</div>`;
 }
 function operatorDetailHtml(op){
   const fp=operatorFootprint(op), gs=garagesOf(op);
@@ -1913,8 +1921,8 @@ function renderContext(){
     el.innerHTML=ctxHead(anyFilter?"Filtered network":"Network", anyFilter?`${filtered.length} of ${routes.length} routes`:"all routes")+
       metricBlock("Overview",
         metrics([ mcard("Routes",filtered.length), mcard("Operators",operators||"—"), mcard("Total PVR",pvr||"—"), mcard("Network length",lenKm?fmtDist(lenKm):"—") ])+
-        `<div style="margin-top:8px;font-size:11px;color:var(--paper-3)">${drawn} drawn on map${anyFilter?" · filtered set":""}</div>`)+
-      (propTotal?`<div class="metric">${fleetMixHtml(byProp)}</div>`:"")+
+        `<div class="mnote">${drawn} drawn on map${anyFilter?" · filtered set":""}</div>`)+
+      (propTotal?`<div class="metric">${fleetMixHtml(byProp,{total:filtered.length})}</div>`:"")+
       metricBlock("By route type", typeRows||'<div class="empty" style="padding:var(--s3) 0">No routes match.</div>')+
       (topOps?metricBlock(`Operators <span class="mono">${operators}</span>`,
         `<div class="oprow ophead"><span class="dl">Operator</span><span class="opnums"><span>routes</span><span class="evc">fleet</span><span class="chev"></span></span></div>`+
@@ -1977,7 +1985,7 @@ function renderContext(){
             <span class="chip2">${esc(p.l)}</span>
             <span class="simbar"><i style="width:${Math.round(p.share*100)}%"></i></span>
             <span class="simpct">${Math.round(p.share*100)}%</span></button>`).join("")}
-         <div style="margin-top:5px;font-size:10px;color:var(--paper-3)">overlapping corridors — competition &amp; duplication</div></div>`
+         <div class="mnote">overlapping corridors — competition &amp; duplication</div></div>`
          :`<div style="margin-top:12px"><div class="metric-h" style="margin-bottom:3px">Similar routes</div>
          <div class="empty" style="padding:7px 0">No route shares ≥30% of this path — a largely unique alignment.</div></div>`}
        ${A.longestAt?`<div style="margin-top:12px">`+kv("Longest hop",distVU(A.longest),A.longestAt[0]+" → "+A.longestAt[1])+`</div>`:""}
@@ -1990,7 +1998,7 @@ function renderContext(){
         <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(a.operator)||"—"}</div>
           <div style="font-size:10px;color:var(--paper-3);font-family:var(--mono)">${esc(a.awardDate)||"—"} · ${a.numberOfTenderers??"?"} bid${a.numberOfTenderers===1?"":"s"}${a.jointBid?" · joint":""}</div></div>
         <div class="stat" title="accepted bid / cost per live mile">${a.costPerMile?"£"+a.costPerMile+"/mi":"—"}<br><span style="color:var(--paper-3);font-size:10px">${a.acceptedBid?fmtMoney(a.acceptedBid)+" pa":""}</span></div></div>`).join("")}
-      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">source · TfL tender results</div>
+      <div class="xlink">source · TfL tender results</div>
     </div>` : "";
 
   // ── advanced: TENDER ANALYSIS (preview of Mandate) — derived from the award history ──
@@ -2014,7 +2022,7 @@ function renderContext(){
         ${expiry?`<div class="kv"><span class="k">Contract</span><span class="v">${expiry}</span></div>`:""}
         <div class="kv"><span class="k">Awards on record</span><span class="v">${tenders.length}</span></div>
       </div>
-      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">£/mile trend, win/loss &amp; pipeline</div></div>`;
+      <div class="xlink">£/mile trend, win/loss &amp; pipeline</div></div>`;
   }
 
   // ── advanced: OPERATOR FOOTPRINT (preview of Cohort) — this operator across the network ──
@@ -2058,7 +2066,7 @@ function renderContext(){
          <div class="insight" style="margin:0;border-left-color:${tone.c}">
            <div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="${tone.h}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span style="color:${tone.c}">${esc(st.description)}</span></div>
            ${st.reason?`<div style="margin-top:4px;line-height:1.45">${esc(st.reason)}</div>`:""}
-           <div style="margin-top:6px;font-size:10px;color:var(--paper-4);font-family:var(--mono)">live · refreshed on selection</div>
+           <div class="xlink">live · refreshed on selection</div>
          </div></div>`) : "";
 
   const identityPills = `<div class="metric"><div style="display:flex;flex-wrap:wrap;gap:6px">
