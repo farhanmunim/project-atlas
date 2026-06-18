@@ -1,40 +1,68 @@
-# Atlas — Comprehensive Audit Findings
+# Atlas — Audit Findings & Remediation Log
 
-**Date:** 2026-06-18 · **Scope:** `index.html` + `pipeline/` (serve.js, build/*, lib/*, sources/*) · **Method:** static review, headless-browser UI audit (`pipeline/ui-audit.mjs`, 44/44), live API/DB probing, security probing, source cross-checks. Framework: `audit.md`.
+Multi-agent due-diligence audit (68 agents, adversarial cross-verification, london-buses
+comparison) run 2026-06-18. 47 findings confirmed, 5 refuted. This log tracks each
+finding and its remediation status. Supersedes the prior single-pass audit.
 
-## Verdict
+## Scores at audit time
 
-No critical or high-severity issues open. The one critical issue found in this audit cycle (the `/ingest` reference-type injection hole) was fixed and verified in the prior session. Two low-severity data-integrity items found this cycle were fixed. The codebase is robust: graceful degradation, CDC idempotency, soft-fail orchestration, and server-side key isolation are all genuinely implemented, not just claimed.
+| Dimension | Score | Rationale |
+|---|---:|---|
+| Product Health | 58/100 | Core shell + live map work; flagship reliability metric was missing; some settings decorative. |
+| Launch Readiness | 47/100 | Data-integrity/trust regressions (badge lied "fresh", dates transposed, sample mislabelled). |
+| Technical Quality | 55/100 | Clean modular intent; CDC warehouse ephemeral in CI; five builders ungated. |
+| UX | 62/100 | Coherent shell + rich analysis; stale live markers leaked into Magnify; no Enter/comma search. |
+| Security | 82/100 | CSV injection neutralised, BODS key server-side, API prose escaped; one low XSS, light-theme contrast. |
 
-| Area | Score | Notes |
-|---|---|---|
-| Functional / UI | ✅ 44/44 | All views, toggles, drill-downs, modes, theme, settings, export verified; 0 console/page errors |
-| API endpoints | ✅ | All 10 `/api/*` 200; unknown dataset → 404; live proxy 200 + cached |
-| DB integrity (CDC) | ✅ | Reconciled to 676 after ZZ purge; upsert + hash-dedup verified |
-| Security | ✅ | Traversal blocked, `.env` unreachable, ingest allowlist enforced, no BODS key leak |
-| Pipeline robustness | ✅ | Timeout/backoff/retry/conditional, validation gate, soft-fail + last-good, idempotent |
-| Fallbacks | ✅ | live→cached→sample tiers + badge states + tile-error overlay |
+## Remediation status
 
-## Findings
+### ✅ Fixed (committed)
 
-### Fixed this cycle
+**Live tracking / mode state (HIGH)**
+- `setMode()` now calls `applyDataMode()` — stale live markers + frozen countdown ring no longer leak into Magnify mode. *(root cause of the reported marker bugs)*
+- `viewAllRoutes()` calls `applyDataMode()` + recomputes proximity once geometry loads.
+- Live freshness badge no longer fakes "just now" on a failed pull — `liveStatusAt` stamped only on success; `liveFailed` → badge shows "Live feed unreachable".
 
-- **[LOW] Phantom `ZZ` line in network status** — TfL's bus Line Status feed returns a non-public placeholder line (`ZZ`), inflating status to 677 vs the 676-route catalogue. Added a `/^ZZ\d*$/i` filter in `build/status.js` and purged the existing row from the warehouse → reconciled to 676.
+**Data correctness / trust (HIGH)**
+- `fmtDate` parses en-GB `DD/MM/YY(YY)` explicitly (Date.parse misread it as US MM/DD → contract dates transposed for ~214 routes). All dates render DD/MM/YYYY.
+- "Data refresh: Cached/Live" setting now actually gates auto-polling (`autoPolling()`); was decorative.
+- Sample data no longer mislabelled "cached" (`routesState!=="offline"` guard).
+- Network operator ZEV now PVR-weighted everywhere (list + drill-down agree).
 
-### Open (accepted / low risk)
+**Security / a11y**
+- Operator name escaped in filter-chip `data-v` attribute (only raw-string XSS sink).
+- Light-theme accent hues re-tuned to clear WCAG AA (~4.5:1) as text on white.
+- Map `role="application"` → `role="region"`; topbar icon SVGs `aria-hidden`.
 
-- **[LOW] 4 orphan `route_meta` keys** (`429`, `581`, `583`, `687`) — present in `route-meta` but not the `routes` feed (stale meta for discontinued/withdrawn routes). Harmless: meta is looked up by current route name, so orphan keys are never queried. Left in place — they self-heal on the next full pipeline run and cost nothing. Could add a `current`-route filter to `build/route-meta.js` if strict reconciliation is wanted.
-- **[COSMETIC] Dead `toolLink("X.html", …)` file args** — the first arg is ignored by `toolLink` (suite is now one tool); harmless leftover from the multi-tool era.
+**UX**
+- Search: Enter-to-select + comma multi-select; selected routes shown as removable chips on the left rail.
+- Table Length column re-renders on unit change; routes-layer toggle persists.
+- `routesNear()` probes the whole filtered network — click-to-identify works with a route selected.
+- `refreshAll` clears fleet + disruption caches too; Clear-pin resets the canvas subheader; Clear-all resets the map view.
+- Live-bus markers pop on both basemaps (contrasting halo); richer vehicle popup + live-fleet propulsion.
 
-### Verified clean
+**Product — #1 gap closed**
+- **Route reliability** (EWT/OTP vs MPS + % mileage operated) now renders per route — was advertised in the empty-state but absent. 749 routes, Q4 25/26. Pipeline builder ported in parallel so it refreshes through the warehouse.
 
-- **Security:** path traversal (`../`, encoded, dotfiles) → 404; `/ingest` reference-type injection (`route`, etc.) → 400 (allowlist = `line_status` only); oversized/malformed ingest → 400; `line_status` ingest → 200; BODS/DVLA/TfL keys never sent to the browser (live positions proxied server-side, key absent from response).
-- **CDC idempotency:** `current` upserts on `(entity_type, entity_id)`; `snapshot` is `INSERT OR IGNORE` on `(type,id,hash)` → re-runs with unchanged data write no new snapshot and leave `current` untouched.
-- **Orchestrator soft-fail:** per-dataset try/catch; soft datasets keep last-good and continue; hard failures set exit 1; manifest records per-dataset status; run summary printed.
-- **HTTP client:** hard timeout (AbortController), exponential backoff + jitter on 429/5xx/network, `Retry-After` honoured, conditional ETag/If-Modified-Since via `.cache/http.json`.
-- **Client fallbacks:** `dataSource` seam degrades live→cached→sample; badge reflects fresh/stale/offline; map tile errors surface a non-blocking overlay while geometry/stops remain usable.
+### 🔧 In progress / queued
 
-## Reproduce
+| Area | Finding | Severity | Status |
+|---|---|---|---|
+| Pipeline | `routes-overview.geojson` + 5 builders have no min-row validation gate → a partial outage overwrites last-good with a hollow file | HIGH | queued (validation gates) |
+| Ingest | Last-known-good fallback inert in CI (`route_classifications.json` neither committed nor cached) | HIGH | queued (widen actions/cache) |
+| Ingest | A soft-failed route-destinations fetch hard-aborts the whole weekly run (incl. Supabase push) | HIGH | queued |
+| Warehouse | SQLite CDC DB ephemeral in CI — timeline never persists | MEDIUM | queued |
+| Feature | "Accidents/Sentinel" layer advertised in copy but absent | MEDIUM | queued (build layer or trim copy) |
+| vs LB | Deck / frequency-band / prefix route classification + filters | HIGH | queued |
+| vs LB | Structured tender comparison (previous operator, contract term, awarded spec, current/next split) | HIGH | queued |
+| vs LB | Contract-expiry network-wide (only 8 hardcoded routes today) | HIGH | queued |
+| vs LB | Core-fleet filtering + confidence labelling; structured make/model | MEDIUM | queued |
+| Pipeline | £/mile clamp (0–200) + decimal-comma handling to stop absurd outliers | MEDIUM | queued |
 
-- UI: `node pipeline/ui-audit.mjs` (requires `node pipeline/serve.js` running)
-- API/DB/security probes: see commands in this session's transcript (curl matrix over `/api/*`, `/ingest`, `/db/stats`, traversal set).
+### Refuted on cross-check (not issues)
+CSV formula-injection guard is correct; free-form TfL disruption prose is escaped at every sink;
+onConflict keys / idempotency / BUS_API_KEY bridge / heartbeat anti-pause / hard-fail audit gate all correct.
+
+### Where Atlas already leads london-buses (keep)
+Derived network analysis (route role, sinuosity, interchange intensity, corridor overlap),
+live operations + diversion panel, and garage utilisation — all richer than the predecessor.
