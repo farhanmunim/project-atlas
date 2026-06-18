@@ -1717,6 +1717,8 @@ function viewAllRoutes(names){
   if(canvasView==="table") setCanvasView("map");
   selected = valid.map(r=>({...r}));
   renderFilters(); renderRouteList(); renderContext();
+  applyDataMode();   // re-sync live tracking to the NEW selection — without this, the
+                     // previous route's live markers leak into the new view (stale liveLayer)
   Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); });
 }
 function garagesOf(op){ return (store.garages||[]).filter(g=>g.operator===op).sort((a,b)=>(b.routes?.length||0)-(a.routes?.length||0)); }
