@@ -45,10 +45,17 @@ jobs:
       # performance) between runs. Rolling key + restore-keys prefix: each run
       # saves a fresh cache and restores the latest match — so without a git
       # commit-back we still avoid re-pulling ~9000 DVLA lookups every Monday.
-      - name: Restore sticky source caches
+      # ALSO cache the two build OUTPUTS the last-known-good fallback reads
+      # (route_classifications.json) and build-classifications depends on
+      # (route_destinations.json). Without these the null-overwrite safety net is
+      # inert on CI and a transient destinations failure hard-aborts the whole run.
+      - name: Restore sticky source caches + last-known-good outputs
         uses: actions/cache@v4
         with:
-          path: ingest/data/source
+          path: |
+            ingest/data/source
+            ingest/data/route_classifications.json
+            ingest/data/route_destinations.json
           key: ingest-source-${{ github.run_id }}
           restore-keys: ingest-source-
 
