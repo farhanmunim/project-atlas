@@ -747,18 +747,24 @@ function saveSettings(){ try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(
 // london-buses scheme: regular | 24-hour | night | school
 const TYPE_DEFS = {
   regular:    { label:"Regular",  color:"#da291c", hex:"#da291c" },   // iconic London bus red
+  prefix:     { label:"Prefix",   color:"#a16207", hex:"#a16207" },   // lettered routes (SL/EL/W/X…) — gold
   twentyfour: { label:"24-hour",  color:"#2f6fd0", hex:"#2f6fd0" },   // always-on blue
   night:      { label:"Night",    color:"#7c5cff", hex:"#7c5cff" },   // night violet
   school:     { label:"School",   color:"#f5a524", hex:"#f5a524" },   // school amber
 };
+// a lettered route number that isn't a night (N-) route — SL6, EL1, W7, X26, C10, P4…
+function isPrefixRoute(name){ return /^[A-Za-z]/.test(name) && !/^N/i.test(name); }
 // fallback when the store has no type; 24-hour comes only from the overrides-baked store
 function deriveType(name){
   if(/^N/i.test(name)) return "night";
   if(/^[69]\d\d$/.test(name)) return "school";
+  if(isPrefixRoute(name)) return "prefix";
   return "regular";
 }
-// the route's classification — store value (override-baked) first, else derived
-function typeOf(r){ const m=store.meta && store.meta[r.name]; return (m && m.type && TYPE_DEFS[m.type]) ? m.type : deriveType(r.name); }
+// the route's classification — store value (override-baked) first, else derived. A generic
+// "regular" from the store is upgraded to "prefix" for lettered routes (the store doesn't tag these yet).
+function typeOf(r){ const m=store.meta && store.meta[r.name]; let t=(m && m.type && TYPE_DEFS[m.type]) ? m.type : deriveType(r.name);
+  if(t==="regular" && isPrefixRoute(r.name)) t="prefix"; return t; }
 
 /* ===========================================================================
    ROUTE_META — SAMPLE operator/propulsion tags. NOT a live TfL feed: these
