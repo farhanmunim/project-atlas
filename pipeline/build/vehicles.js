@@ -15,6 +15,8 @@
  * BODS SIRI-VM (see sources/bods.js) — wired in when Relay is built.
  */
 
+import { rowsWithin } from "../lib/validate.js";
+
 export async function build(ctx) {
   const { sink, log } = ctx;
   const fleet = await sink.readDataset("fleet");
@@ -38,6 +40,9 @@ export async function build(ctx) {
   // a reg seen on >1 route in a single snapshot is already a cross-route working
   const multiRoute = Object.values(byReg).filter((v) => v.routes.length > 1).length;
 
+  // derived from fleet's live reg sample — a healthy snapshot has hundreds of regs.
+  // A near-empty roster means fleet went empty; don't overwrite the last-good roster.
+  rowsWithin(Object.values(byReg), 100, undefined, "vehicles regs");
   await sink.writeDataset("vehicles", { generatedAt: new Date().toISOString(), byReg });
   log.info(`vehicles: ${Object.keys(byReg).length} regs rostered · ${multiRoute} on multiple routes this snapshot`);
   return { source: "fleet (inverted) + DVLA cache", rows: Object.keys(byReg).length, files: ["data/vehicles.json"], note: `${multiRoute} multi-route` };

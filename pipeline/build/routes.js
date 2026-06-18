@@ -18,7 +18,7 @@
 import * as tfl from "../sources/tfl.js";
 import { mapLimit } from "../lib/http.js";
 import { simplify, roundRing, lengthKm } from "../lib/geo.js";
-import { rowsWithin, everyHas, notAllNull } from "../lib/validate.js";
+import { rowsWithin, everyHas, notAllNull, check } from "../lib/validate.js";
 import { overrideFor } from "../lib/overrides.js";
 
 /** Route type — london-buses scheme: regular | night | twentyfour | school.
@@ -92,6 +92,16 @@ export async function build(ctx) {
     if (++doneCount % 50 === 0 || doneCount === total) log.info(`  geometry ${doneCount}/${total} routes (ok ${geomOk}, failed ${geomFail})`);
   });
   notAllNull(features, "geometry", "overview features");
+  // ~676 routes × 2 directions → ~1,350 features on a full run; floor well below
+  // that catches a partial upstream outage that returned a near-empty FeatureCollection.
+  // (skip the floor when --limit deliberately caps the run in dev)
+  if (limit >= routes.length) {
+    rowsWithin(features, 800, undefined, "overview features");
+    // a run where >30% of routes lost geometry is an upstream outage, not normal noise
+    const attempted = geomOk + geomFail;
+    check(attempted === 0 || geomFail / attempted <= 0.3,
+      `overview geometry: ${geomFail}/${attempted} routes lost geometry (>30%) — refusing to overwrite last-good`);
+  }
 
   const overview = {
     type: "FeatureCollection",
@@ -103,6 +113,9 @@ export async function build(ctx) {
   await sink.writeDataset("routes", routes);
   await sink.writeDataset("route-classifications", classifications);
   await sink.writeDataset("routes-overview", overview, { ext: "geojson" });
+  // floor on route-stops too — a near-empty stops map means the sequence calls
+  // failed wholesale; don't overwrite a good stops file (skip when --limit in dev).
+  if (limit >= routes.length) rowsWithin(Object.keys(routeStops), 400, undefined, "route-stops routes");
   await sink.writeDataset("route-stops", { generatedAt: new Date().toISOString(), routes: routeStops });
 
   log.info(`routes: ${routes.length} · overview features: ${features.length} (ok ${geomOk}, failed ${geomFail}) · stops for ${Object.keys(routeStops).length} routes`);

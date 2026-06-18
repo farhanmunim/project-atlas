@@ -12,6 +12,7 @@
 
 import { fetchTenderIndex, fetchTenderResult } from "../sources/tfl-tenders.js";
 import { mapLimit } from "../lib/http.js";
+import { check } from "../lib/validate.js";
 
 function parseDate(s) { if (!s) return 0; const t = Date.parse(s); return Number.isNaN(t) ? 0 : t; }
 function routeKeys(routeText) {
@@ -24,6 +25,9 @@ export async function build(ctx) {
 
   const prev = (await sink.readDataset("tenders")) || { byId: {} };
   const byId = { ...(prev.byId || {}) };
+  // award events are immutable / append-only: the total can only grow. A shrink
+  // means we'd overwrite a good store with a corrupt/partial one — refuse it.
+  const previousCount = prev.count ?? Object.keys(prev.byId || {}).length;
 
   const index = await fetchTenderIndex();
   let todo = index.filter((x) => !byId[x.btID]);
@@ -48,6 +52,8 @@ export async function build(ctx) {
   }
   for (const k of Object.keys(byRoute)) byRoute[k].sort((x, y) => parseDate(y.awardDate) - parseDate(x.awardDate) || Number(y.btID) - Number(x.btID));
 
+  check(Object.keys(byId).length >= previousCount,
+    `tenders: count shrank ${previousCount} → ${Object.keys(byId).length} (awards are append-only) — refusing to overwrite last-good`);
   await sink.writeDataset("tenders", { generatedAt: new Date().toISOString(), source: "TfL tender results (13923/13796.aspx)", count: Object.keys(byId).length, byId, byRoute });
   log.info(`tenders: ${Object.keys(byId).length} awards total · ${Object.keys(byRoute).length} route keys`);
   return { source: "TfL tender award results (13923/13796.aspx)", rows: Object.keys(byId).length, files: ["data/tenders.json"], note: todo.length ? `+${ok} new` : "all cached" };

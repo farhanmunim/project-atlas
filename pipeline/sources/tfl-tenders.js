@@ -20,6 +20,23 @@ const RESULT = (id) => `https://tfl.gov.uk/forms/13796.aspx?btID=${id}`;
 
 const stripTags = (s) => s.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&pound;/g, "£").trim();
 const num = (s) => { const n = parseFloat(String(s).replace(/[^0-9.]/g, "")); return Number.isFinite(n) ? n : null; };
+
+/**
+ * Money parser that handles TfL's two comma conventions in the same column:
+ *   '4,205,196' → thousands separators → 4205196
+ *   '6,25'      → European decimal mark → 6.25
+ * The decimal-comma form is a single comma with 1–2 trailing digits and no other
+ * separators; anything else is a thousands strip. (Mirrors london-buses' parseMoney;
+ * the old all-comma strip turned '6,25' into 625 — cost-per-mile outliers.)
+ */
+const money = (s) => {
+  if (s == null) return null;
+  let cleaned = String(s).replace(/[£\s]|&pound;/g, "");
+  if (/^-?\d+,\d{1,2}$/.test(cleaned)) cleaned = cleaned.replace(",", ".");
+  else cleaned = cleaned.replace(/,/g, "");
+  if (!/^-?\d+(?:\.\d+)?$/.test(cleaned)) return null;
+  return parseFloat(cleaned);
+};
 const WORD_NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
 
 /** Every award event as { btID, route } (route text e.g. "1/N1"). */
@@ -53,7 +70,12 @@ export async function fetchTenderResult(btID, opts = {}) {
     acceptedBid: num(after("Accepted Bid")),
     lowestBid: num(after("Lowest Individual Compliant Bid")),
     highestBid: num(after("Highest Individual Compliant Bid")),
-    costPerMile: num(after("Cost per live mile of awarded contract £/mile")),
+    // Sanity-clamp cost per mile: TfL's form sometimes pastes the full annual bid
+    // into this cell instead of the per-mile rate. Real rates span ~£3-15 (and up
+    // to ~£100 for school routes); anything outside 0-200 is a column mix-up → null
+    // rather than surface a £4.2M/mile headline. money() handles '6,25' → 6.25.
+    costPerMile: ((v) => (v != null && v >= 0 && v <= 200 ? v : null))(
+      money(after("Cost per live mile of awarded contract £/mile"))),
     jointBid: /joint/i.test(after("Joint Bids") || "") ? (after("Joint Bids") || null) : null,
     notes: after("Notes") || null,
     awardDate: dateMatch ? dateMatch[1] : null,

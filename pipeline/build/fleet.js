@@ -20,6 +20,7 @@
 import { lineArrivals } from "../sources/tfl.js";
 import { mapLimit } from "../lib/http.js";
 import { hasKey, lookupMany } from "../sources/dvla.js";
+import { rowsWithin, notAllNull, check } from "../lib/validate.js";
 
 // DVLA fuelType → our propulsion buckets (the same vocabulary the tools use).
 function propOf(fuel) {
@@ -82,6 +83,15 @@ export async function build(ctx) {
   }
 
   const withVehicles = Object.values(byRoute).filter((e) => e.count).length;
+  // ~676 routes have a fleet row; floor well below that catches an arrivals outage
+  // that returned an empty/near-empty map (skip when --limit caps the run in dev).
+  if (!args.limit) {
+    rowsWithin(Object.values(byRoute), 400, undefined, "fleet routes");
+    // and at least one route must actually have live vehicles — an all-zero run
+    // (every arrivals call failed) must not overwrite the last-good live sample.
+    notAllNull(Object.values(byRoute).filter((e) => e.count > 0), "count", "fleet counts");
+    check(withVehicles > 0, "fleet: no route has any live vehicles — refusing to overwrite last-good");
+  }
   await sink.writeDataset("fleet", { generatedAt: new Date().toISOString(), enriched, byRoute });
   const dvNote = enriched
     ? ` · DVLA: ${dvla.looked} looked up${dvla.deferred ? `, ${dvla.deferred} deferred to next run` : ""}${dvla.stopped ? " (stopped on rate-limit)" : ""}`

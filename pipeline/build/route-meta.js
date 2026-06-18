@@ -17,6 +17,7 @@
 import { fetchRouteDetails, fetchGarageRouteMap } from "../sources/londonbusroutes.js";
 import { deriveType } from "./routes.js";
 import { overrideFor } from "../lib/overrides.js";
+import { rowsWithin, notAllNull } from "../lib/validate.js";
 
 function propFromVehicle(v) {
   if (!v) return null;
@@ -75,6 +76,12 @@ export async function build(ctx) {
     if (meta[rt].fleet) withFleet++;
   }
 
+  // ~700 route rows on a healthy merge; floor catches a run where both sources
+  // returned thin data. notAllNull on operator guards the garages.csv half going
+  // empty (operator all-null) silently overwriting good operator mappings.
+  const metaRows = Object.values(meta);
+  rowsWithin(metaRows, 400, undefined, "route-meta routes");
+  notAllNull(metaRows, "operator", "route-meta");
   await sink.writeDataset("route-meta", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net (garages.csv + details.htm)", routes: meta });
   log.info(`route-meta: ${allRoutes.size} routes · ${withOperator} operator · ${withFleet} fleet`);
   return { source: "londonbusroutes.net (garages.csv + details.htm)", rows: allRoutes.size, files: ["data/route-meta.json"], note: `${withOperator} operators` };

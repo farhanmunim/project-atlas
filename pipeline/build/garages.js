@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchGarages } from "../sources/londonbusroutes.js";
 import { geocode } from "../sources/postcodes.js";
+import { rowsWithin, notAllNull } from "../lib/validate.js";
 
 // Curated postcode overrides for garages whose CSV row carries no extractable
 // postcode (applied before geocoding, so coordinates stay postcodes.io-sourced).
@@ -54,6 +55,11 @@ export async function build(ctx) {
       pvr: g.pvr, capacity: cap, utilisation, routes: g.routes };
   });
 
+  // London has ~88 garages; floor catches a garages.csv outage. notAllNull on lat
+  // ensures an all-failed-geocode run can't overwrite good coordinates (garages are
+  // kept without coords by design, but ALL coords going null is an outage, not design).
+  rowsWithin(out, 50, undefined, "garages");
+  notAllNull(out, "lat", "garages");
   await sink.writeDataset("garages", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net + postcodes.io", garages: out });
   const withCap = out.filter((g) => g.capacity != null).length;
   log.info(`garages: ${out.length} (${placed} geocoded · ${overridden} override · ${fromCompany} company-addr fallback · ${withCap} with capacity)`);
