@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T10:03:33.743Z",
+  "generatedAt": "2026-06-18T18:53:44.556Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-17T12:59:11.315Z",
+      "fetchedAt": "2026-06-18T18:53:44.060Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-18T10:03:33.743Z",
+      "fetchedAt": "2026-06-18T18:53:44.556Z",
       "status": "ok",
-      "rows": 13373,
+      "rows": 13371,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676; route_meta 679; route_stops 675; tender 2508; garage 88; fleet 676; vehicle 6078 (6078△); line_status 676; route_geometry 1315"
+      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 88 (88△); fleet 676 (676△); vehicle 6078 (6078△); line_status 676 (676△); route_geometry 1315 (1315△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -78,6 +78,11 @@
       ],
       "cadence": "daily · derived from fleet (no API calls)",
       "note": "0 multi-route"
+    },
+    "tenders": {
+      "status": "failed",
+      "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
+      "lastAttempt": "2026-06-18T18:53:41.435Z"
     }
   }
 }
