@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T18:53:44.556Z",
+  "generatedAt": "2026-06-18T21:14:19.593Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -83,6 +83,17 @@
       "status": "failed",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-06-18T18:53:41.435Z"
+    },
+    "performance": {
+      "source": "TfL Bus Performance (QSI) + per-route MPS PDFs",
+      "fetchedAt": "2026-06-18T21:14:19.593Z",
+      "status": "ok",
+      "rows": 738,
+      "files": [
+        "data/route-performance.json"
+      ],
+      "cadence": "~4-weekly · TfL QSI + MPS PDFs",
+      "note": "738 routes · QSI cached · MPS ok=58 skip=0 err=0"
     }
   }
 }

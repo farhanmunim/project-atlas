@@ -14,6 +14,9 @@
     "refresh:status": "node pipeline/run.js --only=status",
     "validate:atlas": "node pipeline/validate-atlas.js"
   },
+  "dependencies": {
+    "pdfjs-dist": "^4.10.38"
+  },
   "devDependencies": {
     "puppeteer": "^25.1.0"
   }

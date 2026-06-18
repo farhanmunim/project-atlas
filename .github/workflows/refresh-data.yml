@@ -35,6 +35,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"   # need node:sqlite (warehouse) + process.loadEnvFile
+          cache: npm
+      # The pipeline is mostly zero-dependency, but the performance builder needs
+      # pdfjs-dist to parse the TfL QSI/MPS PDFs — install before running.
+      - run: npm ci --omit=dev --no-audit --no-fund   # pdfjs-dist (perf builder); skip puppeteer/Chromium devdep
       # Validator cache (ETag/Last-Modified) persists between runs → conditional
       # requests, fewer bytes pulled, friendlier to the free API tier.
       - name: Restore HTTP validator cache

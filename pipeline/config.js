@@ -19,6 +19,7 @@ import { build as buildGarages } from "./build/garages.js";
 import { build as buildFleet } from "./build/fleet.js";
 import { build as buildVehicles } from "./build/vehicles.js";
 import { build as buildStatus } from "./build/status.js";
+import { build as buildPerformance } from "./build/performance.js";
 import { build as buildDbMirror } from "./build/db-mirror.js";
 
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -65,6 +66,13 @@ export const DATASETS = [
     ttlMs: 7 * DAY,        // award events are immutable; new ones appear occasionally (incremental cache)
     soft: true,
     cadence: "event-driven · TfL tender results (incremental)",
+  },
+  {
+    name: "performance",
+    build: buildPerformance,
+    ttlMs: 7 * DAY,        // TfL republishes the QSI + MPS PDFs every ~4-week period; MPS is sticky-cached
+    soft: true,
+    cadence: "~4-weekly · TfL QSI + MPS PDFs",
   },
   {
     name: "status",
