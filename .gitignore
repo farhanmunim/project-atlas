@@ -1,0 +1,15 @@
+node_modules/
+.cache/
+*.tmp
+.env
+.DS_Store
+# SQLite warehouse is a build artifact (rebuilt by the pipeline) — don't commit the
+# binary (repo bloat) or its WAL sidecars. Back it up out-of-band, not via git.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# puppeteer verification artifacts
+theme-*.png
+popup-*.png
+route-*.png

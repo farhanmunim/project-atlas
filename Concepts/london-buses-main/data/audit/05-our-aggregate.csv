@@ -1,0 +1,748 @@
+route_id,make,vehicle_type,propulsion,deck,vehicle_age_years,operator,pvr
+1,ALEXANDER DENNIS,B5LH/Gemini 3,hybrid,double,9.6,Go-Ahead,23
+100,BYD,D8UR/Enviro200 MMC EV,electric,single,5.2,Go-Ahead,9
+101,BYD,BYD B11E02 10.9m,electric,single,1.4,Go-Ahead,9
+102,VOLVO,B5LH/Gemini 2,hybrid,double,10.3,Arriva,26
+103,VOLVO,Trident/Enviro400,diesel,double,9.2,Arriva,14
+104,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,12.6,Go-Ahead,12
+105,VOLVO,B5LH/Gemini 3,hybrid,double,8.9,First,16
+106,BYD,DD/Enviro400EV City,electric,double,5.5,Go-Ahead,15
+107,VOLVO,B5LH/Gemini 3,hybrid,double,10.1,Metroline,11
+108,BYD D9UR,D9UR/Enviro200 MMC EV,electric,single,9.2,Go-Ahead,18
+108D,,,,,,,
+109,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10.8,Transport UK,26
+11,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,14
+110,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.3,First,11
+111,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,3.6,Transport UK,26
+112,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9,Metroline,17
+113,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.7,Metroline,21
+114,VOLVO,B5LH/Gemini 3,hybrid,double,9.9,Metroline,17
+115,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.7,Go-Ahead,18
+116,VOLVO,B5LH/Gemini 3,hybrid,double,8.8,First,7
+117,ALEXANDER DENNIS,Citaro K 10.5m,diesel,single,8.8,First,10
+119,BYD,DD/Enviro400EV City,electric,double,3.7,Go-Ahead,14
+12,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,15
+120,VOLVO,B5LH/Gemini 3,hybrid,double,9,Metroline,17
+121,WRIGHTBUS,DB300/Gemini 2,diesel,double,13.2,Arriva,22
+122,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,11.3,Stagecoach London,19
+123,VOLVO,?,diesel,,10.3,Arriva,20
+124,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12.3,Stagecoach London,17
+125,BYD,DD/Enviro400EV City,electric,double,4.4,First,18
+126,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.6,Go-Ahead,11
+127,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,14.3,Go-Ahead,17
+128,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,13.7,Stagecoach London,15
+129,BYD,BYD B11E02 10.9m,electric,single,1.4,Go-Ahead,22
+13,VOLVO,B5LH/EvoSeti,hybrid,double,9.8,First,21
+130,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.5,Transport UK,12
+131,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.4,Go-Ahead,21
+132,BYD,DD/Enviro400EV City,electric,double,3.5,Go-Ahead,16
+133,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.1,Transport UK,24
+134,WRIGHTBUS,MetroDecker EV 10.5m,electric,double,2.4,Metroline,20
+135,VOLVO,B5LH/Gemini 3,hybrid,double,9.8,Stagecoach London,15
+136,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,7.9,Stagecoach London,22
+137,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,28
+138,ALEXANDER DENNIS,E20D/Enviro200 1D ?,diesel,single,10.2,Stagecoach London,3
+139,VOLVO,B5LH/Eclipse Gemini,hybrid,double,10.9,Metroline,18
+14,VOLVO,E40H/Enviro400H MMC,hybrid,double,10.2,Go-Ahead,21
+140,VOLVO,B5LH/Gemini 3,hybrid,double,10.5,Metroline,21
+141,BYD,BYD B11E02 10.9m,electric,single,0.9,Arriva,25
+142,BYD,DD/Enviro400EV City,electric,double,3.2,Metroline,16
+143,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,1.6,Metroline,14
+144,VOLVO,B5LH/Gemini 3,hybrid,double,10.1,Go-Ahead,15
+145,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9.5,Stagecoach London,17
+146,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.9,Stagecoach London,1
+147,VOLVO,E40D/Enviro400,diesel,double,11.3,Go-Ahead,20
+148,BYD,New Bus for London,hybrid,double,6,First,17
+149,VOLVO,New Bus for London,hybrid,double,8.8,Arriva,30
+15,VOLVO,New Bus for London,hybrid,double,9.5,Go-Ahead,14
+150,VOLVO,Trident/Enviro400,diesel,double,12.6,Arriva,15
+151,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.4,Go-Ahead,15
+152,BYD,D8UR/Enviro200MMC EV,electric,single,2.7,Go-Ahead,14
+153,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,4.2,Metroline,9
+154,BYD,DD/Enviro400EV City,electric,double,3.2,Go-Ahead,16
+155,VOLVO,B5LH/Gemini 3,hybrid,double,10,Go-Ahead,17
+156,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,11.4,Transport UK,15
+157,BYD,DD/E400MMC EV,electric,double,2.4,Go-Ahead,17
+158,WRIGHTBUS,DB300/Gemini 2,diesel,double,11.3,Arriva,25
+159,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,22
+16,WRIGHTBUS,New Bus for London,hybrid,double,1.3,Metroline,15
+160,BYD,DD/Enviro400EV City,electric,double,4.6,Stagecoach London,13
+161,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10.3,Stagecoach London,16
+162,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13,Go-Ahead,10
+163,BYD,D8UR/Enviro200MMC EV,electric,single,5,Go-Ahead,11
+164,BYD,D8UR/Enviro200MMC EV,electric,single,4.5,Go-Ahead,12
+165,WRIGHTBUS,Trident/Enviro400,electric,double,0.7,Stagecoach London,13
+166,BYD,E200Dart/Enviro200,electric,single,0.4,Arriva,8
+167,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.8,Stagecoach London,7
+169,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.1,Stagecoach London,14
+17,BYD,New Bus for London,hybrid,double,6.9,Metroline,15
+170,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,10.5,Go-Ahead,18
+171,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.4,Go-Ahead,15
+172,WRIGHTBUS,E40H/Enviro400H MMC,hybrid,double,1,Go-Ahead,14
+173,WRIGHTBUS,DD/Enviro400EV City,electric,double,1.1,Stagecoach London,16
+174,WRIGHTBUS,DD/Enviro400EV City,electric,double,0.7,Stagecoach London,26
+175,VOLVO,DB300/Gemini 2,diesel,double,12.5,Arriva,14
+176,VOLVO,New Bus for London,hybrid,double,9.9,Go-Ahead,22
+177,ALEXANDER DENNIS,B5LH/Enviro400H MMC,hybrid,double,11.3,Stagecoach London,21
+178,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,14,Go-Ahead,7
+179,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,10.1,Stagecoach London,13
+18,BYD,B5LH/Gemini 3,hybrid,double,0.6,First,37
+180,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,10,Stagecoach London,17
+181,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.3,Stagecoach London,13
+182,VOLVO,B5LH/Gemini 3,hybrid,double,10.2,Metroline,23
+183,BYD,DD/Enviro400EV City,electric,double,4.2,First,19
+184,BYD,D8UR/Enviro200MMC EV,electric,single,5.6,Go-Ahead,18
+185,BYD,E40H/Enviro400H MMC,hybrid,double,2.7,Go-Ahead,24
+186,VOLVO,B5LH/Gemini 2,hybrid,double,10.2,Metroline,16
+187,VOLVO,BZL (sd)/MCV,electric,single,2.6,Metroline,11
+188,BYD,BYD B11E02 10.9m,electric,single,0.8,Go-Ahead,22
+189,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,16
+19,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,21
+190,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.5,Metroline,10
+191,WRIGHTBUS,DB300/Gemini 2,diesel,double,13.2,Arriva,19
+192,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,6.7,Arriva,15
+193,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.2,Stagecoach London,11
+194,WRIGHTBUS,DB300/Gemini 2,diesel,double,14.6,Arriva,14
+195,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.4,Transport UK,16
+196,ALEXANDER DENNIS,Enviro400EV 10.5m,electric,double,1,Arriva,16
+197,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,7.9,Go-Ahead,15
+198,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.5,Arriva,12
+199,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.2,Stagecoach London,12
+2,VOLVO,B5LH/Gemini 3,hybrid,double,8.7,Arriva,20
+20,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,11.2,Stagecoach London,10
+200,OPTARE,MetroDecker EV 10.5m,electric,double,3.9,Go-Ahead,14
+201,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12.1,Transport UK,11
+202,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6.4,Arriva,16
+203,VOLVO,B5LH/Gemini 3,hybrid,double,9.4,First,7
+204,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.7,Metroline,15
+205,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,10.8,Stagecoach London,21
+206,VOLVO,E20D/Enviro200,electric,single,1.4,Metroline,11
+207,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9.3,Transport UK,25
+208,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,7.2,Go-Ahead,16
+209,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,6.9,Go-Ahead,1
+21,ALEXANDER DENNIS,New Bus for London,hybrid,double,8.2,Go-Ahead,24
+210,BYD,BYD B11E02 10.9m,electric,single,1.2,Metroline,14
+211,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,14
+212,BYD,DD/Enviro400EV City,electric,double,5.8,Go-Ahead,12
+213,BYD,DD/Enviro400EV City,electric,double,3.2,Go-Ahead,14
+214,BYD,D8UR/Enviro200MMC EV,electric,single,6.9,Go-Ahead,19
+215,ALEXANDER DENNIS,New Bus for London,hybrid,double,13.2,Stagecoach London,5
+216,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.1,First,11
+217,WRIGHTBUS,DB300/Gemini 2,diesel,double,14.4,Arriva,11
+218,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,1.3,First,9
+219,BYD,D8UR/Enviro200MMC EV,electric,single,5.4,Go-Ahead,12
+22,WRIGHTBUS,B5LH/EvoSeti,hybrid,double,0.8,Go-Ahead,18
+220,VOLVO,B5LH/Gemini 3,hybrid,double,10.4,First,25
+221,VOLVO,B5LH/Gemini 3,hybrid,double,11.1,Arriva,23
+222,VOLVO,B5LH/Gemini 3,hybrid,double,9.6,Metroline,14
+223,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.7,Metroline,7
+224,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14.2,Metroline,8
+225,ALEXANDER DENNIS,E20D/Enviro200 2D ?,diesel,single,9,Stagecoach London,6
+226,BYD,D8UR/Enviro200MMC EV,electric,single,3.6,First,16
+227,WRIGHTBUS,Streetlite DF 11.5m,diesel,single,8,Go-Ahead,12
+228,VOLVO,BZL (sd)/MCV,electric,single,1.5,Metroline,7
+229,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,11.2,Arriva,18
+23,OPTARE,MetroDecker EV 10.5m,electric,double,5.3,First,14
+230,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.8,Go-Ahead,11
+231,ALEXANDER DENNIS,B9TL/Gemini 2,diesel,double,12.8,Metroline,7
+232,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,7.1,Go-Ahead,17
+233,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,1,Go-Ahead,6
+234,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.3,Metroline,12
+235,BYD,D8UR/Enviro200MMC EV,electric,single,4.4,First,21
+236,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,11,Stagecoach London,14
+237,VOLVO,B5LH/Gemini 3,hybrid,double,9.2,Metroline,21
+238,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,10.1,Stagecoach London,12
+24,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,16
+240,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.5,Metroline,9
+241,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,10.1,Stagecoach London,13
+242,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.7,Stagecoach London,14
+243,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.3,Arriva,27
+244,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.9,Go-Ahead,14
+245,VOLVO,B5LH/Gemini 3,hybrid,double,12,Metroline,12
+246,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,10.9,Stagecoach London,6
+247,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.2,Stagecoach London,12
+248,VOLVO,New Bus for London,hybrid,double,9.3,Arriva,15
+249,VOLVO,B5LH/Gemini 3,hybrid,double,9.1,Arriva,14
+25,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6.3,Stagecoach London,31
+250,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,15.7,Arriva,22
+251,VOLVO,BZL (sd)/MCV,electric,single,2.5,Metroline,13
+252,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,14.4,Stagecoach London,13
+253,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,19
+254,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,23
+255,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,1.8,Arriva,9
+256,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,14.4,Stagecoach London,11
+257,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.7,Stagecoach London,16
+258,VOLVO,B9TL/Gemini 2,diesel,double,12.4,Metroline,12
+259,VOLVO,New Bus for London,hybrid,double,8.8,Arriva,16
+26,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.6,Stagecoach London,20
+260,VOLVO,B5LH/Gemini 3,hybrid,double,9.1,Metroline,17
+261,WRIGHTBUS,E40D/Enviro400,electric,double,0.8,Stagecoach London,14
+262,BYD,DD/Enviro400EV City,electric,double,2,Go-Ahead,10
+263,WRIGHTBUS,B5LH/Gemini 2,hybrid,double,1.4,Metroline,20
+264,BYD,DD/Enviro400EV City,electric,double,3.7,Go-Ahead,11
+265,BYD,D8UR/Enviro200MMC EV,electric,single,2.5,Go-Ahead,12
+266,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.3,Metroline,23
+267,WRIGHTBUS,New Bus for London,hybrid,double,3.8,Transport UK,17
+268,BYD,Kite Electroliner 10.3m,electric,single,0.4,Metroline,6
+269,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1,Go-Ahead,13
+27,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,17
+270,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.1,Transport UK,15
+272,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.4,First,10
+273,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.6,Stagecoach London,9
+274,VOLVO,B5LH/EvoSeti,hybrid,double,8,Metroline,12
+275,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,13.1,Stagecoach London,13
+276,VOLVO,BZL (sd)/MCV,electric,single,1.9,Stagecoach London,17
+277,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.8,Stagecoach London,15
+278,ALEXANDER DENNIS,E40D/Enviro400H MMC,hybrid,double,9.4,Transport UK,12
+279,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.3,Arriva,29
+28,VOLVO,B9TL/Gemini 2,diesel,double,13.8,Metroline,19
+280,VOLVO,B5LH/Gemini 2,hybrid,double,12.8,Go-Ahead,14
+281,BYD,DD/Enviro400EV City,electric,double,4.7,First,21
+281N,,,,,,,
+281R,,,,,,,
+282,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,10.9,Metroline,17
+284,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.7,Stagecoach London,13
+285,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,6.3,Transport UK,16
+286,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,10.8,Go-Ahead,14
+287,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0.7,Stagecoach London,8
+288,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.6,First,7
+289,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,15.4,Arriva,15
+29,VOLVO,B5LH/Eclipse Gemini,hybrid,double,11.6,Arriva,31
+290,BYD,D8UR/Enviro200MMC EV,electric,single,4.1,First,8
+291,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,13.8,Go-Ahead,7
+292,ALEXANDER DENNIS,DD/Enviro400EV City,electric,double,13.6,Uno,3
+293,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.1,First,6
+294,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,11,Stagecoach London,12
+295,BYD,DD/Enviro400EV City,electric,double,4.4,First,19
+296,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,8.2,Stagecoach London,8
+297,VOLVO,B9TL/Gemini 2,diesel,double,11.6,Metroline,17
+298,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,13.8,Uno,5
+299,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.7,Go-Ahead,8
+3,WRIGHTBUS,New Bus for London,hybrid,double,,First,15
+30,VOLVO,B5LH/EvoSeti,hybrid,double,8,Metroline,15
+300,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,14.8,Go-Ahead,10
+301,VOLVO,B5LH/Gemini 2,hybrid,double,12.1,Arriva,10
+302,VOLVO,B5LH/Gemini 3,hybrid,double,10.8,Metroline,16
+303,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.6,First,8
+304,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,12.1,Go-Ahead,10
+306,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2,Transport UK,10
+307,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.4,Arriva,15
+308,VOLVO,B5LH/EvoSeti,hybrid,double,9.3,Stagecoach London,14
+309,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.4,Stagecoach London,8
+31,BYD,E40H/Enviro400H,hybrid,double,1.3,First,17
+310,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,8.2,Stagecoach London,8
+312,BYD,E200Dart/Enviro200,electric,single,0.4,Arriva,12
+313,WRIGHTBUS,New Bus for London,hybrid,double,13.1,Arriva,8
+314,VOLVO,BZL (sd)/MCV,electric,single,1.2,Stagecoach London,16
+315,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.3,Transport UK,6
+316,VOLVO,BZL (sd)/MCV,electric,single,1.5,Metroline,18
+317,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.5,Metroline,5
+318,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.2,Go-Ahead,9
+319,BYD,DD/Enviro400EV City,electric,double,4.6,Arriva,19
+32,VOLVO,New Bus for London,hybrid,double,14.2,Metroline,18
+320,BYD,BYD B11E02 10.9m,electric,single,1.6,Go-Ahead,13
+321,BYD,BYD B11E02 10.9m,electric,single,1.4,Go-Ahead,16
+322,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,0.2,Go-Ahead,11
+323,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.1,Stagecoach London,4
+324,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,9,Metroline,7
+325,BYD,D8UR/Enviro200MMC EV,electric,single,2.2,Go-Ahead,12
+326,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,7.6,First,15
+327,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.4,Metroline,1
+328,VOLVO,B5LH/Gemini 2,hybrid,double,11.5,Metroline,19
+329,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,12.1,Arriva,14
+33,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,2.6,First,18
+330,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,12,Go-Ahead,10
+331,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.2,Metroline,8
+333,VOLVO,B5LH/EvoSeti,hybrid,double,9.4,Go-Ahead,15
+335,VOLVO,B5LH/Gemini 2,hybrid,double,11.8,Arriva,7
+336,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.1,Stagecoach London,11
+337,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2,Transport UK,11
+339,SWITCH,Metrocity EV 9.6m,electric,single,3,Stagecoach London,11
+34,BYD,B5LH/Gemini 3,hybrid,double,0.9,Arriva,19
+340,VOLVO,B5LH/Gemini 3,hybrid,double,8.8,First,9
+341,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.6,Arriva,19
+343,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.3,Go-Ahead,21
+344,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,11.4,Transport UK,21
+345,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,11.6,Transport UK,24
+346,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,9.4,Stagecoach London,6
+349,WRIGHTBUS,New Bus for London,hybrid,double,1.8,Arriva,13
+35,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10,Go-Ahead,24
+350,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11.2,Transport UK,6
+352,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,12.4,Go-Ahead,6
+353,BYD,DD/Enviro400EV City,electric,double,3.3,Go-Ahead,8
+354,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12.2,Go-Ahead,5
+355,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,1.1,Go-Ahead,13
+356,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.4,Stagecoach London,8
+357,BYD,DD/Enviro400EV,electric,double,5.4,Go-Ahead,7
+358,IRIZAR,ie-Tram 12m,electric,single,2.2,Go-Ahead,17
+359,BYD,D8UR/Enviro200MMC EV,electric,single,3.8,Go-Ahead,2
+36,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,9,Go-Ahead,29
+360,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,3.4,Go-Ahead,11
+362,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.6,Stagecoach London,3
+363,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9.6,Transport UK,7
+364,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.9,Go-Ahead,14
+365,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,14.2,Stagecoach London,12
+366,BYD,D8UR/Enviro200MMC EV,electric,single,2.9,Go-Ahead,18
+367,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11,Transport UK,10
+368,BYD,B5LH/Gemini 2,hybrid,double,1.4,Go-Ahead,8
+37,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.4,Go-Ahead,19
+370,VOLVO,B5LH/Gemini 3,hybrid,double,9.2,Arriva,13
+371,BYD,D8UR/Enviro200MMC EV,electric,single,3.3,First,11
+372,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,14.9,Stagecoach London,8
+375,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,15.1,Arriva,1
+376,BYD,D8UR/Enviro200MMC EV,electric,single,4.8,Go-Ahead,10
+377,SWITCH,Metrocity EV 9.6m,electric,single,2.6,Arriva,3
+378,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,6.9,Go-Ahead,4
+379,ALEXANDER DENNIS,Metrocity EV 8.7m,electric,single,1.4,Stagecoach London,3
+38,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,36
+380,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.5,Stagecoach London,14
+381,WRIGHTBUS,DD/Enviro400EV City,electric,double,3.1,Transport UK,17
+382,VOLVO,E20D/Enviro200,electric,single,1.6,Metroline,9
+383,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.5,Uno,3
+384,VOLVO,BZL (sd)/MCV,electric,single,1.4,Metroline,9
+385,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,10.7,Stagecoach London,1
+386,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,14,Go-Ahead,10
+388,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.6,Stagecoach London,11
+389,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.6,Go-Ahead,
+39,BYD,D8UR/Enviro200MMC EV,electric,single,2.5,Go-Ahead,14
+390,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,17
+393,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.1,Metroline,14
+394,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.3,Stagecoach London,9
+395,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.3,First,5
+396,BYD,D8UR/Enviro200MMC EV,electric,single,2.1,Go-Ahead,4
+397,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.3,Stagecoach London,6
+398,BYD,D8UR/Enviro200MMC EV,electric,single,4.6,First,4
+399,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.6,Go-Ahead,
+4,WRIGHTBUS,B5LH/EvoSeti,hybrid,double,2,Metroline,17
+40,BYD,DD/Enviro400EV City,electric,double,2.7,Go-Ahead,16
+401,WRIGHTBUS,Trident/Enviro400,electric,double,1,Go-Ahead,8
+403,VOLVO,E40D/Enviro400,diesel,double,14.7,Go-Ahead,8
+404,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.2,Transport UK,3
+405,BYD,BYD B11E02 10.9m,electric,single,0.6,Arriva,10
+406,VOLVO,B5LH/Gemini 3,hybrid,double,10.1,First,7
+407,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,12.2,Transport UK,16
+41,WRIGHTBUS,DB300/Gemini 2,electric,double,1.1,Arriva,19
+410,WRIGHTBUS,E20D/Enviro200,diesel,single,9.6,Arriva,11
+411,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.6,First,5
+412,BYD,BYD B11E02 10.9m,electric,single,0.5,Arriva,7
+413,BYD,D8UR/Enviro200MMC EV,electric,single,5.8,Go-Ahead,8
+415,ALEXANDER DENNIS,New Bus for London,hybrid,double,6.1,Transport UK,9
+417,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.5,Arriva,12
+418,VOLVO,E40D/Enviro400,diesel,double,9.9,First,7
+419,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,8.5,First,13
+42,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9.9,Go-Ahead,10
+422,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,11.4,Stagecoach London,17
+423,VOLVO,B5LH/Gemini 3,hybrid,double,9.1,First,7
+424,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,11.5,Go-Ahead,5
+425,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6.1,Stagecoach London,21
+427,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9.6,Transport UK,17
+428,VOLVO,Trident/Enviro400,diesel,double,12.6,Arriva,9
+43,BYD,DD/Enviro400EV City,electric,double,5.5,Metroline,26
+430,VOLVO,B5LH/Gemini 3,hybrid,double,10.5,Go-Ahead,11
+432,VOLVO,B5LH/Gemini 2,hybrid,double,10.6,Arriva,10
+433,WRIGHTBUS,e.City Gold 10.7m,electric,single,1.6,Transport UK,9
+434,WRIGHTBUS,E20D/Enviro200,diesel,single,11.1,Go-Ahead,4
+436,ALEXANDER DENNIS,B5LH/Eclipse Gemini,hybrid,double,8.3,Go-Ahead,13
+439,BYD,D8UR/Enviro200 MMC EV,electric,single,2.6,Go-Ahead,3
+44,VOLVO,Streetdeck/Gemini 3,diesel,double,8.9,Go-Ahead,18
+440,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.5,First,11
+444,WRIGHTBUS,D9UR/Enviro200 MMC EV,electric,single,1.8,Go-Ahead,12
+45,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,9.2,Transport UK,17
+450,BYD,D8UR/Enviro200 MMC EV,electric,single,2.7,Go-Ahead,15
+452,OPTARE,B5LH/EvoSeti,hybrid,double,5.4,First,15
+453,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,26
+456,WRIGHTBUS,Streetlite WF 8.8m,diesel,single,11.5,Go-Ahead,5
+46,BYD,D8UR/Enviro200MMC EV,electric,single,6.8,Metroline,17
+460,VOLVO,B5LH/Gemini 3,hybrid,double,10.9,Metroline,10
+462,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.6,Stagecoach London,8
+463,WRIGHTBUS,Streetlite WF 8.8m,diesel,single,11,Go-Ahead,10
+464,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.8,Transport UK,3
+465,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.7,Transport UK,7
+466,BYD,BYD B11E02 10.9m,electric,single,0.6,Arriva,15
+467,VOLVO,Trident/Enviro400,diesel,double,10.9,First,2
+468,VOLVO,B5LH/Gemini 3,hybrid,double,9,Arriva,24
+469,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11.6,Go-Ahead,10
+47,VOLVO,B5LH/Enviro400H MMC,hybrid,double,9,Stagecoach London,17
+470,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.3,Go-Ahead,4
+473,BYD,BYD B11E02 10.9m,electric,single,1.4,Go-Ahead,9
+474,VOLVO,Trident/Enviro400,diesel,double,10.2,Go-Ahead,14
+476,VOLVO,B9TL/Gemini 2,diesel,double,10.2,Go-Ahead,15
+481,VOLVO,B5LH/Gemini 3,hybrid,double,9.1,Metroline,9
+481D,,,,,,,
+482,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6.8,Transport UK,8
+483,VOLVO,B9TL/Gemini 2,diesel,double,10.3,Metroline,20
+484,BYD,D8UR/Enviro200 MMC EV,electric,single,5.5,Go-Ahead,10
+485,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,0.8,Transport UK,4
+486,ALEXANDER DENNIS,B9TL/Gemini 2,diesel,double,14.5,Go-Ahead,13
+487,VOLVO,BZL (sd)/MCV,electric,single,2.6,Metroline,12
+488,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12,Stagecoach London,9
+49,BYD,DD/Enviro400EV City,electric,double,6,First,15
+490,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.3,Transport UK,18
+491,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.1,Metroline,10
+492,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,11.3,Arriva,7
+493,WRIGHTBUS,,electric,,0.3,Transport UK,16
+496,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,14.4,Stagecoach London,8
+498,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,11,Stagecoach London,6
+499,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14.1,Stagecoach London,7
+5,ALEXANDER DENNIS,New Bus for London,hybrid,double,12.4,Go-Ahead,30
+50,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.5,Arriva,15
+51,VOLVO,Trident/Enviro400,diesel,double,14.8,Go-Ahead,18
+52,VOLVO,B5LH/Eclipse Gemini,hybrid,double,9.1,Metroline,17
+53,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10,Stagecoach London,27
+533,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.7,Go-Ahead,5
+54,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,8,Stagecoach London,16
+55,ALEXANDER DENNIS,New Bus for London,hybrid,double,10.2,Stagecoach London,29
+56,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,12,Stagecoach London,18
+57,BYD,DD/Enviro400EV City,electric,double,2.4,Go-Ahead,19
+58,VOLVO,BZL (dd)/MCV,electric,double,1.8,Stagecoach London,15
+59,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,20
+6,VOLVO,B5LH/Gemini 3,hybrid,double,8.9,Metroline,18
+60,BYD,BYD B11E02 10.9m,electric,single,0.6,Arriva,20
+601,VOLVO,E40H/Enviro400H MMC,hybrid,double,14.8,Go-Ahead,7
+602,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,13,Stagecoach London,2
+603,WRIGHTBUS,,diesel,single,2.2,Metroline,2
+606,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.6,Metroline,2
+608,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Go-Ahead,3
+61,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,10.7,Stagecoach London,9
+612,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.9,Arriva,2
+613,VOLVO,B5LH/Gemini 3,hybrid,double,,First,1
+616,ALEXANDER DENNIS,?,diesel,single,10.4,Arriva,2
+617,,?,diesel,single,,Metroline,2
+618,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Transport UK,1
+62,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,10.8,Stagecoach London,14
+621,ALEXANDER DENNIS,E40D/Enviro400H MMC,hybrid,double,,Stagecoach London,1
+624,VOLVO,B9TL/Gemini 2,diesel,double,,Go-Ahead,1
+625,VOLVO,B9TL/Gemini 2,diesel,double,14.9,Go-Ahead,2
+626,WRIGHTBUS,B5LH/Gemini 3,hybrid,double,1.9,Metroline,4
+627,,?,diesel,single,,Arriva,3
+628,,?,diesel,single,,Uno,1
+629,,?,diesel,single,,Metroline,2
+63,BYD,DD/Enviro400EV City,electric,double,3.9,Transport UK,26
+631,OPTARE,Solo SR 7.9m,diesel,single,7.8,Metroline,1
+632,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Metroline,3
+633,VOLVO,B5LH/Gemini 3,hybrid,double,,Go-Ahead,2
+634,VOLVO,B5LH/Gemini 3,hybrid,double,,Metroline,1
+635,VOLVO,B5LH/Gemini 3,hybrid,double,9.1,Metroline,3
+638,WRIGHTBUS,Trident/Enviro400,diesel,double,0.5,Stagecoach London,5
+639,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,14,Transport UK,1
+64,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.3,Arriva,17
+640,VOLVO,B5LH/Gemini 3,hybrid,double,13.9,Metroline,2
+642,BYD,DD/Enviro400EV City,electric,double,,Metroline,3
+643,,?,diesel,single,,Uno,2
+645,VOLVO,DB300/Gemini 2,diesel,double,,Arriva,1
+646,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,6.6,Go-Ahead,2
+649,,?,diesel,single,,Stagecoach London,3
+65,BYD,DD/Enviro400EV City,electric,double,4.7,First,27
+650,,?,diesel,single,,Stagecoach London,5
+651,,?,diesel,single,,Stagecoach London,1
+652,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Go-Ahead,2
+653,ALEXANDER DENNIS,?,diesel,single,14.6,Uno,3
+655,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,Transport UK,1
+656,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Go-Ahead,2
+657,,?,diesel,single,,Stagecoach London,1
+658,VOLVO,B9TL/Gemini 2,diesel,double,15.2,Go-Ahead,3
+66,VOLVO,Trident/Enviro400,diesel,double,9.2,Arriva,13
+660,VOLVO,B5LH/Gemini 3,hybrid,double,,Stagecoach London,1
+661,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,,Stagecoach London,1
+662,VOLVO,B5LH/Gemini 3,hybrid,double,,First,1
+663,,?,diesel,single,,Arriva,1
+664,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,7,Go-Ahead,2
+665,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,,First,1
+667,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,,Stagecoach London,1
+669,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Stagecoach London,2
+67,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,10
+670,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Transport UK,1
+671,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Transport UK,1
+672,,?,diesel,single,,Stagecoach London,4
+674,BYD,DD/Enviro400EV City,electric,double,,Stagecoach London,1
+675,BYD,BYD B11E02 10.9m,electric,single,,Arriva,1
+677,BYD,B5LH/Gemini 2,hybrid,double,6.3,Go-Ahead,1
+678,VOLVO,B5LH/EvoSeti,hybrid,double,,Stagecoach London,4
+679,VOLVO,E40H/Enviro400H,hybrid,double,15,Go-Ahead,4
+68,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,21
+681,VOLVO,B5LH/Gemini 3,hybrid,double,,First,3
+683,ALEXANDER DENNIS,?,diesel,single,13.8,Uno,4
+684,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,Stagecoach London,2
+685,BYD,BYD B11E02 10.9m,electric,single,,Arriva,1
+686,VOLVO,E40H/Enviro400H,hybrid,double,10.2,Go-Ahead,2
+687,ALEXANDER DENNIS,?,diesel,single,,Stagecoach London,1
+688,ALEXANDER DENNIS,?,diesel,single,12.8,Uno,5
+689,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,,Arriva,1
+69,BYD,DD/Enviro400EV City,electric,double,4.7,Go-Ahead,15
+690,VOLVO,B5LH/Gemini3,hybrid,double,,Go-Ahead,2
+695,VOLVO,B5LH/SRM,hybrid,double,,First,3
+696,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,First,2
+697,,?,diesel,single,,Metroline,3
+698,VOLVO,B5LH/SRM,hybrid,double,,First,2
+699,BYD,K8SR 10.2m,diesel,single,6.6,Uno,4
+7,WRIGHTBUS,Streetdeck FCEV,hydrogen,double,5.4,Metroline,12
+70,BYD,D8UR/Enviro200MMC EV,electric,single,7.9,First,19
+71,VOLVO,B5LH/Gemini 3,hybrid,double,10.2,First,13
+72,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9,First,13
+73,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,24
+74,VOLVO,B5LH/Gemini 3,hybrid,double,10.5,Go-Ahead,18
+75,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,7.8,Stagecoach London,15
+76,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,21
+77,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.3,Go-Ahead,18
+78,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.6,Go-Ahead,16
+79,VOLVO,B5LH/Gemini 3,hybrid,double,8.9,First,14
+8,ALEXANDER DENNIS,New Bus for London,hybrid,double,8.4,Stagecoach London,22
+80,BYD,DD/Enviro400EV City,electric,double,3.2,Go-Ahead,7
+81,VOLVO,B9TL/Gemini 2,diesel,double,8.4,Metroline,16
+83,VOLVO,B9TL/Gemini 2,diesel,double,13.2,Metroline,14
+85,VOLVO,B5LH/Gemini 3,hybrid,double,9.6,First,13
+86,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.3,Stagecoach London,24
+87,VOLVO,New Bus for London,hybrid,double,9.6,Go-Ahead,19
+88,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,9.8,Go-Ahead,22
+89,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,14.4,Go-Ahead,15
+9,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,14
+90,VOLVO,B5LH/EvoSeti,hybrid,double,8.3,Metroline,17
+91,VOLVO,B5LH/Enviro400H MMC,hybrid,double,10.1,Go-Ahead,15
+92,VOLVO,B5LH/Gemini 3,hybrid,double,9.2,Metroline,16
+93,BYD,DD/Enviro400EV City,electric,double,3.2,Go-Ahead,26
+94,BYD,DD/Enviro400EV City,electric,double,6,First,18
+95,VOLVO,B5LH/Gemini 3,hybrid,double,10.2,Metroline,14
+96,VOLVO,B5LH/Gemini 2,hybrid,double,12.3,Arriva,24
+969,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,,Transport UK,
+97,WRIGHTBUS,Streetdeck/Gemini 3,diesel,double,8.4,Stagecoach London,20
+98,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.5,Metroline,22
+99,WRIGHTBUS,Trident/Enviro400,electric,double,1,Go-Ahead,14
+A10,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.7,Metroline,4
+B11,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,12.9,Go-Ahead,8
+B12,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,13.3,Go-Ahead,7
+B13,BYD,D8UR/Enviro200 MMC EV,electric,single,3.4,Go-Ahead,4
+B14,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,0.9,Stagecoach London,7
+B15,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,11.9,Go-Ahead,6
+B16,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,1.2,Go-Ahead,10
+BL1,BYD,DD/Enviro400EV City,electric,double,6,Go-Ahead,10
+C1,BYD,D8UR/Enviro200MMC EV,electric,single,7.9,First,13
+C10,WRIGHTBUS,e.City Gold 10.7m,electric,single,0.8,Transport UK,23
+C11,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,1.5,Metroline,16
+C3,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2,Transport UK,9
+D3,BYD,D8UR/Enviro200MMC EV,electric,single,2.7,Go-Ahead,9
+D6,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.5,Stagecoach London,14
+D7,WRIGHTBUS,BZL (dd)/MCV,electric,double,1.8,Stagecoach London,9
+D8,VOLVO,BZL (dd)/MCV,electric,double,1.9,Stagecoach London,7
+E1,VOLVO,B9TL/Gemini 2,diesel,double,12,Metroline,7
+E10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.5,Transport UK,8
+E11,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.1,Transport UK,5
+E2,VOLVO,B9TL/Gemini 2,diesel,double,9.4,Metroline,15
+E3,VOLVO,E40H/Enviro400H,hybrid,double,10.2,First,20
+E5,SWITCH,E20D/Enviro200 MMC,electric,single,3,Transport UK,12
+E6,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,2.1,Transport UK,11
+E7,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,2.5,Transport UK,11
+E8,VOLVO,B9TL/Gemini 2,diesel,double,9.3,Metroline,15
+E9,VOLVO,Trident/Enviro400,diesel,double,8.6,Metroline,8
+EL1,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,18
+EL2,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,12
+EL3,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,14
+G1,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,0.9,Transport UK,12
+H10,BYD,D8UR/Enviro200MMC EV,electric,single,4.6,First,9
+H11,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.5,First,7
+H12,VOLVO,E40H/Enviro400H MMC,hybrid,double,9.3,First,14
+H13,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.6,Metroline,6
+H14,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,9,First,7
+H17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.6,Metroline,7
+H18,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.8,First,4
+H19,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.9,First,4
+H2,OPTARE,Solo SR 7.9m,diesel,single,7.8,Metroline,3
+H20,ALEXANDER DENNIS,MetroCity EV 8.7m,electric,single,9.8,Transport UK,6
+H22,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.4,First,12
+H25,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12.9,Transport UK,10
+H26,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.9,Transport UK,5
+H28,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,9.7,Transport UK,11
+H3,OPTARE,Solo SR 7.9m,diesel,single,7.8,Metroline,1
+H32,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,11
+H37,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.2,First,13
+H9,BYD,D8UR/Enviro200MMC EV,electric,single,4.6,First,9
+H91,VOLVO,New Bus for London,hybrid,double,9,Metroline,14
+H98,VOLVO,New Bus for London,hybrid,double,11.4,First,15
+K1,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,7.4,First,14
+K2,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.4,First,10
+K3,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8,First,11
+K4,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7.9,First,4
+K5,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,11.3,First,6
+N1,VOLVO,E40H/Enviro400H MMC,hybrid,double,9.6,Go-Ahead,6
+N102,VOLVO,B5LH/Gemini 2,hybrid,double,,Arriva,26
+N105,VOLVO,B5LH/Gemini 3,hybrid,double,,First,16
+N108,BYD,D9UR/Enviro200 MMC EV,electric,single,,Go-Ahead,18
+N109,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10,Transport UK,9
+N11,VOLVO,E40H/Enviro400H MMC,hybrid,double,9.3,Go-Ahead,6
+N111,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,,Transport UK,26
+N113,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2,Metroline,5
+N118,BYD,B5LH/Gemini 3,hybrid,double,0.5,First,14
+N119,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,14
+N12,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,15
+N123,,?,diesel,,,Arriva,20
+N128,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,Stagecoach London,15
+N13,VOLVO,B5LH/EvoSeti,hybrid,double,,First,21
+N133,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,,Transport UK,8
+N134,OPTARE,MetroDecker EV 10.5m,electric,double,,Metroline,20
+N136,ALEXANDER DENNIS,B5LH/Eclipse Gemini,hybrid,double,8.3,Go-Ahead,8
+N137,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,8
+N139,VOLVO,B5LH/Eclipse Gemini,hybrid,double,,Metroline,18
+N14,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Go-Ahead,21
+N140,VOLVO,B5LH/Gemini 3,hybrid,double,9.8,Metroline,5
+N148,WRIGHTBUS,New Bus for London,hybrid,double,,First,17
+N149,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,30
+N15,VOLVO,New Bus for London,hybrid,double,8.8,Go-Ahead,14
+N155,VOLVO,B5LH/Gemini 3,hybrid,double,10.1,Go-Ahead,8
+N158,VOLVO,DB300/Gemini 2,diesel,double,,Arriva,25
+N159,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,22
+N171,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.4,Go-Ahead,5
+N176,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,22
+N18,BYD,B5LH/Gemini 3,hybrid,double,0.6,First,14
+N188,BYD,BYD B11E02 10.9m,electric,single,,Go-Ahead,22
+N189,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,16
+N19,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,6
+N199,WRIGHTBUS,E40D/Enviro400,diesel,double,2.1,Stagecoach London,8
+N2,VOLVO,B5LH/Gemini 3,hybrid,double,9.3,Arriva,8
+N20,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,6
+N205,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,9.1,Stagecoach London,9
+N207,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.2,Transport UK,23
+N21,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.4,Go-Ahead,9
+N213,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,14
+N214,BYD,D8UR/Enviro200MMC EV,electric,single,,Go-Ahead,19
+N22,VOLVO,B5LH/EvoSeti,hybrid,double,9.6,Go-Ahead,6
+N220,VOLVO,B5LH/Gemini 3,hybrid,double,,First,25
+N222,VOLVO,B5LH/Gemini 3,hybrid,double,,Metroline,14
+N23,OPTARE,MetroDecker EV 10.5m,electric,double,,First,14
+N238,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,Stagecoach London,12
+N24,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,16
+N242,VOLVO,Streetdeck Electroliner 10.5m,electric,double,1.6,Stagecoach London,5
+N243,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,,Arriva,27
+N25,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6.1,Stagecoach London,17
+N250,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,15.8,Arriva,5
+N253,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,8
+N26,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.9,Stagecoach London,8
+N263,VOLVO,B5LH/Gemini 3,hybrid,double,9.9,Metroline,3
+N264,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,11
+N266,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.3,Metroline,4
+N27,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,4
+N277,VOLVO,Streetdeck Electroliner 10.5m,electric,double,1.4,Stagecoach London,5
+N279,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.2,Arriva,12
+N28,VOLVO,B5LH/EvoSeti,hybrid,double,13.4,Metroline,5
+N281,BYD,DD/Enviro400EV City,electric,double,,First,21
+N285,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,,Transport UK,16
+N29,VOLVO,B5LH/Eclipse Gemini,hybrid,double,12.3,Arriva,18
+N295,BYD,DD/Enviro400EV City,electric,double,,First,19
+N297,VOLVO,B9TL/Gemini 2,diesel,double,,Metroline,17
+N3,WRIGHTBUS,New Bus for London,hybrid,double,,Transport UK,12
+N31,BYD,E40H/Enviro400H,hybrid,double,0.6,First,5
+N32,VOLVO,New Bus for London,hybrid,double,11.7,Metroline,4
+N321,BYD,BYD B11E02 10.9m,electric,single,,Go-Ahead,16
+N33,BYD,E200Dart/Enviro200,diesel,single,4.7,First,4
+N341,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,,Arriva,19
+N343,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.3,Go-Ahead,5
+N344,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Transport UK,21
+N345,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Transport UK,24
+N35,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Go-Ahead,24
+N36,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,,Go-Ahead,29
+N365,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,,Stagecoach London,12
+N37,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Go-Ahead,19
+N38,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,16
+N381,WRIGHTBUS,DD/Enviro400EV City,electric,double,2.9,Transport UK,4
+N390,WRIGHTBUS,New Bus for London,hybrid,double,,Metroline,17
+N41,VOLVO,B5LH/Gemini 3,hybrid,double,8.8,Arriva,5
+N43,BYD,DD/Enviro400EV City,electric,double,,Metroline,26
+N44,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.5,Go-Ahead,6
+N453,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,26
+N47,VOLVO,B5LH/Enviro400H MMC,hybrid,double,,Stagecoach London,17
+N472,VOLVO,B9TL/Gemini 2,diesel,double,,Go-Ahead,4
+N474,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,,Go-Ahead,14
+N486,VOLVO,B9TL/Gemini 2,diesel,double,,Go-Ahead,13
+N5,ALEXANDER DENNIS,B5LH/Gemini 3,hybrid,double,8.5,First,6
+N52,VOLVO,B5LH/Eclipse Gemini,hybrid,double,,Metroline,17
+N53,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10,Stagecoach London,11
+N55,WRIGHTBUS,New Bus for London,hybrid,double,,Stagecoach London,7
+N550,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.6,Stagecoach London,6
+N551,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,9.3,Stagecoach London,7
+N57,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,19
+N6,VOLVO,B5LH/Gemini 3,hybrid,double,,Metroline,18
+N63,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,8.9,Transport UK,9
+N64,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,,Arriva,17
+N65,VOLVO,B5LH/Gemini 3,hybrid,double,6.3,First,5
+N68,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,,Transport UK,7
+N69,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,15
+N7,VOLVO,Streetdeck FCEV,hydrogen,double,8,Metroline,6
+N72,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,7.6,First,4
+N73,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,10
+N74,VOLVO,B5LH/Gemini 3,hybrid,double,,Go-Ahead,5
+N76,WRIGHTBUS,New Bus for London,hybrid,double,,Arriva,21
+N8,ALEXANDER DENNIS,New Bus for London,hybrid,double,6.3,Stagecoach London,18
+N83,VOLVO,B9TL/Gemini 2,diesel,double,9.1,Metroline,4
+N85,VOLVO,B5LH/Gemini 3,hybrid,double,,First,13
+N86,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2.7,Stagecoach London,8
+N87,ALEXANDER DENNIS,New Bus for London,hybrid,double,8.5,Go-Ahead,13
+N88,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,,Go-Ahead,22
+N89,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,8.5,Go-Ahead,8
+N9,VOLVO,New Bus for London,hybrid,double,8.3,Metroline,11
+N91,VOLVO,B5LH/Enviro400H MMC,hybrid,double,10.1,Go-Ahead,7
+N93,BYD,DD/Enviro400EV City,electric,double,,Go-Ahead,26
+N94,BYD,DD/Enviro400EV City,electric,double,,First,18
+N97,VOLVO,B5LH/Gemini 3,hybrid,double,12.1,Go-Ahead,4
+N98,VOLVO,B5LH/Gemini 3,hybrid,double,9.7,Metroline,9
+NEL1,WRIGHTBUS,New Bus for London,hybrid,double,,Go-Ahead,18
+P12,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.7,Go-Ahead,11
+P13,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.8,Transport UK,12
+P4,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,9.3,Go-Ahead,13
+P5,WRIGHTBUS,e.City Gold 10.7m,electric,single,1.5,Transport UK,10
+R1,ALEXANDER DENNIS,E20D/Enviro200,electric,single,1,Go-Ahead,6
+R10,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.5,Go-Ahead,
+R11,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.3,Go-Ahead,10
+R2,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12.8,Go-Ahead,4
+R3,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,1,Go-Ahead,6
+R4,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.5,Go-Ahead,6
+R5,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13.5,Go-Ahead,1
+R68,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.5,Transport UK,10
+R7,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,13.9,Go-Ahead,4
+R70,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,2,Transport UK,11
+R8,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,1,Go-Ahead,2
+R9,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,11.9,Go-Ahead,3
+S1,WRIGHTBUS,E200Dart/Enviro200,electric,single,0.5,Transport UK,13
+S2,BYD,D8UR/Enviro200 MMC EV,electric,single,2.3,Go-Ahead,8
+S3,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10.2,Transport UK,8
+S4,WRIGHTBUS,E20D/Enviro200,diesel,single,11.3,Go-Ahead,7
+SCS,BYD,D8UR/Enviro200MMC EV,electric,single,6.3,Stagecoach London,3
+SL1,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,10.5,Arriva,12
+SL10,BYD,DD/Enviro400EV City,electric,double,4.4,First,13
+SL11,VOLVO,New Bus for London,hybrid,double,16.3,Go-Ahead,20
+SL2,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,9.5,Arriva,15
+SL3,ALEXANDER DENNIS,E400EV 10.5m,electric,double,1.1,Stagecoach London,15
+SL4,BYD,BYD B11E02 10.9m,electric,single,1.3,Go-Ahead,17
+SL5,BYD,BYD B11E02 10.9m,electric,single,1,Arriva,10
+SL6,ALEXANDER DENNIS,Enviro400EV 10.5m,electric,double,1.3,Arriva,10
+SL7,VOLVO,B9TL/Gemini 2,diesel,double,15.3,Go-Ahead,21
+SL8,VOLVO,B5LH/EvoSeti,hybrid,double,7.2,Metroline,26
+SL9,BYD,DD/Enviro400EV City,electric,double,4.6,First,13
+T1,,,,,,,
+T2,,,,,,,
+T3,,,,,,,
+U1,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.7,Metroline,8
+U10,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14.7,Metroline,1
+U2,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13.8,Metroline,9
+U3,VOLVO,Trident/Enviro400,diesel,double,11.8,Metroline,11
+U4,VOLVO,Trident/Enviro400,diesel,double,11.6,Metroline,12
+U5,BYD,DD/Enviro400EV City,electric,double,4.1,Transport UK,11
+U7,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,11,Transport UK,4
+U9,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.7,Transport UK,3
+UL13,,,,,,,
+UL19,,,,,,,
+UL26,,,,,,,
+UL30,,,,,,,
+UL40,,,,,,,
+UL61,,,,,,,
+W11,SWITCH,MetroCity EV 9.5m,electric,single,2.3,Stagecoach London,9
+W12,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,1.2,Stagecoach London,14
+W13,VOLVO,E20D/Enviro200,electric,single,1.8,Stagecoach London,8
+W14,VOLVO,E200Dart/Enviro200,electric,single,1.8,Stagecoach London,2
+W15,BYD,D8UR/Enviro200MMC EV,electric,single,5.5,Go-Ahead,20
+W16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9.5,Stagecoach London,10
+W19,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,10.5,Stagecoach London,18
+W3,VOLVO,E40D/Enviro400,diesel,double,10.3,Arriva,22
+W4,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.7,Arriva,14
+W5,SWITCH,MetroCity EV 8.7m,electric,single,2.9,Stagecoach London,7
+W6,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8.6,Arriva,9
+W7,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1.9,Metroline,11
+W8,BYD,Trident/Enviro400,electric,double,1.2,Metroline,15
+W9,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,14,Metroline,8

@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Transit Instruments — London Bus Network Analysis Suite</title>
+<!--
+  ============================================================================
+  TRANSIT INSTRUMENTS — HUB  (index.html)
+  ----------------------------------------------------------------------------
+  Entry point for the suite, built as just another instrument. Three-pane shell:
+    LEFT  — domain-grouped instrument nav (filterable)
+    CANVAS— the network as subject, three modes: Overview / Attention / Activity
+    RIGHT — network-health analysis readout (health %, domain meters, counts)
+
+  DATA SOURCES (this hub):
+    - TfL Unified API — Line Status, bus mode  (network health overview)
+        GET https://api.tfl.gov.uk/Line/Mode/bus/Status   (~30s source cache)
+      Polled gently on a 60s auto-refresh; manual refresh shares one code path.
+    - Static instrument registry (the tools themselves) — local reference data.
+  All access goes through the `dataSource` seam; backend swappable (tfl | db).
+  Attention alerts are DERIVED from the live status feed; Activity is the user's
+  real last-opened history (persisted with settings).
+  ============================================================================
+-->
+<style>
+/* ============================ DESIGN TOKENS ============================ */
+:root, [data-theme="dark"]{
+  /* very dark, near-black with a faint cool tint (was navy-blue) */
+  --ink:#080a0d; --ink-2:#0b0d11;
+  --panel:#121419; --panel-2:#171a20; --panel-3:#1d2128;
+  --line:#262a33; --line-2:#323744; --line-3:#434a5a;
+  --paper:#e7edf6; --paper-2:#9fb0c8; --paper-3:#74839a; --paper-4:#4a5568;
+}
+[data-theme="light"]{
+  --ink:#f4f7fb; --ink-2:#eaeff6;
+  --panel:#ffffff; --panel-2:#f4f7fb; --panel-3:#eaeff6;
+  --line:#d9e1ec; --line-2:#c6d2e2; --line-3:#aab9ce;
+  --paper:#1f2733; --paper-2:#46566e; --paper-3:#6a7990; --paper-4:#9aa8bd;
+}
+:root{
+  --amber:#f5a524; --cyan:#37c5c5; --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
+  --ease:cubic-bezier(.4,0,.2,1);
+  --mono:"SF Mono",ui-monospace,"JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --r1:6px; --r2:10px; --r3:14px; --rp:999px;
+  --fz-xs:clamp(10px,.68rem,11px);
+  --fz-sm:clamp(11px,.78rem,12.5px);
+  --fz-md:clamp(13px,.9rem,14px);
+  --fz-lg:clamp(15px,1.05rem,17px);
+  --fz-xl:clamp(19px,1.7rem,26px);
+  --fz-xxl:clamp(22px,2rem,30px);
+  --topbar-h:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ink);color:var(--paper);
+  font-family:var(--sans);font-size:var(--fz-md);line-height:1.5;letter-spacing:-.006em;
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;color:inherit;cursor:pointer;background:none;border:none}
+ul{list-style:none}
+svg:not([width]){width:1em;height:1em;flex:none}
+.spark{width:100%!important;height:34px!important;display:block}
+::selection{background:color-mix(in srgb,var(--amber) 30%,transparent)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:var(--rp);border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--line-3);background-clip:padding-box}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:3px}
+
+.skip{position:absolute;left:var(--s3);top:-60px;z-index:100;background:var(--amber);color:#1a1206;
+  padding:var(--s2) var(--s4);border-radius:var(--r1);font-weight:600;transition:top .15s var(--ease)}
+.skip:focus{top:var(--s3)}
+
+/* ============================ APP GRID ============================ */
+.app{display:grid;grid-template-columns:236px 1fr 320px;grid-template-rows:var(--topbar-h) 1fr;height:100vh;height:100svh}
+
+/* ============================ TOPBAR ============================ */
+.topbar{grid-column:1 / -1;display:flex;align-items:center;gap:var(--s4);padding:0 var(--s4);
+  background:var(--panel);border-bottom:1px solid var(--line);min-width:0;z-index:30}
+.brand{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.brand .logo{width:30px;height:30px;border-radius:8px;flex:none;
+  background:linear-gradient(135deg,var(--amber),#d97a06);display:grid;place-items:center;color:#1a1206}
+.brand .logo svg{width:18px;height:18px}
+.brand h1{font-size:var(--fz-lg);font-weight:680;letter-spacing:-.02em;white-space:nowrap}
+.brand .sub{font-size:var(--fz-xs);color:var(--paper-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+.spacer{flex:1 1 auto;min-width:var(--s2)}
+
+.cluster{display:flex;align-items:center;gap:var(--s2);flex:none}
+.badge{display:inline-flex;align-items:center;gap:var(--s2);font-family:var(--mono);font-size:var(--fz-xs);
+  color:var(--paper-2);background:var(--panel-2);border:1px solid var(--line);padding:5px var(--s3);border-radius:var(--rp);white-space:nowrap}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
+.badge.stale{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 40%,var(--line))}
+.badge.stale .dot{background:var(--amber)}
+.badge.offline{color:var(--alert);border-color:color-mix(in srgb,var(--alert) 40%,var(--line))}
+.badge.offline .dot{background:var(--alert)}
+
+.iconbtn{width:32px;height:32px;border-radius:var(--r1);border:1px solid var(--line);background:var(--panel-2);
+  display:grid;place-items:center;color:var(--paper-2);transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
+.iconbtn:hover{background:var(--panel-3);color:var(--paper);border-color:var(--line-2)}
+.iconbtn svg{width:16px;height:16px}
+.iconbtn.spin svg{animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* live-mode circular countdown */
+.livering{position:relative;width:32px;height:32px;flex:none;display:grid;place-items:center}
+.livering svg{width:32px;height:32px;transform:rotate(-90deg)}
+.livering .ring-bg{fill:none;stroke:var(--line-2);stroke-width:3}
+.livering .ring-fg{fill:none;stroke:var(--green);stroke-width:3;stroke-linecap:round;
+  stroke-dasharray:94.2;stroke-dashoffset:0;transition:stroke-dashoffset .2s linear}
+.livering.refreshing .ring-fg{stroke:var(--amber)}
+.livering .rc{position:absolute;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--paper-2)}
+@media (prefers-reduced-motion:reduce){.livering .ring-fg{transition:none}}
+
+.clock{display:inline-flex;align-items:center;gap:var(--s2);font-family:var(--mono);font-size:var(--fz-sm);
+  color:var(--paper);background:var(--panel-2);border:1px solid var(--line);padding:5px var(--s3);border-radius:var(--rp);white-space:nowrap}
+.clock .live{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2.4s var(--ease) infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* ============================ LEFT RAIL ============================ */
+.rail-left{background:var(--panel);border-right:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.rail-head{padding:var(--s4) var(--s4) var(--s2);display:flex;align-items:center;justify-content:space-between}
+.rail-head h2{font-size:var(--fz-xs);text-transform:uppercase;letter-spacing:.12em;color:var(--paper-3);font-weight:600}
+.rail-head .cnt{font-family:var(--mono);font-size:var(--fz-xs);color:var(--paper-3)}
+.search{margin:0 var(--s4) var(--s3);display:flex;align-items:center;gap:var(--s2);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);padding:6px var(--s3)}
+.search svg{width:14px;height:14px;color:var(--paper-3)}
+.search input{flex:1;min-width:0;background:none;border:none;color:var(--paper);font-size:var(--fz-sm);outline:none}
+.search input::placeholder{color:var(--paper-4)}
+
+.nav{flex:1;overflow-y:auto;padding:0 var(--s2) var(--s3)}
+.nav-grp{margin-bottom:var(--s1)}
+.nav-grp__l{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);padding:var(--s3) var(--s2) var(--s1)}
+.navitem{width:100%;display:flex;align-items:center;gap:var(--s3);padding:var(--s2) var(--s2);border-radius:var(--r1);
+  text-align:left;color:var(--paper-2);position:relative;margin-bottom:1px;
+  transition:background .12s var(--ease),color .12s var(--ease)}
+.navitem:hover{background:var(--panel-2);color:var(--paper)}
+.navitem[aria-current="true"]{background:var(--panel-3);color:var(--paper)}
+.navitem[aria-current="true"]::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;border-radius:3px;background:var(--acc,var(--amber))}
+.navitem .ic{width:26px;height:24px;flex:none;display:grid;place-items:center;border-radius:var(--r1);
+  background:color-mix(in srgb,var(--acc,var(--paper-3)) 14%,transparent);color:var(--acc,var(--paper-2))}
+.navitem .ic svg{width:15px;height:15px}
+.navitem .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.navitem .nm{min-width:0;font-weight:550;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.navitem .desc{min-width:0;font-weight:400;font-size:10.5px;color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.navitem:hover .desc{color:var(--paper-2)}
+.navitem .st{width:7px;height:7px;border-radius:50%;flex:none;align-self:center}
+.navitem .st[data-s="live"]{background:var(--green)}
+.navitem .st[data-s="soon"]{background:var(--paper-4)}
+.nav-empty{padding:var(--s4);font-size:var(--fz-sm);color:var(--paper-3);text-align:center}
+.rail-foot{padding:var(--s3) var(--s4);border-top:1px solid var(--line);display:flex;align-items:center;gap:var(--s3)}
+.avatar{width:28px;height:28px;border-radius:var(--r1);background:linear-gradient(135deg,var(--violet),var(--cyan));
+  display:grid;place-items:center;font-family:var(--mono);font-size:10px;font-weight:700;color:#10131a;flex:none}
+.rail-foot b{font-size:12px;font-weight:550;display:block;line-height:1.2}
+.rail-foot span{font-size:9.5px;color:var(--paper-3);font-family:var(--mono)}
+
+/* ============================ CANVAS ============================ */
+.canvas{background:var(--ink-2);overflow:hidden;min-width:0;display:flex;flex-direction:column}
+.canvas-head{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;padding:var(--s3) var(--s5);
+  border-bottom:1px solid var(--line);background:var(--ink-2);z-index:5}
+.canvas-head .title b{font-size:var(--fz-lg);font-weight:680;letter-spacing:-.02em}
+.canvas-head .title span{font-size:var(--fz-sm);color:var(--paper-3);margin-left:var(--s2);font-family:var(--mono)}
+.ch-spacer{flex:1}
+.tabs{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:var(--r1);padding:3px;gap:2px}
+.tab{padding:6px var(--s3);border-radius:7px;font-size:var(--fz-sm);font-weight:550;color:var(--paper-2);
+  white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:background .12s var(--ease),color .12s var(--ease)}
+.tab svg{width:14px;height:14px}
+.tab[aria-selected="true"]{background:var(--panel-3);color:var(--paper)}
+.tab:hover:not([aria-selected="true"]){color:var(--paper)}
+.btn{display:inline-flex;align-items:center;gap:var(--s2);padding:6px var(--s3);border-radius:var(--r1);
+  border:1px solid var(--line);background:var(--panel-2);color:var(--paper-2);font-size:var(--fz-sm);font-weight:550;
+  transition:background .12s,color .12s,border-color .12s}
+.btn:hover{background:var(--panel-3);color:var(--paper);border-color:var(--line-2)}
+.btn svg{width:14px;height:14px}
+
+.canvas-body{flex:1;overflow-y:auto;padding:var(--s5)}
+[role="tabpanel"][hidden]{display:none}
+
+/* greeting */
+.greet{display:flex;align-items:flex-end;gap:var(--s4);flex-wrap:wrap;margin-bottom:var(--s5)}
+.greet h2{font-size:var(--fz-xxl);font-weight:680;letter-spacing:-.03em;line-height:1.1}
+.greet p{font-size:var(--fz-sm);color:var(--paper-3);margin-top:var(--s1)}
+.greet p .mono{color:var(--paper-2)}
+
+.sec-l{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);
+  margin:0 0 var(--s3);display:flex;align-items:center;gap:var(--s3)}
+.sec-l::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line-2),transparent)}
+
+/* stat cards */
+.statgrid{display:grid;gap:var(--s3);grid-template-columns:repeat(auto-fill,minmax(min(100%,12.5rem),1fr));margin-bottom:var(--s5)}
+.scard{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:var(--s3) var(--s4);overflow:hidden}
+.scard::before{content:"";position:absolute;inset-block:0;left:0;width:3px;background:var(--acc,var(--paper-3))}
+.scard .l{display:flex;align-items:center;gap:7px;font-size:9.5px;color:var(--paper-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:9px}
+.scard .l svg{width:13px;height:13px;color:var(--acc,var(--paper-3))}
+.scard .v{font-family:var(--mono);font-size:var(--fz-xl);font-weight:640;letter-spacing:-.03em;line-height:1;color:var(--acc,var(--paper))}
+.scard .v .u{font-size:.55em;color:var(--paper-3)}
+.scard .d{font-size:10.5px;color:var(--paper-2);margin-top:9px}
+
+/* tool grid */
+.tools{display:grid;gap:var(--s4);grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr))}
+.tool{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--r3);padding:var(--s4);overflow:hidden;isolation:isolate;min-height:150px;
+  transition:border-color .22s var(--ease),transform .22s var(--ease),box-shadow .22s var(--ease)}
+.tool::after{content:"";position:absolute;inset:0;z-index:-1;opacity:0;
+  background:radial-gradient(16rem 11rem at 85% -10%,color-mix(in srgb,var(--acc,var(--amber)) 13%,transparent),transparent 70%);
+  transition:opacity .22s var(--ease)}
+.tool:hover,.tool[aria-current="true"]{transform:translateY(-2px);border-color:color-mix(in srgb,var(--acc,var(--amber)) 42%,var(--line-2));box-shadow:0 12px 32px -10px rgba(0,0,0,.6)}
+.tool:hover::after{opacity:1}
+.tool .top{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);margin-bottom:var(--s3)}
+.tool .ic{width:36px;height:36px;flex:none;display:grid;place-items:center;border-radius:var(--r2);
+  background:color-mix(in srgb,var(--acc,var(--amber)) 13%,transparent);color:var(--acc,var(--amber))}
+.tool .ic svg{width:19px;height:19px}
+.tool .domain{font-family:var(--mono);font-size:9px;color:var(--paper-3);text-transform:uppercase;letter-spacing:.05em}
+.tool h3{font-size:var(--fz-md);font-weight:660;letter-spacing:-.02em}
+.tool p.tag{margin-top:2px;font-size:11.5px;font-weight:550;color:var(--acc,var(--amber));line-height:1.3;flex:none}
+.tool p{margin-top:5px;font-size:11.5px;color:var(--paper-2);line-height:1.45;flex:1}
+.tool .foot{margin-top:var(--s3);padding-top:var(--s3);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
+.tool .status{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--paper-3)}
+.tool .status .dot{width:5px;height:5px;border-radius:50%}
+.tool .go{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--acc,var(--amber));display:inline-flex;align-items:center;gap:4px}
+.tool .go svg{width:11px;height:11px;transition:transform .22s var(--ease)}
+.tool:hover .go svg{transform:translateX(3px)}
+.tool.soon{opacity:.62}
+
+/* feed lists (attention / activity) */
+.feedlist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--panel)}
+.feeditem{width:100%;text-align:left;display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);
+  border-bottom:1px solid var(--line);transition:background .12s var(--ease)}
+.feeditem:last-child{border-bottom:none}
+.feeditem:hover{background:var(--panel-2)}
+.feeditem .pip{width:8px;height:8px;border-radius:50%;flex:none}
+.feeditem .main{flex:1;min-width:0}
+.feeditem .main b{font-size:12.5px;font-weight:550;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feeditem .main span{font-size:10.5px;color:var(--paper-3)}
+.feeditem .src{font-family:var(--mono);font-size:9.5px;color:var(--paper-4);flex:none}
+.feeditem .arr{font-family:var(--mono);color:var(--acc,var(--amber));flex:none}
+.feed-empty{padding:var(--s6) var(--s4);text-align:center;color:var(--paper-3);font-size:var(--fz-sm)}
+
+/* ============================ RIGHT RAIL ============================ */
+.rail-right{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;min-height:0}
+.metric{padding:var(--s4);border-bottom:1px solid var(--line)}
+.metric-h{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);
+  margin-bottom:var(--s3);display:flex;align-items:center;justify-content:space-between}
+.tag{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:var(--rp)}
+.tag.ok{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.tag.warn{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+.tag.alert{color:var(--alert);background:color-mix(in srgb,var(--alert) 14%,transparent)}
+.big{font-family:var(--mono);font-size:var(--fz-xxl);font-weight:600;letter-spacing:-.04em;line-height:.95}
+.big .u{font-size:.5em;color:var(--paper-3);font-weight:500}
+.big.green{color:var(--green)}.big.amber{color:var(--amber)}.big.cyan{color:var(--cyan)}.big.alert{color:var(--alert)}
+.metric-sub{font-size:11px;color:var(--paper-2);margin-top:7px}
+.statline{display:flex;flex-direction:column;gap:var(--s3)}
+.sr{display:flex;align-items:center;justify-content:space-between;gap:var(--s3)}
+.sr .l{font-size:11.5px;color:var(--paper-2);display:flex;align-items:center;gap:var(--s2)}
+.sr .l .pip{width:7px;height:7px;border-radius:50%;flex:none}
+.sr .v{font-family:var(--mono);font-size:12px;font-weight:600}
+.meter{height:6px;border-radius:var(--rp);background:var(--panel-3);overflow:hidden;margin-top:5px}
+.meter>i{display:block;height:100%;border-radius:var(--rp)}
+.alertbox{display:flex;gap:var(--s3);padding:var(--s3);border-radius:var(--r1);
+  background:color-mix(in srgb,var(--alert) 9%,transparent);border:1px solid color-mix(in srgb,var(--alert) 26%,transparent)}
+.alertbox.calm{background:color-mix(in srgb,var(--green) 9%,transparent);border-color:color-mix(in srgb,var(--green) 26%,transparent)}
+.alertbox svg{width:15px;height:15px;color:var(--alert);flex:none;margin-top:1px}
+.alertbox.calm svg{color:var(--green)}
+.alertbox b{font-size:12px;font-weight:600;display:block}
+.alertbox p{font-size:11px;color:var(--paper-2);margin-top:2px;line-height:1.45}
+
+/* ============================ DIALOG ============================ */
+dialog{border:1px solid var(--line-2);background:var(--panel);color:var(--paper);border-radius:var(--r3);
+  padding:0;width:min(440px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(4,7,12,.6)}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;padding:var(--s4) var(--s4) var(--s3);border-bottom:1px solid var(--line)}
+.dlg-head h2{font-size:var(--fz-lg);font-weight:680}
+.dlg-body{padding:var(--s4);display:flex;flex-direction:column;gap:var(--s4)}
+.field label{display:block;font-size:var(--fz-xs);text-transform:uppercase;letter-spacing:.07em;color:var(--paper-3);font-weight:600;margin-bottom:var(--s2)}
+.field select{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);color:var(--paper);padding:8px var(--s3);font-family:var(--sans);font-size:var(--fz-sm);outline:none}
+.field select:focus{border-color:var(--line-3)}
+.seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{padding:6px var(--s3);border-radius:6px;font-size:var(--fz-sm);color:var(--paper-2);font-weight:550}
+.seg button[aria-pressed="true"]{background:var(--panel-3);color:var(--paper)}
+.dlg-foot{padding:var(--s3) var(--s4) var(--s4);display:flex;justify-content:flex-end;gap:var(--s2)}
+
+/* ============================ TOOLTIP ============================ */
+#tip{position:fixed;z-index:200;pointer-events:none;opacity:0;transform:translateY(4px);
+  background:var(--panel-3);border:1px solid var(--line-2);color:var(--paper);font-size:var(--fz-xs);
+  padding:5px var(--s2);border-radius:var(--r1);font-family:var(--mono);white-space:nowrap;
+  transition:opacity .12s var(--ease),transform .12s var(--ease);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#tip.show{opacity:1;transform:translateY(0)}
+
+/* ============================ RESPONSIVE ============================ */
+@media (max-width:1100px){.app{grid-template-columns:212px 1fr}.rail-right{display:none}}
+@media (max-width:720px){
+  .app{grid-template-columns:1fr;grid-template-rows:var(--topbar-h) auto 1fr}
+  .rail-left{grid-row:2;border-right:none;border-bottom:1px solid var(--line);flex-direction:row;overflow-x:auto;overflow-y:hidden}
+  .rail-head,.search,.rail-foot{display:none}
+  .nav{display:flex;flex-direction:row;align-items:center;padding:var(--s2);gap:var(--s2)}
+  .nav-grp{display:flex;align-items:center;gap:var(--s2);margin:0}
+  .nav-grp__l{display:none}
+  .navitem{flex:none;white-space:nowrap}
+  .navitem .nm{font-size:11px}
+  .canvas{grid-row:3}
+  .brand .sub{display:none}
+}
+@media (max-width:420px){.clock{display:none}.badge .txt{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.tool:hover{transform:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#canvas">Skip to content</a>
+
+<div class="app">
+
+  <!-- ============================ TOPBAR ============================ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10"/><path d="M2 16h20"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/><path d="M4 9h16"/></svg>
+      </span>
+      <div><h1>Transit Instruments</h1><div class="sub">London Bus · Network Analysis</div></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="cluster" aria-label="Data status and controls">
+      <span id="badge" class="badge" role="status" aria-live="polite" data-tip="Data freshness">
+        <span class="dot"></span><span class="txt">Loading…</span>
+      </span>
+      <button id="liveRing" class="livering" type="button" hidden aria-label="Live mode — refresh now" data-tip="Live mode · refresh now">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><circle class="ring-bg" cx="18" cy="18" r="15"/><circle class="ring-fg" cx="18" cy="18" r="15"/></svg>
+        <span class="rc" id="ringCount">15</span>
+      </button>
+      <button id="refresh" class="iconbtn" type="button" aria-label="Refresh data" data-tip="Refresh data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      </button>
+      <button id="themeBtn" class="iconbtn" type="button" aria-label="Toggle theme" aria-pressed="false" data-tip="Toggle light / dark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+      </button>
+      <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings" data-tip="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <span class="clock" data-tip="Local time"><time id="clock">--:--:--</time></span>
+    </div>
+  </header>
+
+  <!-- ============================ LEFT RAIL ============================ -->
+  <nav class="rail-left" aria-label="Instruments">
+    <div class="rail-head"><h2>Instruments</h2><span class="cnt" id="navCount">—</span></div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="navSearch" type="search" placeholder="Filter instruments…" aria-label="Filter instruments">
+    </div>
+    <div class="nav" id="nav"></div>
+    <div class="rail-foot">
+      <span class="avatar" id="avatar" aria-hidden="true">GA</span>
+      <span><b id="footName">Network Analysis</b><span id="footOp" class="mono">—</span></span>
+    </div>
+  </nav>
+
+  <!-- ============================ CANVAS ============================ -->
+  <main class="canvas" id="canvas" tabindex="-1">
+    <div class="canvas-head">
+      <div class="title"><b id="canvasTitle">Home</b><span id="canvasSub">network overview</span></div>
+      <div class="ch-spacer"></div>
+      <div class="tabs" role="tablist" aria-label="Home views">
+        <button class="tab" role="tab" id="tab-overview" aria-selected="true" aria-controls="panel-overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Overview</button>
+        <button class="tab" role="tab" id="tab-attention" aria-selected="false" aria-controls="panel-attention">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Attention</button>
+        <button class="tab" role="tab" id="tab-activity" aria-selected="false" aria-controls="panel-activity">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
+      </div>
+      <button class="btn" id="exportBtn" type="button" data-tip="Export current view as CSV">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>Export CSV</button>
+    </div>
+
+    <div class="canvas-body">
+      <!-- OVERVIEW -->
+      <section role="tabpanel" id="panel-overview" aria-labelledby="tab-overview">
+        <div class="greet">
+          <div><h2 id="greetHead">Welcome</h2><p id="greetSub">Loading network status…</p></div>
+        </div>
+        <p class="sec-l">Network status</p>
+        <div class="statgrid" id="statgrid"></div>
+        <p class="sec-l">Instruments</p>
+        <ul class="tools" id="toolgrid" role="list"></ul>
+      </section>
+
+      <!-- ATTENTION -->
+      <section role="tabpanel" id="panel-attention" aria-labelledby="tab-attention" hidden>
+        <p class="sec-l">Needs attention · derived from the live network feed</p>
+        <div class="feedlist" id="attentionList"></div>
+      </section>
+
+      <!-- ACTIVITY -->
+      <section role="tabpanel" id="panel-activity" aria-labelledby="tab-activity" hidden>
+        <p class="sec-l">Recent · instruments you opened</p>
+        <div class="feedlist" id="activityList"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ============================ RIGHT RAIL ============================ -->
+  <aside class="rail-right" aria-label="Network analysis" id="ctx"></aside>
+</div>
+
+<!-- settings dialog -->
+<dialog id="settings">
+  <form method="dialog">
+    <div class="dlg-head"><h2>Settings</h2>
+      <button class="iconbtn" type="submit" aria-label="Close settings" value="close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="dlg-body">
+      <div class="field"><label for="setOperator">Preferred operator <span style="text-transform:none;font-weight:400;color:var(--paper-4)">— your “you” across the suite</span></label>
+        <select id="setOperator"></select></div>
+      <div class="field"><label>Theme</label>
+        <div class="seg" id="setTheme" role="group" aria-label="Theme">
+          <button type="button" data-v="dark" aria-pressed="true">Dark</button>
+          <button type="button" data-v="light" aria-pressed="false">Light</button></div></div>
+      <div class="field"><label>Distance units</label>
+        <div class="seg" id="setUnits" role="group" aria-label="Distance units">
+          <button type="button" data-v="km" aria-pressed="true">Kilometres</button>
+          <button type="button" data-v="mi" aria-pressed="false">Miles</button></div></div>
+      <div class="field"><label>Clock format</label>
+        <div class="seg" id="setClock" role="group" aria-label="Clock format">
+          <button type="button" data-v="24h" aria-pressed="true">24-hour</button>
+          <button type="button" data-v="12h" aria-pressed="false">12-hour</button></div></div>
+      <div class="field"><label>Data refresh <span style="text-transform:none;font-weight:400;color:var(--paper-4)">— how status data updates</span></label>
+        <div class="seg" id="setData" role="group" aria-label="Data refresh mode">
+          <button type="button" data-v="cached" aria-pressed="true" data-tip="Load once, refresh manually with ⟳">Cached</button>
+          <button type="button" data-v="live" aria-pressed="false" data-tip="Auto-refresh on an interval">Live</button></div></div>
+      <div class="field" id="liveIntField" hidden><label for="setLive">Live interval</label>
+        <select id="setLive"><option value="10">Every 10 seconds</option><option value="15">Every 15 seconds</option><option value="30">Every 30 seconds</option><option value="60">Every 60 seconds</option></select></div>
+      <div class="field"><label for="setHome">Default / home tool</label><select id="setHome"></select></div>
+    </div>
+    <div class="dlg-foot"><button class="btn" type="submit" value="close">Done</button></div>
+  </form>
+</dialog>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+"use strict";
+/* ===========================================================================
+   CONFIG — backend swappable here (tfl direct now, db later).
+   =========================================================================== */
+const CONFIG = {
+  backend:"tfl",
+  tflBase:"https://api.tfl.gov.uk",
+  statusEndpoint:"/Line/Mode/bus/Status",   // ~30s source cache
+  autoRefreshMs:60_000,
+  staleAfterMs:5*60_000,
+};
+
+/* ===========================================================================
+   INSTRUMENT REGISTRY — static reference data. Radius is merged into Atlas
+   (same map-based subject), so the suite is six instruments across four domains.
+   =========================================================================== */
+const GROUPS = ["Operational","Commercial","Safety & Risk","Geography"];
+const INSTRUMENTS = [
+  { key:"headway", name:"Headway", file:"headway.html", group:"Operational", accent:"var(--amber)", status:"soon",
+    icon:'<path d="M3 21 21 3M3 14 14 3M10 21 21 10"/>',
+    tag:"Service reliability",
+    domain:"Reliability · EWT/SWT/AWT",
+    blurb:"Service behaviour on a stringline — bunching, long gaps and run speed; EWT against each route's MPS.",
+    feeds:[["TfL Route-level Results","4-weekly / quarterly"],["TfL Buses Performance hub","quarterly"]],
+    metrics:[["Network EWT","1.08 min"],["Routes < MPS","412 / 580"]] },
+
+  { key:"relay", name:"Relay", file:"relay.html", group:"Operational", accent:"var(--cyan)", status:"live",
+    icon:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+    tag:"Live fleet tracking",
+    domain:"Live operations · AVL",
+    blurb:"Real-time vehicle tracking — pick a route to see its buses live on the map (GPS + heading) and the fleet working it, from the BODS SIRI-VM feed.",
+    feeds:[["BODS SIRI-VM","live ~10s"],["TfL Live Bus Arrivals","live 30s cache"]],
+    metrics:[["Vehicles tracked","—"],["Off-route now","—"]] },
+
+  { key:"mandate", name:"Mandate", file:"mandate.html", group:"Commercial", accent:"var(--amber)", status:"soon",
+    icon:'<path d="M3 6h13M3 12h9M3 18h16"/>',
+    tag:"Tenders & contracts",
+    domain:"Tendering · Contracts",
+    blurb:"The tender market — contract horizon and win-probability per route against the forward LBSL programme; benchmark a prospective bid.",
+    feeds:[["Find a Tender (OCDS)","continuous + daily bulk"],["LBSL Tendering Programme","annual (Sept)"]],
+    metrics:[["Held routes","—"],["Up for tender (12mo)","63"]] },
+
+  { key:"cohort", name:"Cohort", file:"cohort.html", group:"Commercial", accent:"var(--violet)", status:"soon",
+    icon:'<rect x="3" y="6" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="5" rx="1"/>',
+    tag:"Operator benchmarking",
+    domain:"Operators · Fleet",
+    blurb:"Operator-vs-operator intelligence — league-table reliability, fleet/powertrain mix, licensed capacity and corporate financial health.",
+    feeds:[["TfL Operator League Tables","quarterly"],["Companies House API","near-real-time"],["VOL Licence Records","weekly (Sun)"]],
+    metrics:[["Operators tracked","—"],["Your league rank","—"]] },
+
+  { key:"sentinel", name:"Sentinel", file:"sentinel.html", group:"Safety & Risk", accent:"var(--alert)", status:"soon",
+    icon:'<path d="M12 3 19 6 V12 C19 16.5 12 21 12 21 C12 21 5 16.5 5 12 V6 Z"/><path d="M12 9v3.5M12 15.5h.01"/>',
+    tag:"Collision & safety risk",
+    domain:"Safety · Collisions / KSI",
+    blurb:"Vision Zero surveillance — collisions blooming off a route spine, junction risk and KSI clusters. Red is the analytical signal here.",
+    feeds:[["TfL Bus Safety Data","periodic"],["DfT STATS19","annual + dashboard"]],
+    metrics:[["KSI (rolling 12mo)","—"],["Open incidents","—"]] },
+
+  { key:"atlas", name:"Atlas", file:"atlas.html", group:"Geography", accent:"var(--green)", status:"live",
+    icon:'<path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+    tag:"Interactive route map",
+    domain:"Network mapping · Catchment",
+    blurb:"The network on a map — route geometry and stops, plus catchment/coverage: drop a pin and list every route within reach. (Atlas + Radius, merged.)",
+    feeds:[["TfL Line & Route APIs","reference"],["TfL StopPoint","reference"],["OSM tiles (CDN)","live tiles"]],
+    metrics:[["Routes mapped","700+"],["Stops","19,000+"]] },
+];
+
+const OPERATORS = ["Abellio London","Arriva London","Go-Ahead London","Metroline","Stagecoach London","Transport UK London Bus (RATP)","Uno","Sullivan Buses"];
+
+/* ===========================================================================
+   SAMPLE DATA — bottom fallback tier (live → cached → sample). Shaped like the
+   normalised feed.
+   =========================================================================== */
+const SAMPLE_STATUS = [
+  { route:"24", status:"Good Service", reason:"", severity:10 },
+  { route:"25", status:"Minor Delays", reason:"Congestion in the Stratford / Bow Road area.", severity:9 },
+  { route:"38", status:"Good Service", reason:"", severity:10 },
+  { route:"73", status:"Severe Delays", reason:"Diversion via Euston Road — roadworks at Angel.", severity:6 },
+  { route:"148", status:"Good Service", reason:"", severity:10 },
+  { route:"159", status:"Minor Delays", reason:"Heavier than usual traffic around Brixton.", severity:9 },
+  { route:"207", status:"Good Service", reason:"", severity:10 },
+  { route:"253", status:"Good Service", reason:"", severity:10 },
+  { route:"N29", status:"Minor Delays", reason:"Late running on night service from Trafalgar Square.", severity:9 },
+  { route:"D8", status:"Severe Delays", reason:"Stop closure — Crossharbour, vehicles unable to serve.", severity:6 },
+];
+
+/* ===========================================================================
+   DATA ACCESS SEAM — the ONLY place that talks to a backend.
+   =========================================================================== */
+const dataSource = (() => {
+  function normaliseStatus(lines){
+    return lines.map(l => {
+      const s = (l.lineStatuses && l.lineStatuses[0]) || {};
+      return {
+        route: l.name || l.id,
+        status: s.statusSeverityDescription || "Unknown",
+        reason: s.reason || "",
+        severity: typeof s.statusSeverity === "number" ? s.statusSeverity : 10,
+      };
+    }).sort((a,b) => a.severity-b.severity || cmpRoute(a.route,b.route));
+  }
+  async function fetchFromTfl(){
+    const url = CONFIG.tflBase + CONFIG.statusEndpoint;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    try{
+      const res = await fetch(url, { signal:ctrl.signal, headers:{ Accept:"application/json" } });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const json = await res.json();
+      if(!Array.isArray(json) || !json.length) throw new Error("empty payload");
+      return normaliseStatus(json);
+    } finally { clearTimeout(t); }
+  }
+  async function fetchFromDb(){ throw new Error("db backend not wired yet"); }
+  return {
+    /* backed by GET {tflBase}/Line/Mode/bus/Status — returns [{route,status,reason,severity}] worst-first */
+    async fetchNetworkStatus(){ return CONFIG.backend==="db" ? fetchFromDb() : fetchFromTfl(); },
+    async fetchInstruments(){ return INSTRUMENTS; },
+  };
+})();
+function cmpRoute(a,b){
+  const na=parseInt(a,10), nb=parseInt(b,10);
+  if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
+  return String(a).localeCompare(String(b),"en");
+}
+
+/* ===========================================================================
+   SETTINGS — one object, one key, shared across the suite.
+   =========================================================================== */
+const SETTINGS_KEY = "transit-instruments:settings";
+const DEFAULT_SETTINGS = { operator:"Go-Ahead London", theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15 };
+let settings = { ...DEFAULT_SETTINGS };
+let memOnlyStore = null;
+function loadSettings(){
+  try{ const raw = localStorage.getItem(SETTINGS_KEY); if(raw) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }; }
+  catch(e){ settings = { ...DEFAULT_SETTINGS, ...(memOnlyStore||{}) }; }
+}
+function saveSettings(){
+  try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+  catch(e){ memOnlyStore = { ...settings }; }
+}
+
+/* ===========================================================================
+   STATE
+   =========================================================================== */
+let statusRows = [...SAMPLE_STATUS];
+let dataState = "sample";          // live | cached | sample | offline
+let lastGood = null, lastFetched = 0;
+let activeView = "overview";
+let healthHistory = [];            // goodPct per refresh (sparkline; real over session)
+
+/* ===========================================================================
+   THEME
+   =========================================================================== */
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
+function effectiveTheme(){ return settings.theme || "light"; }   // light by default on first visit; user choice persists
+function applyTheme(){
+  const t = effectiveTheme();
+  document.documentElement.setAttribute("data-theme", t);
+  document.querySelector('meta[name="color-scheme"]').setAttribute("content", t==="dark"?"dark light":"light dark");
+  document.getElementById("themeBtn").setAttribute("aria-pressed", String(t==="light"));
+  syncSettingsUI();
+}
+prefersDark.addEventListener("change", () => { if(!settings.theme) applyTheme(); });
+
+/* ===========================================================================
+   FORMATTERS — driven by settings
+   =========================================================================== */
+function fmtClock(d){ return new Intl.DateTimeFormat("en-GB",{ hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:settings.clock==="12h" }).format(d); }
+function fmtAgo(ms){
+  if(!ms) return "never";
+  const s = Math.round((Date.now()-ms)/1000);
+  if(s<5) return "just now"; if(s<60) return s+"s ago";
+  const m = Math.round(s/60); if(m<60) return m+" min ago";
+  return Math.round(m/60)+" h ago";
+}
+function reduceMotion(){ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+/* Live capture — POST what we just fetched to the warehouse (/ingest). Best-effort
+   and fire-and-forget: silently no-ops on file:// or if the server lacks the endpoint,
+   so the tool never breaks. Same CDC engine as the periodic pipeline. */
+function ingest(entityType, items){
+  if(!items || !items.length || !location.protocol.startsWith("http")) return;
+  try{ fetch("/ingest", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ entityType, kind:"live", items }) }).catch(()=>{}); }catch(e){}
+}
+
+/* ===========================================================================
+   REFRESH — single code path for manual + auto, degrades in tiers.
+   =========================================================================== */
+let refreshing = false;
+async function refresh(){
+  if(refreshing) return; refreshing = true;
+  const btn = document.getElementById("refresh");
+  if(!reduceMotion()) btn.classList.add("spin");
+  btn.disabled = true;
+  document.getElementById("liveRing").classList.add("refreshing");
+  try{
+    const rows = await dataSource.fetchNetworkStatus();
+    statusRows = rows; lastGood = rows; lastFetched = Date.now(); dataState = "live";
+    ingest("line_status", rows.map(r => ({ id:r.route, data:r })));   // capture every live touch
+  }catch(err){
+    if(lastGood){ statusRows = lastGood; dataState = "cached"; }
+    else { statusRows = [...SAMPLE_STATUS]; dataState = "offline"; }
+    console.warn("[hub] status refresh failed:", err.message);
+  }finally{
+    refreshing = false; btn.disabled = false; btn.classList.remove("spin");
+    document.getElementById("liveRing").classList.remove("refreshing");
+    if(settings.dataMode==="live") nextRefreshAt = Date.now() + settings.liveSec*1000;  // manual refresh restarts the countdown
+    // record health point for the sparkline
+    const m = metricsOf(statusRows);
+    healthHistory.push(m.goodPct); if(healthHistory.length>40) healthHistory.shift();
+    renderBadge(); renderAll();
+  }
+}
+
+function metricsOf(rows){
+  const total = rows.length;
+  const good   = rows.filter(r => r.severity>=10).length;
+  const minor  = rows.filter(r => r.severity===9 || r.severity===8).length;
+  const severe = rows.filter(r => r.severity<=7).length;
+  return { total, good, minor, severe, goodPct: total ? Math.round(good/total*100) : 0 };
+}
+
+function renderBadge(){
+  const el = document.getElementById("badge"), txt = el.querySelector(".txt");
+  el.classList.remove("stale","offline");
+  let label;
+  const ago = lastFetched ? fmtAgo(lastFetched) : "just now";
+  let tip;
+  if(dataState==="live"){
+    label = "Updated "+ago; tip = "Live from the TfL API · "+ago;
+    if(Date.now()-lastFetched > CONFIG.staleAfterMs) el.classList.add("stale");
+  }else if(dataState==="cached"){ el.classList.add("stale"); label = "Cached"; tip = "Showing cached data — last refresh failed"; }
+  else { el.classList.add("offline"); label = "Sample data"; tip = "Offline — showing built-in sample data"; }
+  txt.textContent = label;
+  el.setAttribute("data-tip", tip);
+}
+
+/* ===========================================================================
+   RENDER — left rail (grouped nav)
+   =========================================================================== */
+function renderNav(filter=""){
+  const wrap = document.getElementById("nav");
+  const q = filter.trim().toLowerCase();
+  const match = t => !q || t.name.toLowerCase().includes(q) || t.domain.toLowerCase().includes(q);
+  const shown = INSTRUMENTS.filter(match);
+  wrap.innerHTML = "";
+  if(!shown.length){ wrap.innerHTML = `<p class="nav-empty">No instruments match “${q}”.</p>`; }
+  GROUPS.forEach((g,gi) => {
+    const items = shown.filter(t => t.group===g);
+    if(!items.length) return;
+    const grp = document.createElement("div"); grp.className = "nav-grp";
+    const lid = "g-"+gi;
+    grp.innerHTML = `<p class="nav-grp__l" id="${lid}">${g}</p>`;
+    const ul = document.createElement("ul"); ul.setAttribute("aria-labelledby", lid);
+    items.forEach(t => {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type="button"; b.className="navitem"; b.style.setProperty("--acc", t.accent);
+      b.setAttribute("aria-current", String(t.status==="live" && false)); // hub itself is current page; tools are links
+      b.innerHTML =
+        `<span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg></span>`+
+        `<span class="txt"><span class="nm">${t.name}</span><span class="desc">${t.tag}</span></span>`+
+        `<span class="st" data-s="${t.status}" data-tip="${t.status==='live'?'Live':'Planned'}"></span>`;
+      b.addEventListener("click", () => launch(t.key));
+      li.appendChild(b); ul.appendChild(li);
+    });
+    grp.appendChild(ul); wrap.appendChild(grp);
+  });
+  document.getElementById("navCount").textContent = INSTRUMENTS.length;
+  document.getElementById("footOp").textContent = settings.operator;
+  document.getElementById("avatar").textContent = initials(settings.operator);
+}
+function initials(s){ return s.split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+
+/* ===========================================================================
+   RENDER — overview (greeting + stat cards + tool grid)
+   =========================================================================== */
+function greeting(){
+  const h = new Date().getHours();
+  return h<12 ? "Good morning" : h<18 ? "Good afternoon" : "Good evening";
+}
+function renderGreeting(){
+  const m = metricsOf(statusRows);
+  const name = settings.operator.split(/\s+/)[0];
+  document.getElementById("greetHead").textContent = `${greeting()}`;
+  const tone = m.severe>0 ? "with disruptions" : "operating normally";
+  const toneColor = m.severe>0 ? "var(--amber)" : "var(--green)";
+  document.getElementById("greetSub").innerHTML =
+    `Network is <span class="mono" style="color:${toneColor}">${tone}</span> · `+
+    `<span class="mono">${m.good}/${m.total}</span> routes good service · `+
+    `<span class="mono">${m.severe}</span> severe · `+
+    `<span class="mono">${m.minor}</span> minor delays`;
+}
+function renderStatCards(){
+  const m = metricsOf(statusRows);
+  const live = INSTRUMENTS.filter(t=>t.status==="live").length;
+  const cards = [
+    { acc:"var(--green)", l:"Good service", v:m.goodPct, u:"%", icon:'<path d="M20 6 9 17l-5-5"/>', d:`${m.good} of ${m.total} routes` },
+    { acc:"var(--amber)", l:"Minor delays", v:m.minor, icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', d:"routes with disruption" },
+    { acc:"var(--alert)", l:"Severe delays", v:m.severe, icon:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>', d: m.severe>0?"needs attention":"none active" },
+    { acc:"var(--cyan)", l:"Routes monitored", v:m.total, icon:'<path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-6"/>', d: dataState==="live"?"live TfL feed":"sample / cached" },
+    { acc:"var(--violet)", l:"Instruments", v:INSTRUMENTS.length, icon:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>', d:`${live} live · ${INSTRUMENTS.length-live} planned` },
+  ];
+  document.getElementById("statgrid").innerHTML = cards.map(c =>
+    `<article class="scard" style="--acc:${c.acc}">
+       <p class="l"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${c.icon}</svg>${c.l}</p>
+       <p class="v">${c.v}${c.u?`<span class="u">${c.u}</span>`:""}</p>
+       <p class="d">${c.d}</p>
+     </article>`).join("");
+}
+function renderToolGrid(){
+  const ul = document.getElementById("toolgrid");
+  ul.innerHTML = "";
+  INSTRUMENTS.forEach(t => {
+    const li = document.createElement("li");
+    li.className = "tool"+(t.status==="soon"?" soon":"");
+    li.style.setProperty("--acc", t.accent);
+    li.tabIndex = 0; li.setAttribute("role","button");
+    li.setAttribute("aria-label", `${t.name} — ${t.domain}${t.status==='live'?', open':', planned'}`);
+    li.innerHTML =
+      `<div class="top">
+         <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t.icon}</svg></span>
+         <span class="domain">${t.group}</span>
+       </div>
+       <h3>${t.name}</h3>
+       <p class="tag">${t.tag}</p>
+       <p>${t.blurb}</p>
+       <div class="foot">
+         <span class="status"><span class="dot" style="background:${t.status==='live'?'var(--green)':'var(--paper-4)'}"></span>${t.status==='live'?'Live':'In design'}</span>
+         <span class="go">${t.status==='live'?'Open':'Soon'}${t.status==='live'?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>':''}</span>
+       </div>`;
+    li.addEventListener("click", () => launch(t.key));
+    li.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); launch(t.key); } });
+    ul.appendChild(li);
+  });
+}
+
+/* ===========================================================================
+   RENDER — attention feed (DERIVED from the live status) + cross-tool note
+   =========================================================================== */
+function attentionItems(){
+  const items = [];
+  // severe first, then minor — each links to the geography/ops tool that explains it
+  statusRows.filter(r => r.severity<=7).forEach(r =>
+    items.push({ tone:"var(--alert)", title:`Route ${r.route} — ${r.status}`, sub: r.reason || "Active disruption on the network.", src:"Atlas", key:"atlas" }));
+  statusRows.filter(r => r.severity===9 || r.severity===8).slice(0,6).forEach(r =>
+    items.push({ tone:"var(--amber)", title:`Route ${r.route} — ${r.status}`, sub: r.reason || "Minor delays reported.", src:"Atlas", key:"atlas" }));
+  return items;
+}
+function renderAttention(){
+  const el = document.getElementById("attentionList");
+  const items = attentionItems();
+  if(!items.length){ el.innerHTML = `<p class="feed-empty">Nothing needs attention — every monitored route is running a good service.</p>`; return; }
+  el.innerHTML = "";
+  items.forEach(it => {
+    const b = document.createElement("button");
+    b.type="button"; b.className="feeditem"; b.style.setProperty("--acc", it.tone);
+    b.innerHTML =
+      `<span class="pip" style="background:${it.tone}" aria-hidden="true"></span>
+       <span class="main"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></span>
+       <span class="src">${esc(it.src)}</span><span class="arr" aria-hidden="true">→</span>`;
+    b.addEventListener("click", () => launch(it.key));
+    el.appendChild(b);
+  });
+}
+
+/* ===========================================================================
+   RENDER — activity feed (real last-opened history from settings)
+   =========================================================================== */
+function renderActivity(){
+  const el = document.getElementById("activityList");
+  const recents = (settings.recents||[]).map(r => ({ ...r, t:INSTRUMENTS.find(i=>i.key===r.key) })).filter(x=>x.t);
+  if(!recents.length){ el.innerHTML = `<p class="feed-empty">No recent activity yet — open an instrument and it will appear here.</p>`; return; }
+  el.innerHTML = "";
+  recents.forEach(r => {
+    const b = document.createElement("button");
+    b.type="button"; b.className="feeditem"; b.style.setProperty("--acc", r.t.accent);
+    b.innerHTML =
+      `<span class="pip" style="background:${r.t.accent}" aria-hidden="true"></span>
+       <span class="main"><b>${r.t.name} — ${r.t.domain}</b><span>opened ${fmtAgo(r.at)}</span></span>
+       <span class="src">${r.t.name}</span><span class="arr" aria-hidden="true">→</span>`;
+    b.addEventListener("click", () => launch(r.key));
+    el.appendChild(b);
+  });
+}
+
+/* ===========================================================================
+   RENDER — right rail (network-health readout)
+   =========================================================================== */
+function sparkPath(vals){
+  if(vals.length<2) return { line:"", area:"" };
+  const w=120, h=34, min=Math.min(...vals,90), max=Math.max(...vals,100), span=Math.max(1,max-min);
+  const pts = vals.map((v,i) => [ (i/(vals.length-1))*w, h - ((v-min)/span)*(h-6) - 3 ]);
+  const line = pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const area = `M0,${h} `+pts.map(p=>"L"+p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+` L${w},${h} Z`;
+  return { line, area };
+}
+function renderContext(){
+  const el = document.getElementById("ctx");
+  const m = metricsOf(statusRows);
+  const healthTone = m.severe>0 ? "amber" : "green";
+  const healthTag = m.severe>0 ? `<span class="tag warn">WATCH</span>` : `<span class="tag ok">NORMAL</span>`;
+  const sp = sparkPath(healthHistory);
+  const sparkColor = m.severe>0 ? "var(--amber)" : "var(--green)";
+  const worst = statusRows.find(r => r.severity<=7);
+
+  // domain meters: Operational health derives from good%, others are reference placeholders (labelled)
+  const opPct = m.goodPct;
+  const domains = [
+    ["Operational", opPct, opPct>=90?"var(--green)":opPct>=75?"var(--amber)":"var(--alert)", opPct>=90?"OK":"Watch"],
+    ["Commercial", 92, "var(--green)", "OK"],
+    ["Safety & Risk", 64, "var(--amber)", "Elevated"],
+    ["Geography", 88, "var(--green)", "OK"],
+  ];
+
+  el.innerHTML =
+    `<div class="metric">
+       <div class="metric-h"><span>Network health</span>${healthTag}</div>
+       <div class="big ${healthTone}">${m.goodPct}<span class="u">%</span></div>
+       <div class="metric-sub">good service · ${dataState==="live"?"live TfL feed":"sample / cached"}</div>
+       <svg class="spark" viewBox="0 0 120 34" preserveAspectRatio="none" aria-hidden="true">
+         <defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${sparkColor}" stop-opacity=".3"/><stop offset="1" stop-color="${sparkColor}" stop-opacity="0"/></linearGradient></defs>
+         ${sp.area?`<path d="${sp.area}" fill="url(#sg)"/><path d="${sp.line}" fill="none" stroke="${sparkColor}" stroke-width="1.6"/>`:`<text x="60" y="20" text-anchor="middle" fill="var(--paper-4)" font-size="8" font-family="var(--mono)">building trend…</text>`}
+       </svg>
+     </div>
+     <div class="metric">
+       <div class="metric-h">By domain</div>
+       <div class="statline">
+         ${domains.map(([n,pct,col,lab]) =>
+           `<div><div class="sr"><span class="l"><span class="pip" style="background:${col}"></span>${n}</span><span class="v" style="color:${col}">${lab}</span></div><div class="meter"><i style="width:${pct}%;background:${col}"></i></div></div>`).join("")}
+       </div>
+     </div>
+     <div class="metric">
+       <div class="metric-h">Live counts</div>
+       <div class="statline">
+         <div class="sr"><span class="l">Routes monitored</span><span class="v">${m.total}</span></div>
+         <div class="sr"><span class="l">Good service</span><span class="v" style="color:var(--green)">${m.good}</span></div>
+         <div class="sr"><span class="l">Minor delays</span><span class="v" style="color:var(--amber)">${m.minor}</span></div>
+         <div class="sr"><span class="l">Severe delays</span><span class="v" style="color:${m.severe>0?'var(--alert)':'var(--paper-2)'}">${m.severe}</span></div>
+         <div class="sr"><span class="l">Instruments</span><span class="v" style="color:var(--violet)">${INSTRUMENTS.length}</span></div>
+       </div>
+     </div>
+     <div class="metric">
+       <div class="metric-h">Priority</div>
+       ${worst
+         ? `<button class="alertbox" type="button" style="width:100%;text-align:left;cursor:pointer" id="prioBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+              <div><b>Route ${esc(worst.route)} — ${esc(worst.status)}</b><p>${esc(worst.reason)||"Active disruption."} Open Atlas to inspect the route on the map.</p></div>
+            </button>`
+         : `<div class="alertbox calm">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+              <div><b>No active priorities</b><p>Every monitored route is running a good service.</p></div>
+            </div>`}
+     </div>`;
+  const prio = document.getElementById("prioBtn");
+  if(prio) prio.addEventListener("click", () => launch("atlas"));
+}
+
+function renderAll(){
+  renderGreeting(); renderStatCards(); renderToolGrid();
+  renderAttention(); renderActivity(); renderContext();
+}
+
+/* ===========================================================================
+   LAUNCH — records real activity, then navigates (or toasts if planned)
+   =========================================================================== */
+function recordRecent(key){
+  const recents = (settings.recents||[]).filter(r => r.key!==key);
+  recents.unshift({ key, at: Date.now() });
+  settings.recents = recents.slice(0,8);
+  saveSettings();
+}
+function launch(key){
+  const t = INSTRUMENTS.find(x=>x.key===key); if(!t) return;
+  recordRecent(key);
+  if(t.status==="live"){ window.location.href = t.file; }
+  else { renderActivity(); toast(`${t.name} is planned for a later phase.`); }
+}
+
+/* ===========================================================================
+   VIEW (tabs)
+   =========================================================================== */
+function setView(view){
+  activeView = view;
+  const subs = { overview:"network overview", attention:"needs attention", activity:"recent activity" };
+  ["overview","attention","activity"].forEach(v => {
+    document.getElementById("tab-"+v).setAttribute("aria-selected", String(v===view));
+    document.getElementById("panel-"+v).hidden = (v!==view);
+  });
+  document.getElementById("canvasSub").textContent = subs[view];
+}
+
+/* ===========================================================================
+   CSV EXPORT — reflects the current view
+   =========================================================================== */
+function csvCell(v){ let s=String(v==null?"":v); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'; }  // ' prefix neutralises spreadsheet formula injection
+function downloadCSV(name, rows){
+  const csv = "﻿"+rows.map(r=>r.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function todayStamp(){ return new Intl.DateTimeFormat("en-CA").format(new Date()); }
+function exportCurrent(){
+  let rows, fname;
+  if(activeView==="attention"){
+    rows = [["Route / item","Detail","Source"], ...attentionItems().map(i=>[i.title,i.sub,i.src])];
+    fname = `hub_attention_${todayStamp()}.csv`;
+  }else if(activeView==="activity"){
+    rows = [["Instrument","Domain","Opened"], ...(settings.recents||[]).map(r=>{const t=INSTRUMENTS.find(i=>i.key===r.key);return t?[t.name,t.domain,new Date(r.at).toISOString()]:null;}).filter(Boolean)];
+    fname = `hub_activity_${todayStamp()}.csv`;
+  }else{
+    const m = metricsOf(statusRows);
+    rows = [["Instrument","Domain","Group","Status","File","Summary"],
+            ...INSTRUMENTS.map(t=>[t.name,t.domain,t.group,t.status,t.file,t.blurb]),
+            [],["Network metric","Value"],["Routes monitored",m.total],["Good service %",m.goodPct],
+            ["Minor delays",m.minor],["Severe delays",m.severe],["Data state",dataState]];
+    fname = `hub_overview_${todayStamp()}.csv`;
+  }
+  downloadCSV(fname, rows); toast("Exported "+fname);
+}
+
+/* ===========================================================================
+   SETTINGS UI
+   =========================================================================== */
+function populateSettingsSelects(){
+  document.getElementById("setOperator").innerHTML = OPERATORS.map(o=>`<option value="${o}">${o}</option>`).join("");
+  document.getElementById("setHome").innerHTML = INSTRUMENTS.map(t=>`<option value="${t.key}">${t.name}</option>`).join("");
+}
+function syncSettingsUI(){
+  const op=document.getElementById("setOperator"); if(op) op.value=settings.operator;
+  const home=document.getElementById("setHome"); if(home) home.value=settings.home;
+  document.querySelectorAll('#setTheme button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===effectiveTheme())));
+  document.querySelectorAll('#setUnits button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===settings.units)));
+  document.querySelectorAll('#setClock button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===settings.clock)));
+  document.querySelectorAll('#setData button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===settings.dataMode)));
+  const sl=document.getElementById("setLive"); if(sl) sl.value=String(settings.liveSec);
+  const lf=document.getElementById("liveIntField"); if(lf) lf.hidden = settings.dataMode!=="live";
+}
+
+/* ===========================================================================
+   TOOLTIP + toast
+   =========================================================================== */
+const tip = document.getElementById("tip");
+function bindTips(){
+  document.addEventListener("mouseover", e => {
+    const t = e.target.closest("[data-tip]"); if(!t) return;
+    tip.textContent = t.getAttribute("data-tip");
+    const r = t.getBoundingClientRect();
+    tip.style.left = Math.min(window.innerWidth-tip.offsetWidth-8, Math.max(8,r.left))+"px";
+    tip.style.top = (r.bottom+8)+"px"; tip.style.bottom=""; tip.style.transform="";
+    tip.classList.add("show");
+  });
+  document.addEventListener("mouseout", e => { if(e.target.closest("[data-tip]")) tip.classList.remove("show"); });
+  document.addEventListener("scroll", () => tip.classList.remove("show"), true);
+}
+let toastTimer;
+function toast(msg){
+  tip.textContent = msg; tip.classList.add("show");
+  tip.style.left="50%"; tip.style.top="auto"; tip.style.bottom="24px"; tip.style.transform="translateX(-50%)";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ tip.classList.remove("show"); tip.style.bottom=""; tip.style.transform=""; },1800);
+}
+
+/* ===========================================================================
+   CLOCK
+   =========================================================================== */
+function tickClock(){ document.getElementById("clock").textContent = fmtClock(new Date()); }
+
+/* ===========================================================================
+   INIT
+   =========================================================================== */
+function init(){
+  loadSettings(); applyTheme(); populateSettingsSelects(); syncSettingsUI();
+  renderNav(); renderBadge(); renderAll();
+
+  ["overview","attention","activity"].forEach(v =>
+    document.getElementById("tab-"+v).addEventListener("click", () => setView(v)));
+
+  document.getElementById("refresh").addEventListener("click", refresh);
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    settings.theme = effectiveTheme()==="dark" ? "light" : "dark"; saveSettings(); applyTheme();
+  });
+  document.getElementById("exportBtn").addEventListener("click", exportCurrent);
+  document.getElementById("navSearch").addEventListener("input", e => renderNav(e.target.value));
+
+  const dlg = document.getElementById("settings");
+  document.getElementById("settingsBtn").addEventListener("click", () => { syncSettingsUI(); dlg.showModal(); });
+  document.getElementById("setOperator").addEventListener("change", e => { settings.operator=e.target.value; saveSettings(); renderNav(document.getElementById("navSearch").value); renderAll(); });
+  document.getElementById("setHome").addEventListener("change", e => { settings.home=e.target.value; saveSettings(); });
+  document.getElementById("setTheme").addEventListener("click", e => { const b=e.target.closest("button"); if(!b)return; settings.theme=b.dataset.v; saveSettings(); applyTheme(); });
+  document.getElementById("setUnits").addEventListener("click", e => { const b=e.target.closest("button"); if(!b)return; settings.units=b.dataset.v; saveSettings(); syncSettingsUI(); });
+  document.getElementById("setClock").addEventListener("click", e => { const b=e.target.closest("button"); if(!b)return; settings.clock=b.dataset.v; saveSettings(); syncSettingsUI(); tickClock(); });
+
+  document.getElementById("setData").addEventListener("click", e => { const b=e.target.closest("button"); if(!b)return; settings.dataMode=b.dataset.v; saveSettings(); syncSettingsUI(); applyDataMode(); });
+  document.getElementById("setLive").addEventListener("change", e => { settings.liveSec=+e.target.value; saveSettings(); applyDataMode(); });
+  document.getElementById("liveRing").addEventListener("click", refresh);
+
+  bindTips();
+  tickClock(); setInterval(tickClock,1000);
+  // Load once + cache. No timer unless the user opts into Live mode (settings).
+  refresh();
+  applyDataMode();
+  setInterval(renderBadge, 15_000);
+}
+
+/* ---------------------------------------------------------------------------
+   DATA MODE — Cached (load once + manual ⟳) vs Live (auto-refresh + countdown).
+   --------------------------------------------------------------------------- */
+let liveTick = null, nextRefreshAt = 0;
+const RING_C = 2 * Math.PI * 15;   // circumference of the r=15 ring
+function applyDataMode(){
+  if(liveTick){ clearInterval(liveTick); liveTick = null; }
+  const ring = document.getElementById("liveRing");
+  if(settings.dataMode === "live"){
+    ring.hidden = false;
+    nextRefreshAt = Date.now() + settings.liveSec*1000;
+    updateRing();
+    liveTick = setInterval(updateRing, reduceMotion() ? 1000 : 200);
+  }else{
+    ring.hidden = true;
+  }
+}
+function updateRing(){
+  if(settings.dataMode !== "live") return;
+  const ms = settings.liveSec*1000;
+  const left = Math.max(0, nextRefreshAt - Date.now());
+  const frac = left/ms;
+  document.querySelector("#liveRing .ring-fg").style.strokeDashoffset = String(RING_C*(1-frac));
+  document.getElementById("ringCount").textContent = Math.ceil(left/1000);
+  if(left <= 0){ nextRefreshAt = Date.now() + ms; refresh(); }
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

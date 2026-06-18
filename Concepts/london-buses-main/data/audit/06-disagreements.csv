@@ -1,0 +1,49 @@
+# Source: bustimes.org operator-fleet pages joined to TfL arrivals registrations.
+# A row appears here only when ≥2 registrations from this route appeared in the
+# bustimes operator fleet page AND the dominant propulsion implied by their vehicle
+# type strings disagrees with our_propulsion.
+
+category,route_id,our_vehicle_type,our_propulsion,bustimes_dominant,bustimes_types,observed
+ours=diesel; bustimes=hybrid,136,E40D/Enviro400,diesel,hybrid,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 MMC,3
+ours=diesel; bustimes=hybrid,175,DB300/Gemini 2,diesel,hybrid,Volvo B5LH Wright Eclipse Gemini 3,2
+ours=diesel; bustimes=hybrid,190,E20D/Enviro200 MMC,diesel,hybrid,Volvo B5LH MCV EvoSeti | ADL Enviro200 MMC,2
+ours=diesel; bustimes=hybrid,28,B9TL/Gemini 2,diesel,hybrid,Volvo B9TL Wright Eclipse Gemini 2,3
+ours=diesel; bustimes=hybrid,297,B9TL/Gemini 2,diesel,hybrid,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,4
+ours=diesel; bustimes=hybrid,36,E40D/Enviro400,diesel,hybrid,ADL Enviro400H MMC,7
+ours=diesel; bustimes=hybrid,41,DB300/Gemini 2,diesel,hybrid,Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,2
+ours=diesel; bustimes=hybrid,422,Trident/Enviro400,diesel,hybrid,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400 | ADL Enviro400 MMC,6
+ours=diesel; bustimes=hybrid,483,B9TL/Gemini 2,diesel,hybrid,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,5
+ours=diesel; bustimes=hybrid,97,Streetdeck/Gemini 3,diesel,hybrid,Volvo B5LH ADL Enviro400 MMC | Volvo B5LH MCV EvoSeti | Wright StreetDeck HEV,3
+ours=diesel; bustimes=hybrid,E1,B9TL/Gemini 2,diesel,hybrid,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,4
+ours=diesel; bustimes=hybrid,E2,B9TL/Gemini 2,diesel,hybrid,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,7
+ours=diesel; bustimes=hybrid,E8,B9TL/Gemini 2,diesel,hybrid,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,7
+ours=diesel; bustimes=hybrid,N551,E40D/Enviro400 MMC,diesel,hybrid,ADL Enviro400H MMC,5
+ours=diesel; bustimes=hybrid,N83,B9TL/Gemini 2,diesel,hybrid,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,3
+ours=diesel; bustimes=hybrid,W3,E40D/Enviro400,diesel,hybrid,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,4
+ours=diesel; bustimes=electric,165,Trident/Enviro400,diesel,electric,Wright StreetDeck Electroliner,3
+ours=diesel; bustimes=electric,206,E20D/Enviro200,diesel,electric,Volvo BZL,2
+ours=diesel; bustimes=electric,365,Trident/Enviro400,diesel,electric,Wright StreetDeck Electroliner,3
+ours=diesel; bustimes=electric,C10,e.City Gold 10.7m,diesel,electric,Wright GB Kite Electroliner,8
+ours=diesel; bustimes=electric,N199,E40D/Enviro400,diesel,electric,Wright StreetDeck Electroliner,3
+ours=hybrid; bustimes=electric,18,B5LH/Gemini 3,hybrid,electric,BYD BD11,3
+ours=hybrid; bustimes=electric,185,E40H/Enviro400H MMC,hybrid,electric,BYD D8UR-DD ADL Enviro400EV,3
+ours=hybrid; bustimes=electric,31,E40H/Enviro400H,hybrid,electric,BYD BD11 | Volvo B5LH MCV EvoSeti,3
+ours=hybrid; bustimes=electric,34,B5LH/Gemini 3,hybrid,electric,BYD BD11,6
+ours=hybrid; bustimes=electric,363,E40H/Enviro400H MMC,hybrid,electric,Wright StreetDeck Electroliner | ADL Enviro400H MMC,3
+ours=hybrid; bustimes=electric,4,B5LH/EvoSeti,hybrid,electric,Wright StreetDeck Electroliner,2
+ours=hybrid; bustimes=electric,45,E40H/Enviro400H,hybrid,electric,Wright StreetDeck Electroliner | ADL Enviro400H MMC,8
+ours=hybrid; bustimes=electric,N118,B5LH/Gemini 3,hybrid,electric,BYD BD11,4
+ours=hybrid; bustimes=electric,N18,B5LH/Gemini 3,hybrid,electric,BYD BD11,5
+ours=hybrid; bustimes=electric,N26,E40H/Enviro400H City,hybrid,electric,Volvo BZL DD | ADL Enviro400H City,5
+ours=hybrid; bustimes=electric,N31,E40H/Enviro400H,hybrid,electric,BYD BD11 | Volvo B5LH MCV EvoSeti,2
+ours=hybrid; bustimes=electric,N550,E40H/Enviro400H City,hybrid,electric,Volvo BZL DD | ADL Enviro400H City,5
+ours=hybrid; bustimes=electric,N63,E40H/Enviro400H,hybrid,electric,Wright StreetDeck Electroliner | ADL Enviro400H MMC,3
+ours=electric; bustimes=other,119,DD/Enviro400EV City,electric,diesel,ADL Enviro400,2
+ours=electric; bustimes=other,125,DD/Enviro400EV City,electric,hybrid,Volvo B5LH Wright Eclipse Gemini 3 | BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright SRM | ADL Enviro400H MMC,4
+ours=electric; bustimes=other,134,MetroDecker EV 10.5m,electric,hybrid,Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,3
+ours=electric; bustimes=other,141,BYD B11E02 10.9m,electric,hybrid,Volvo B5LH Wright Eclipse Gemini 3 | BYD BD11,8
+ours=electric; bustimes=other,199,Streetdeck Electroliner 10.5m,electric,hybrid,Volvo B5LH ADL Enviro400 MMC | Wright StreetDeck Electroliner,3
+ours=electric; bustimes=other,23,MetroDecker EV 10.5m,electric,hybrid,Volvo B5LH MCV EvoSeti | ADL Enviro400H | Optare MetroDecker EV,7
+ours=electric; bustimes=other,250,Trident/Enviro400,electric,diesel,ADL Enviro400 | Wright StreetDeck Electroliner,6
+ours=electric; bustimes=other,257,Streetdeck Electroliner 10.5m,electric,diesel,ADL Enviro400 | ADL Enviro400H,5
+ours=electric; bustimes=other,317,Streetdeck Electroliner 10.5m,electric,hybrid,Volvo B9TL Wright Eclipse Gemini 2 | Wright StreetDeck Electroliner,2

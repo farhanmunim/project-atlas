@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel — Bus Route Safety Analysis</title>
+<style>
+/* ============================================================
+   SENTINEL — London bus route safety analysis instrument
+   Third in the suite (with Headway + Mandate); same language.
+   Thesis: a collision happens AT A POINT, with a SEVERITY, and
+   danger CONCENTRATES at junctions. The hero is the route SPINE
+   — the route unrolled as a line, collisions blooming off it,
+   hotspot junctions swelling into radial severity roses.
+   Palette: "transit night". Quantitative values monospace.
+   Here red is the subject itself — the KSI / severity signal —
+   so it carries real analytical weight, not decoration.
+   ============================================================ */
+:root{
+  --ink:#0a0e16; --ink-2:#0c111b;
+  --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
+  --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
+  --paper:#e7edf6; --paper-2:#9fb0c8;
+  --paper-3:#647691; --paper-4:#3f4d63;
+  --amber:#f5a524; --amber-dim:#b87d1c;
+  --cyan:#37c5c5; --cyan-dim:#2a9090;
+  --violet:#8b7bf0; --green:#3fb87a;
+  /* severity ramp — slight→serious→fatal */
+  --sev-1:#37c5c5;   /* slight */
+  --sev-2:#f5a524;   /* serious */
+  --sev-3:#ff5470;   /* KSI / fatal */
+  --alert:#ff5470;
+  --mono:"SF Mono","JetBrains Mono",ui-monospace,"Consolas",monospace;
+  --sans:"Inter",system-ui,-apple-system,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--ink);color:var(--paper);font-size:13px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;letter-spacing:-.006em;overflow:hidden}
+.mono{font-family:var(--mono);font-feature-settings:"tnum";letter-spacing:-.02em}
+::selection{background:color-mix(in srgb,var(--alert) 30%,transparent)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px;border:2px solid var(--ink)}
+::-webkit-scrollbar-thumb:hover{background:var(--line-3)}
+svg:not([width]){width:1em;height:1em}
+.big-svg{width:100%!important}
+.big-svg.h-auto{height:auto!important}
+.big-svg.h-full{height:100%!important}
+.spark{width:100%!important;height:34px!important}
+button{font-family:inherit}
+
+.app{display:grid;grid-template-columns:248px 1fr 326px;grid-template-rows:52px 1fr;height:100vh}
+
+/* topbar */
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--ink-2);z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.glyph{width:26px;height:26px;flex:none}.glyph svg{width:26px;height:26px}
+.logo b{font-size:14px;font-weight:680;letter-spacing:-.03em}
+.logo span{font-size:9px;color:var(--paper-3);font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;display:block;margin-top:-1px}
+.bar-sep{width:1px;height:22px;background:var(--line)}
+.bar-time{font-family:var(--mono);font-size:12px;color:var(--paper-2);display:flex;align-items:center;gap:9px}
+.livedot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:lp 2.2s infinite}
+@keyframes lp{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.bar-spread{flex:1}
+.bar-stat{display:flex;flex-direction:column;align-items:flex-end;padding:0 12px;border-left:1px solid var(--line)}
+.bar-stat .v{font-family:var(--mono);font-size:14px;font-weight:600;line-height:1.1}
+.bar-stat .l{font-size:9px;color:var(--paper-3);text-transform:uppercase;letter-spacing:.08em}
+.bar-stat .v.amber{color:var(--amber)}.bar-stat .v.cyan{color:var(--cyan)}.bar-stat .v.alert{color:var(--alert)}
+
+/* left rail */
+.rail-l{grid-row:2;border-right:1px solid var(--line);background:var(--ink-2);display:flex;flex-direction:column;overflow:hidden}
+.rail-h{padding:13px 15px 9px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-4);display:flex;align-items:center;justify-content:space-between}
+.sortbar{display:flex;gap:5px;padding:0 12px 9px}
+.sbtn{flex:1;padding:5px;border:1px solid var(--line);background:var(--panel);color:var(--paper-3);font-family:var(--mono);font-size:9.5px;border-radius:6px;cursor:pointer;transition:all .12s;text-transform:uppercase;letter-spacing:.03em}
+.sbtn.on{background:var(--panel-3);color:var(--paper);border-color:var(--line-2)}
+.routes{flex:1;overflow-y:auto;padding:0 8px 12px}
+.route{display:flex;align-items:center;gap:11px;padding:9px;border-radius:7px;cursor:pointer;border:1px solid transparent;transition:background .13s,border-color .13s;margin-bottom:1px}
+.route:hover{background:var(--panel)}
+.route.sel{background:var(--panel-2);border-color:var(--line-2)}
+.route.sel .rnum{background:var(--amber);color:var(--ink)}
+.rnum{min-width:36px;height:24px;padding:0 7px;border-radius:5px;display:grid;place-items:center;font-family:var(--mono);font-size:12px;font-weight:650;background:var(--panel-3);color:var(--paper);flex:none;transition:all .13s}
+.rinfo{flex:1;min-width:0}
+.rinfo b{font-size:12px;font-weight:550;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rinfo span{font-size:10.5px;color:var(--paper-3);font-family:var(--mono)}
+/* mini severity score bar */
+.score{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.score .n{font-family:var(--mono);font-size:12px;font-weight:650}
+.score .n.hi{color:var(--alert)}.score .n.md{color:var(--amber)}.score .n.lo{color:var(--cyan)}
+.scorebar{width:42px;height:4px;border-radius:3px;background:var(--panel-3);overflow:hidden}
+.scorebar>i{display:block;height:100%;border-radius:3px}
+.rail-foot{padding:11px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--paper-4);line-height:1.7}
+
+/* center */
+.canvas{grid-row:2;display:flex;flex-direction:column;overflow:hidden;background:var(--ink)}
+.canvas-h{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line)}
+.ctitle b{font-size:15px;font-weight:680;letter-spacing:-.02em}
+.ctitle span{font-size:11px;color:var(--paper-3);margin-left:9px;font-family:var(--mono)}
+.modes{display:flex;gap:2px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-left:auto}
+.modes button{padding:6px 13px;border:none;background:none;color:var(--paper-3);font-size:11.5px;font-weight:550;cursor:pointer;border-radius:5px;transition:all .13s;display:flex;align-items:center;gap:6px}
+.modes button svg{width:14px;height:14px}
+.modes button.on{background:var(--panel-3);color:var(--paper)}
+.modes button:hover:not(.on){color:var(--paper-2)}
+.canvas-b{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;padding:16px 20px;overflow:auto;opacity:0;pointer-events:none;transition:opacity .25s}
+.view.on{opacity:1;pointer-events:auto}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--paper-2);margin-bottom:12px;align-items:center}
+.legend .k{display:inline-flex;align-items:center;gap:6px}
+.lchip{width:11px;height:11px;border-radius:50%}
+.gridln{stroke:var(--line);stroke-width:1}
+.axt{font-family:var(--mono);font-size:9.5px;fill:var(--paper-3)}
+.axlbl{font-family:var(--mono);font-size:10px;fill:var(--paper-2);font-weight:600}
+.spine{stroke:var(--line-3);stroke-linecap:round}
+.stoptick{stroke:var(--paper-4);stroke-width:1.5}
+.stoplbl{font-family:var(--mono);font-size:9px;fill:var(--paper-3)}
+.colpt{cursor:pointer;transition:r .12s}
+.bloom-cell{cursor:pointer;transition:transform .14s}
+.bloom-cell:hover{transform:scale(1.06)}
+.hm-cell{cursor:pointer;transition:transform .1s}
+.hm-cell:hover{transform:scale(1.16);outline:1.5px solid var(--paper)}
+
+/* right rail */
+.rail-r{grid-row:2;border-left:1px solid var(--line);background:var(--ink-2);overflow-y:auto}
+.metric{padding:15px 16px;border-bottom:1px solid var(--line)}
+.metric-h{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
+.big{font-family:var(--mono);font-size:32px;font-weight:600;letter-spacing:-.04em;line-height:.95}
+.big .u{font-size:15px;color:var(--paper-3);font-weight:500}
+.big.amber{color:var(--amber)}.big.cyan{color:var(--cyan)}.big.alert{color:var(--alert)}.big.green{color:var(--green)}
+.metric-sub{font-size:11px;color:var(--paper-2);margin-top:8px;display:flex;align-items:center;gap:7px}
+.tag{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.tag.hi{color:var(--alert);background:color-mix(in srgb,var(--alert) 14%,transparent)}
+.tag.md{color:var(--amber);background:color-mix(in srgb,var(--amber) 14%,transparent)}
+.tag.lo{color:var(--cyan);background:color-mix(in srgb,var(--cyan) 14%,transparent)}
+.delta{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:20px}
+.delta.up{color:var(--alert);background:color-mix(in srgb,var(--alert) 14%,transparent)}
+.delta.down{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.spark{margin-top:12px;display:block}
+.row2{display:grid;grid-template-columns:1fr 1fr}
+.row2 .metric{border-right:1px solid var(--line)}.row2 .metric:nth-child(2){border-right:none}
+.row2 .big{font-size:22px}
+
+.statline{display:flex;flex-direction:column;gap:11px}
+.sr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sr .l{font-size:11.5px;color:var(--paper-2)}
+.sr .v{font-family:var(--mono);font-size:12px;font-weight:600}
+.sevbar{display:flex;height:10px;border-radius:6px;overflow:hidden;background:var(--panel-3);margin-top:4px}
+.sevbar>i{height:100%}
+
+.alertbox{display:flex;gap:10px;padding:11px 13px;border-radius:8px;background:color-mix(in srgb,var(--alert) 9%,transparent);border:1px solid color-mix(in srgb,var(--alert) 26%,transparent)}
+.alertbox svg{width:15px;height:15px;color:var(--alert);flex:none;margin-top:1px}
+.alertbox b{font-size:12px;font-weight:600;display:block}
+.alertbox p{font-size:11px;color:var(--paper-2);margin-top:2px;line-height:1.45}
+
+.hotspot{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+.hotspot:last-child{border:none}
+.hotspot .hsbloom{flex:none}
+.hotspot .hsinfo{flex:1;min-width:0}
+.hotspot .hsinfo b{font-size:12px;font-weight:560;display:block}
+.hotspot .hsinfo span{font-size:10.5px;color:var(--paper-3);font-family:var(--mono)}
+.hotspot .hscount{font-family:var(--mono);font-size:15px;font-weight:650}
+
+.tip{position:fixed;pointer-events:none;background:var(--panel-3);border:1px solid var(--line-3);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:11px;z-index:50;opacity:0;transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.5);white-space:nowrap}
+.tip.show{opacity:1}
+.tip .tl{color:var(--paper-3);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+
+@media (max-width:1100px){.app{grid-template-columns:210px 1fr}.rail-r{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="bar">
+    <div class="logo">
+      <span class="glyph"><svg viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="6" fill="var(--alert)"/><path d="M13 5 L20 8 V13 C20 17.5 13 21 13 21 C13 21 6 17.5 6 13 V8 Z" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/><path d="M13 11.5 V14.5 M13 16.7 h.01" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <div><b>Sentinel</b><span>Route Safety</span></div>
+    </div>
+    <div class="bar-sep"></div>
+    <div class="bar-time"><span class="livedot"></span><span id="clock">--:--:--</span><span style="color:var(--paper-4)">·</span><span style="color:var(--paper-3)">STATS19 · rolling 36mo</span></div>
+    <div class="bar-spread"></div>
+    <div class="bar-stat"><span class="v" id="bsColl">1,284</span><span class="l">collisions 36mo</span></div>
+    <div class="bar-stat"><span class="v alert" id="bsKsi">47</span><span class="l">KSI</span></div>
+    <div class="bar-stat"><span class="v amber" id="bsHot">9</span><span class="l">hotspot junctions</span></div>
+    <div class="bar-stat"><span class="v cyan" id="bsRate">0.84</span><span class="l">per million km</span></div>
+  </header>
+
+  <!-- LEFT RAIL: routes by danger -->
+  <aside class="rail-l">
+    <div class="rail-h"><span>Routes by risk</span><span class="mono" style="color:var(--paper-3)">62</span></div>
+    <div class="sortbar" id="sortbar">
+      <button class="sbtn on" data-s="ksi" onclick="setSort('ksi')">KSI</button>
+      <button class="sbtn" data-s="rate" onclick="setSort('rate')">Rate</button>
+      <button class="sbtn" data-s="count" onclick="setSort('count')">Count</button>
+    </div>
+    <div class="routes" id="routeList"></div>
+    <div class="rail-foot">
+      <div>Source · DfT STATS19 + iBus</div>
+      <div>Window · 36-month rolling</div>
+    </div>
+  </aside>
+
+  <!-- CENTER -->
+  <main class="canvas">
+    <div class="canvas-h">
+      <div class="ctitle"><b id="cRoute">Route 73</b><span id="cName">Stoke Newington → Victoria · 28 collisions</span></div>
+      <div class="modes" id="modes">
+        <button class="on" data-v="spine" onclick="setView('spine')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><circle cx="7" cy="12" r="2"/><circle cx="13" cy="12" r="2.6"/><circle cx="18" cy="12" r="1.6"/></svg>Spine</button>
+        <button data-v="junctions" onclick="setView('junctions')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5 19 19M19 5l-2.5 2.5M7.5 16.5 5 19"/></svg>Junctions</button>
+        <button data-v="pattern" onclick="setView('pattern')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Pattern</button>
+      </div>
+    </div>
+    <div class="canvas-b">
+      <div class="view on" id="v-spine"></div>
+      <div class="view" id="v-junctions"></div>
+      <div class="view" id="v-pattern"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL -->
+  <aside class="rail-r" id="analysis"></aside>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============================================================
+   DATA MODEL (placeholder)
+   route = [num, name, collisions, ksi, ratePerMkm, score(0-100)]
+   ============================================================ */
+const ROUTES = [
+  ['73','Stoke Newington → Victoria',28,6,1.31,88],
+  ['38','Victoria → Clapton',24,4,1.12,74],
+  ['390','Notting Hill → Archway',31,8,1.84,96],
+  ['141','London Bridge → Palmers Grn',22,5,1.40,79],
+  ['24','Pimlico → Hampstead Hth',14,2,0.78,46],
+  ['55','Leyton → Oxford Circus',19,3,1.22,63],
+  ['205','Paddington → Bow Church',12,1,0.71,38],
+  ['134','Tottenham C.R → Warren St',17,3,0.98,57],
+  ['8','Bow → Tottenham Ct Rd',15,2,0.90,51],
+  ['N29','Trafalgar Sq → Wood Green',20,4,1.05,66],
+];
+const STOPS = ['Stoke Newington','Dalston Jn','Kingsland','Hoxton','Old Street','Moorgate','Bank','London Bridge','Borough','Elephant','Walworth','Victoria'];
+const TYPES = [['Pedestrian','var(--sev-3)'],['Cyclist','var(--amber)'],['Vehicle','var(--cyan)'],['Bus involved','var(--violet)']];
+
+let CURRENT = ROUTES[0];
+let SORT='ksi';
+const sevColor=s=>s>=3?'var(--sev-3)':s>=2?'var(--sev-2)':'var(--sev-1)';
+
+/* generate deterministic-ish collisions for a route, positioned 0..1 along spine */
+function genCollisions(route){
+  const n=route[2]; let arr=[]; 
+  // cluster around junctions (positions ~0.35 Old St, 0.55 Bank, 0.72 London Bridge)
+  const clusters=[0.35,0.55,0.72];
+  for(let i=0;i<n;i++){
+    let pos, r=Math.random();
+    if(r<0.6){const c=clusters[i%3]; pos=Math.min(0.98,Math.max(0.02,c+(Math.random()-0.5)*0.08));}
+    else pos=Math.random();
+    // severity weighted: mostly slight, some serious, few KSI
+    const sr=Math.random(); const sev= sr>0.93?3: sr>0.72?2:1;
+    const type=Math.floor(Math.random()*TYPES.length);
+    arr.push({pos,sev,type,hour:6+Math.floor(Math.random()*16)});
+  }
+  return arr;
+}
+let COLL = genCollisions(CURRENT);
+
+/* junction hotspots derived (3 clusters) */
+function junctions(route){
+  const c=COLL;
+  const defs=[['Old Street rdbt',0.35],['Bank junction',0.55],['London Bridge',0.72],['Elephant & Castle',0.88]];
+  return defs.map(d=>{
+    const near=c.filter(x=>Math.abs(x.pos-d[1])<0.07);
+    const byType=TYPES.map((t,ti)=>near.filter(x=>x.type===ti).length);
+    const ksi=near.filter(x=>x.sev===3).length;
+    return {name:d[0],pos:d[1],count:near.length,byType,ksi};
+  }).sort((a,b)=>b.count-a.count);
+}
+
+/* ============================================================
+   HERO — ROUTE SPINE
+   route unrolled as a horizontal line; collisions are marks
+   positioned by location, sized by severity. Junction blooms
+   swell at hotspots. A density ribbon underlays the spine.
+   ============================================================ */
+function buildSpine(){
+  const W=940,H=520,padL=40,padR=40,padT=70,padB=120;
+  const y=H*0.42;
+  const X=p=>padL+p*(W-padL-padR);
+  const jx=junctions(CURRENT);
+  // density ribbon: sample collision density across the spine
+  const bins=60, dens=new Array(bins).fill(0);
+  COLL.forEach(c=>{const b=Math.min(bins-1,Math.floor(c.pos*bins)); dens[b]+=c.sev;});
+  const maxD=Math.max(...dens,1);
+  let ribbon='';
+  // build a smooth area above the spine representing danger density
+  let top=[],bot=[];
+  for(let i=0;i<bins;i++){const x=padL+(i/(bins-1))*(W-padL-padR);const h=dens[i]/maxD*52;top.push(`${x},${y-h}`);}
+  ribbon=`<polygon points="${padL},${y} ${top.join(' ')} ${W-padR},${y}" fill="url(#densGrad)" opacity=".85"/>`;
+
+  // stop ticks
+  let stops='';
+  STOPS.forEach((s,i)=>{const p=i/(STOPS.length-1);const x=X(p);
+    stops+=`<line class="stoptick" x1="${x}" y1="${y-5}" x2="${x}" y2="${y+5}"/>`;
+    stops+=`<text class="stoplbl" x="${x}" y="${y+24}" text-anchor="end" transform="rotate(-35 ${x} ${y+24})">${s}</text>`;});
+
+  // collisions as marks below/above spine
+  let marks='';
+  COLL.forEach((c,i)=>{const x=X(c.pos);const r=c.sev===3?5:c.sev===2?3.5:2.4;
+    const yy = y + (i%2===0? 16+(c.sev*4) : -16-(c.sev*4));
+    marks+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${yy}" stroke="${sevColor(c.sev)}" stroke-width="1" opacity=".3"/>`;
+    marks+=`<circle class="colpt" cx="${x}" cy="${yy}" r="${r}" fill="${sevColor(c.sev)}" fill-opacity="${c.sev===3?.95:.7}"
+      onmousemove="showTip(event,'${TYPES[c.type][0]}','${['','slight','serious','KSI'][c.sev]} · ${String(c.hour).padStart(2,'0')}:00')" onmouseleave="hideTip()"/>`;});
+
+  // junction blooms (radial roses) on the spine at hotspots
+  let blooms='';
+  jx.forEach(j=>{const x=X(j.pos); const total=j.count||1;
+    const R=14+total*1.4;
+    // glow
+    blooms+=`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--alert)" opacity="${0.04+j.ksi*0.03}"/>`;
+    // rose petals = type counts
+    const maxPet=Math.max(...j.byType,1);
+    j.byType.forEach((cnt,ti)=>{if(cnt===0)return;const ang=(ti/TYPES.length)*Math.PI*2 - Math.PI/2;
+      const len=10+(cnt/maxPet)*(R-6);
+      const x2=x+Math.cos(ang)*len, y2=y+Math.sin(ang)*len;
+      blooms+=`<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${TYPES[ti][1]}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
+      blooms+=`<circle cx="${x2}" cy="${y2}" r="2" fill="${TYPES[ti][1]}"/>`;});
+    blooms+=`<circle cx="${x}" cy="${y}" r="4" fill="var(--ink)" stroke="var(--alert)" stroke-width="1.6"/>`;
+    blooms+=`<text class="axlbl" x="${x}" y="${y-R-8}" text-anchor="middle" fill="var(--paper-2)">${j.name}</text>`;
+    blooms+=`<text class="axt" x="${x}" y="${y-R+4}" text-anchor="middle" fill="var(--alert)" style="font-weight:700;font-size:11px">${j.count}</text>`;});
+
+  document.getElementById('v-spine').innerHTML=`
+    <div class="legend">
+      <span class="k"><span class="lchip" style="background:var(--sev-1)"></span>Slight</span>
+      <span class="k"><span class="lchip" style="background:var(--sev-2)"></span>Serious</span>
+      <span class="k"><span class="lchip" style="background:var(--sev-3)"></span>KSI (killed/serious)</span>
+      <span class="k" style="margin-left:20px"><span class="lchip" style="background:none;box-shadow:inset 0 0 0 1.6px var(--alert)"></span>Junction bloom — petals = collision type, size = count</span>
+      <span class="k" style="margin-left:auto;color:var(--paper-3)">Route unrolled →</span>
+    </div>
+    <svg class="big-svg h-auto" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      <defs><linearGradient id="densGrad" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="var(--alert)" stop-opacity=".55"/>
+        <stop offset="1" stop-color="var(--alert)" stop-opacity="0"/></linearGradient></defs>
+      ${ribbon}
+      <line class="spine" x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke-width="2.5"/>
+      ${stops}${marks}${blooms}
+      <text class="axt" x="${padL}" y="${y-58}" fill="var(--paper-3)">danger density →</text>
+    </svg>`;
+}
+
+/* ============================================================
+   JUNCTIONS — radial bloom grid (the signature indicator)
+   each junction a rose: petals = collision types, radius = count
+   ============================================================ */
+function bloomSvg(j,size){
+  const cx=size/2,cy=size/2,maxR=size/2-14;
+  const maxPet=Math.max(...j.byType,1);
+  let petals='';
+  // severity glow ring
+  petals+=`<circle cx="${cx}" cy="${cy}" r="${maxR}" fill="var(--alert)" opacity="${0.05+j.ksi*0.04}"/>`;
+  // concentric guide
+  petals+=`<circle cx="${cx}" cy="${cy}" r="${maxR*0.66}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  petals+=`<circle cx="${cx}" cy="${cy}" r="${maxR*0.33}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+  j.byType.forEach((cnt,ti)=>{const ang=(ti/TYPES.length)*Math.PI*2 - Math.PI/2;
+    const len=cnt===0?0:8+(cnt/maxPet)*(maxR-8);
+    if(len===0)return;
+    const x2=cx+Math.cos(ang)*len,y2=cy+Math.sin(ang)*len;
+    // wedge petal
+    const wAng=Math.PI/TYPES.length*0.7;
+    const xa=cx+Math.cos(ang-wAng)*len*0.6, ya=cy+Math.sin(ang-wAng)*len*0.6;
+    const xb=cx+Math.cos(ang+wAng)*len*0.6, yb=cy+Math.sin(ang+wAng)*len*0.6;
+    petals+=`<path d="M${cx},${cy} L${xa},${ya} L${x2},${y2} L${xb},${yb} Z" fill="${TYPES[ti][1]}" fill-opacity=".7" stroke="${TYPES[ti][1]}" stroke-width="1"/>`;});
+  petals+=`<circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--ink)" stroke="var(--alert)" stroke-width="1.6"/>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${petals}</svg>`;
+}
+function buildJunctions(){
+  const jx=junctions(CURRENT);
+  let cards=jx.map((j,i)=>`
+    <div class="bloom-cell" onmousemove="showTip(event,'${j.name}','${j.count} collisions · ${j.ksi} KSI')" onmouseleave="hideTip()"
+      style="background:var(--panel);border:1px solid ${j.ksi>0?'color-mix(in srgb,var(--alert) 30%,var(--line))':'var(--line)'};border-radius:11px;padding:14px;text-align:center">
+      <div style="display:flex;justify-content:center">${bloomSvg(j,150)}</div>
+      <div style="font-size:13px;font-weight:600;margin-top:6px">${j.name}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--paper-3);margin-top:3px">${j.count} collisions · <span style="color:var(--alert)">${j.ksi} KSI</span></div>
+    </div>`).join('');
+  document.getElementById('v-junctions').innerHTML=`
+    <div class="legend">
+      ${TYPES.map(t=>`<span class="k"><span class="lchip" style="background:${t[1]}"></span>${t[0]}</span>`).join('')}
+      <span class="k" style="margin-left:auto;color:var(--paper-3)">Petal length = collisions of that type · ring intensity = KSI</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px">${cards}</div>`;
+}
+
+/* ============================================================
+   PATTERN — when & how (hour × severity/type heatmap)
+   ============================================================ */
+function buildPattern(){
+  const hours=['00','02','04','06','08','10','12','14','16','18','20','22'];
+  const rows=TYPES.map(t=>t[0]);
+  // build counts hour×type
+  const grid=rows.map(()=>hours.map(()=>0));
+  COLL.forEach(c=>{const hi=Math.min(hours.length-1,Math.floor(c.hour/2)); grid[c.type][hi]+=1;});
+  const max=Math.max(...grid.flat(),1);
+  const color=(v,ti)=>v===0?'var(--panel-2)':`color-mix(in srgb, ${TYPES[ti][1]} ${Math.round(25+v/max*70)}%, var(--panel-2))`;
+  let html=`<div style="font-size:12px;color:var(--paper-2);margin-bottom:16px">Collisions by hour of day and type — when and how this route's incidents happen. Peaks reveal commuter-hour and visibility patterns.</div>`;
+  html+='<div style="display:inline-block">';
+  html+=`<div style="display:flex;gap:3px;margin-left:96px;margin-bottom:6px">${hours.map(h=>`<div style="width:34px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--paper-3)">${h}</div>`).join('')}</div>`;
+  grid.forEach((row,ti)=>{
+    html+=`<div style="display:flex;gap:3px;align-items:center;margin-bottom:3px"><div style="width:90px;text-align:right;padding-right:6px;font-size:11px;color:var(--paper-2);display:flex;align-items:center;justify-content:flex-end;gap:6px"><span class="lchip" style="width:8px;height:8px;border-radius:50%;background:${TYPES[ti][1]}"></span>${rows[ti]}</div>`;
+    row.forEach((v,hi)=>{html+=`<div class="hm-cell" style="width:34px;height:30px;border-radius:4px;background:${color(v,ti)};display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:${v>max*0.5?'var(--ink)':'var(--paper-3)'}" onmousemove="showTip(event,'${rows[ti]} · ${hours[hi]}:00','${v} collisions')" onmouseleave="hideTip()">${v||''}</div>`;});
+    html+='</div>';});
+  html+='</div>';
+  html+=`<div style="margin-top:24px;max-width:560px"><div class="alertbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>Peak-hour pedestrian risk</b><p>Pedestrian collisions concentrate at the AM and PM commuter peaks around Bank and London Bridge — crossing pressure at busy interchanges. A candidate for crossing-phase review.</p></div></div></div>`;
+  document.getElementById('v-pattern').innerHTML=html;
+}
+
+/* ============================================================
+   RIGHT RAIL — route safety analysis
+   ============================================================ */
+function sparkline(data,color){
+  const w=120,h=34,mx=Math.max(...data),mn=Math.min(...data),rg=mx-mn||1;
+  const pts=data.map((v,i)=>`${i/(data.length-1)*w},${h-2-(v-mn)/rg*(h-6)}`).join(' ');
+  const id='s'+Math.random().toString(36).slice(2,7);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".3"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><polygon points="0,${h} ${pts} ${w},${h}" fill="url(#${id})"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function buildAnalysis(){
+  const r=CURRENT;
+  const sevCounts=[0,0,0];
+  COLL.forEach(c=>sevCounts[c.sev-1]++);
+  const total=COLL.length;
+  const typeCounts=TYPES.map((t,ti)=>COLL.filter(c=>c.type===ti).length);
+  const jx=junctions(r);
+  const top=jx[0];
+  const sclass=r[5]>80?'hi':r[5]>55?'md':'lo';
+  const trend=[18,20,19,22,21,24,26,r[2]];
+  const a=document.getElementById('analysis');
+  a.innerHTML=`
+    <div class="metric">
+      <div class="metric-h"><span>Route safety score</span><span class="tag ${sclass}">${r[5]>80?'HIGH RISK':r[5]>55?'ELEVATED':'LOWER'}</span></div>
+      <div class="big ${sclass==='hi'?'alert':sclass==='md'?'amber':'cyan'}">${r[5]}<span class="u">/100</span></div>
+      <div class="metric-sub"><span class="delta up">▲ ${(r[2]-22)>0?'+':''}${r[2]-22}</span>collisions vs 36mo prior</div>
+      ${sparkline(trend, sclass==='hi'?'var(--alert)':'var(--amber)')}
+    </div>
+    <div class="row2">
+      <div class="metric"><div class="metric-h">KSI</div><div class="big alert">${r[3]}</div><div class="metric-sub">killed / serious</div></div>
+      <div class="metric"><div class="metric-h">Rate</div><div class="big cyan">${r[4]}</div><div class="metric-sub">per M km</div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-h">Severity split</div>
+      <div class="sevbar">
+        <i style="width:${sevCounts[0]/total*100}%;background:var(--sev-1)"></i>
+        <i style="width:${sevCounts[1]/total*100}%;background:var(--sev-2)"></i>
+        <i style="width:${sevCounts[2]/total*100}%;background:var(--sev-3)"></i>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:10.5px">
+        <span style="color:var(--sev-1)">Slight ${sevCounts[0]}</span>
+        <span style="color:var(--sev-2)">Serious ${sevCounts[1]}</span>
+        <span style="color:var(--sev-3)">KSI ${sevCounts[2]}</span>
+      </div>
+    </div>
+    <div class="metric">
+      <div class="metric-h">Casualty type</div>
+      <div class="statline">
+        ${TYPES.map((t,ti)=>`<div><div class="sr"><span class="l"><span class="lchip" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t[1]};margin-right:7px"></span>${t[0]}</span><span class="v">${typeCounts[ti]}</span></div><div class="meter"><i style="width:${typeCounts[ti]/total*100}%;background:${t[1]}"></i></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="metric">
+      <div class="metric-h">Worst hotspot</div>
+      <div class="hotspot" style="border:none;padding-top:0">
+        <div class="hsbloom">${bloomSvg(top,64)}</div>
+        <div class="hsinfo"><b>${top.name}</b><span>${top.count} collisions · ${top.ksi} KSI</span></div>
+        <div class="hscount" style="color:var(--alert)">${top.count}</div>
+      </div>
+    </div>
+    ${r[5]>70?`<div class="metric"><div class="alertbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>Vision Zero priority</b><p>Above the network KSI threshold. ${top.name} accounts for ${Math.round(top.count/total*100)}% of this route's collisions — a targeted junction intervention would have the highest impact.</p></div></div></div>`:`<div class="metric"><div class="metric-h">Status</div><div class="statline"><div class="sr"><span class="l">Vision Zero</span><span class="v" style="color:var(--green)">Within threshold</span></div></div></div>`}
+  `;
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+let VIEW='spine';
+function setView(v){
+  VIEW=v;
+  document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  if(v==='spine')buildSpine(); if(v==='junctions')buildJunctions(); if(v==='pattern')buildPattern();
+}
+function selectRoute(idx){
+  CURRENT=sortedRoutes()[idx];
+  COLL=genCollisions(CURRENT);
+  document.querySelectorAll('.route').forEach((el,i)=>el.classList.toggle('sel',el.dataset.num===CURRENT[0]));
+  document.getElementById('cRoute').textContent='Route '+CURRENT[0];
+  document.getElementById('cName').textContent=CURRENT[1]+' · '+CURRENT[2]+' collisions';
+  buildAnalysis();
+  if(VIEW==='spine')buildSpine(); if(VIEW==='junctions')buildJunctions(); if(VIEW==='pattern')buildPattern();
+}
+function sortedRoutes(){
+  const k=SORT==='ksi'?3:SORT==='rate'?4:2;
+  return [...ROUTES].sort((a,b)=>b[k]-a[k]);
+}
+function setSort(s){SORT=s;document.querySelectorAll('.sbtn').forEach(b=>b.classList.toggle('on',b.dataset.s===s));buildRouteList();}
+function buildRouteList(){
+  const list=sortedRoutes();
+  document.getElementById('routeList').innerHTML=list.map((r,i)=>{
+    const cls=r[5]>80?'hi':r[5]>55?'md':'lo';
+    const col=cls==='hi'?'var(--alert)':cls==='md'?'var(--amber)':'var(--cyan)';
+    return `<div class="route ${r[0]===CURRENT[0]?'sel':''}" data-num="${r[0]}" onclick="selectRoute(${i})">
+      <span class="rnum">${r[0]}</span>
+      <span class="rinfo"><b>${r[1]}</b><span>${r[2]} coll · ${r[3]} KSI</span></span>
+      <span class="score"><span class="n ${cls}">${r[5]}</span><span class="scorebar"><i style="width:${r[5]}%;background:${col}"></i></span></span>
+    </div>`;}).join('');
+}
+const tipEl=document.getElementById('tip');
+function showTip(e,title,sub){tipEl.innerHTML=`<div class="tl">${title}</div>${sub}`;tipEl.classList.add('show');moveTip(e);}
+function moveTip(e){tipEl.style.left=(e.clientX+14)+'px';tipEl.style.top=(e.clientY+14)+'px';}
+function hideTip(){tipEl.classList.remove('show');}
+document.addEventListener('mousemove',e=>{if(tipEl.classList.contains('show'))moveTip(e);});
+setInterval(()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');document.getElementById('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;},1000);
+
+/* init */
+buildRouteList(); buildAnalysis(); buildSpine();
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+name: Weekly Data Refresh
+
+# Runs every Monday at 09:23 UTC (10:23 BST in summer, 09:23 GMT in winter).
+# Minute is deliberately off the top of the hour — GitHub Actions delays or
+# skips scheduled jobs that fire on the hour boundary (peak load). Timed for
+# peak running so TfL `/Line/<id>/Arrivals` returns a representative sample
+# of the active fleet (used by fetch-route-vehicles.js). Can also be
+# triggered manually from the GitHub Actions tab.
+on:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # 45-min ceiling. Cold-start week may use up to 20 min on the iBus → DVLA
+    # fleet build (~6000 lookups @ 5 RPS); steady-state weekly runs are ~10 min.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        # `npm install` (not `npm ci`) so adding a dep in package.json doesn't
+        # require a perfectly-synced package-lock.json. Build is mostly cache-
+        # served and takes ~10 s either way; the `setup-node` `cache: npm` step
+        # warms node_modules across runs.
+        run: npm install --no-audit --no-fund
+
+      # Record the geometry ZIP date before refresh so we can detect if it changed
+      - name: Read previous geometry ZIP date
+        id: prev_zip
+        run: |
+          if [ -f data/geometry-source.json ]; then
+            echo "date=$(node -e "console.log(require('./data/geometry-source.json').zipDate ?? '')")" >> $GITHUB_OUTPUT
+          else
+            echo "date=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run full data refresh
+        env:
+          BUS_API_KEY:               ${{ secrets.BUS_API_KEY }}
+          DVLA_API_KEY:              ${{ secrets.DVLA_API_KEY }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run refresh
+
+      # Read the new geometry ZIP date
+      - name: Read new geometry ZIP date
+        id: new_zip
+        run: |
+          echo "date=$(node -e "console.log(require('./data/geometry-source.json').zipDate ?? '')")" >> $GITHUB_OUTPUT
+
+      - name: Commit and push summary data (always)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Always stage the aggregated/summary files that change weekly.
+          git add -A \
+            data/routes-overview.geojson \
+            data/route_destinations.json \
+            data/route_stops.json \
+            data/stops.json \
+            data/route_classifications.json \
+            data/build-meta.json \
+            data/geometry-source.json \
+            data/garage-locations.json \
+            data/frequencies.json \
+            data/garages.geojson || true
+
+          # Persist the weekly data-quality audit report. The refresh
+          # hard-fails on CRITICAL issues (so a broken commit never lands),
+          # but committing the report each successful week gives a history
+          # we can diff for regressions.
+          git add -f data/audit/data-quality.json || true
+
+          # Persist the postcodes.io geocode cache across runs to avoid
+          # re-geocoding every garage weekly.
+          git add -f data/source/geocode_cache.json || true
+
+          # Persist the DVLA vehicle-fleet cache + per-route observed
+          # registrations across runs. The fleet cache is sticky (90-day TTL
+          # per registration) so without persistence we'd hammer DVLA with
+          # ~9000 calls every Monday. The route-vehicles cache accumulates
+          # observations week-over-week so coverage of each route's fleet
+          # grows steadily.
+          git add -f data/source/vehicle-fleet.json  || true
+          git add -f data/source/route-vehicles.json || true
+
+          # Persist parsed route performance (EWT/OTP) across runs. The PDF
+          # only updates every ~4 weeks; persisting means we can always
+          # answer "what was the latest reading?" between PDF refreshes.
+          # Raw text dump is also persisted to make parser iteration easy
+          # without re-fetching from TfL.
+          git add -f data/source/route-performance.json     || true
+          git add -f data/source/route-performance-raw.txt  || true
+
+          # Persist per-route Minimum Performance Standards. ~700 routes
+          # parsed from TfL's per-route QSI PDFs. MPS values are contract-
+          # defined (only change at tender renewal) so this cache is very
+          # sticky; without persistence we'd hammer TfL with ~700 PDF
+          # downloads every Monday for data that rarely moves.
+          git add -f data/source/route-mps.json             || true
+
+          # Persist the historical tender award cache. ~2500 rows; immutable
+          # once written so steady-state weekly runs only add the handful of
+          # new btIDs TfL has published since last week.
+          git add -f data/source/tenders.json               || true
+
+          # Persist the upcoming-tender programme parse. Small (~100 KB); TfL
+          # republishes the programme PDFs ~monthly during the planning year
+          # so re-parsing weekly is fine. Idempotent on (programme_year,
+          # tranche, route_id) so re-pushing has no effect when nothing
+          # changed upstream.
+          git add -f data/source/tender-programme.json      || true
+
+          # Only stage individual route files if the geometry ZIP changed
+          if [ "${{ steps.prev_zip.outputs.date }}" != "${{ steps.new_zip.outputs.date }}" ]; then
+            echo "Geometry ZIP changed (${{ steps.prev_zip.outputs.date }} → ${{ steps.new_zip.outputs.date }}) — staging route files"
+            git add data/routes/ || true
+          else
+            echo "Geometry ZIP unchanged (${{ steps.new_zip.outputs.date }}) — skipping route files"
+          fi
+
+          # Only commit if there is something staged
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "data: weekly refresh $(date -u +%Y-%m-%d)"
+
+            # Retry push if origin/main moved between checkout and push.
+            # Rebase our single data commit onto whatever landed upstream;
+            # three attempts handles the rare case of a second race during
+            # the rebase itself.
+            for attempt in 1 2 3; do
+              if git push; then
+                break
+              fi
+              if [ "$attempt" = "3" ]; then
+                echo "Push still rejected after 3 attempts — giving up"
+                exit 1
+              fi
+              echo "Push rejected (attempt $attempt) — rebasing onto origin/main"
+              # Originally `git pull --rebase --autostash`, but autostash
+              # silently failed on 2026-05-11 ("cannot pull with rebase: You
+              # have unstaged changes" — see run #10). The data pipeline
+              # leaves BOTH unstaged tracked files AND untracked files in
+              # the working tree; --autostash only handles the former.
+              # Stash explicitly with --include-untracked, and don't pop:
+              # everything stashed here is regenerable intermediate state
+              # and the runner is ephemeral.
+              git stash push --include-untracked --quiet \
+                --message "ci-pipeline-residue-$attempt" || true
+              git pull --rebase origin main
+            done
+          fi

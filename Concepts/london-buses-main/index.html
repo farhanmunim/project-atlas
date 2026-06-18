@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>London Buses — farhan.app</title>
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+    <meta name="description" content="Interactive map of every London bus route — search routes, filter by type, and explore the full network." />
+    <meta name="author" content="farhan.app" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="London Buses" />
+    <meta property="og:title" content="London Buses — farhan.app" />
+    <meta property="og:description" content="Search any London bus route and explore every line across the city on an interactive map." />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="London Buses — farhan.app" />
+    <meta name="twitter:description" content="Search any London bus route and explore every line across the city on an interactive map." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+
+    <link rel="stylesheet" href="css/app.css" />
+
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("app-theme");
+          var theme = stored || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (_) {}
+      })();
+    </script>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-J5GKHJN7K6"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-J5GKHJN7K6');
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#map">Skip to map</a>
+
+    <noscript>
+      <div style="padding:24px;max-width:640px;margin:48px auto;font-family:system-ui,sans-serif;line-height:1.5;color:#111;background:#fff">
+        <h1 style="margin-top:0">JavaScript required</h1>
+        <p>London Buses is an interactive map and needs JavaScript to render routes. Please enable JavaScript, or visit
+          <a href="https://tfl.gov.uk/modes/buses/" rel="noopener">tfl.gov.uk/modes/buses</a> for route information.</p>
+      </div>
+    </noscript>
+
+    <!-- ════════════════════════════════════════ DESKTOP ════════════════════════════════════════ -->
+    <div class="shell">
+
+      <!-- TOPBAR -->
+      <header class="topbar" role="banner">
+        <a href="index.html" class="tb-brand" aria-label="London Buses home">
+          <div class="tb-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7.5" y="7.5" width="17" height="15" rx="2.2"/>
+            <line x1="7.5" y1="14.5" x2="24.5" y2="14.5"/>
+            <line x1="11" y1="22.5" x2="11" y2="24"/>
+            <line x1="21" y1="22.5" x2="21" y2="24"/>
+            <circle cx="11" cy="19" r="1.2" fill="#fff"/>
+            <circle cx="21" cy="19" r="1.2" fill="#fff"/>
+          </svg>
+        </div>
+          <span class="tb-name">London Buses</span>
+        </a>
+        <a class="tb-ver" href="changelog.html" title="View changelog">v2.13</a>
+
+        <div class="tb-search-wrap">
+          <div class="tb-search" id="globalSearch" role="search">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <div id="searchPills" class="search-pills" hidden aria-label="Selected routes"></div>
+            <label for="globalInput" class="sr-only">Search a route</label>
+            <input id="globalInput" placeholder="Search a route, e.g. 25 or N73…" autocomplete="off" spellcheck="false" />
+            <button type="button" id="searchClear" class="tb-search-x" aria-label="Clear search" hidden>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <ul id="globalAutocomplete" class="tb-autocomplete" role="listbox" hidden></ul>
+        </div>
+
+        <div class="tb-actions">
+          <button type="button" class="tb-btn tb-btn-reset" id="resetAll" aria-label="Clear all filters and selections" title="Clear all filters, selections and searches" hidden>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            <span>Clear all</span>
+          </button>
+          <button type="button" class="theme-btn" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="i-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="i-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button type="button" class="tb-btn" id="exportBtn" aria-label="Export current view to XLSX">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </header>
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar" aria-label="Filters">
+        <div class="sb-tabs" role="tablist">
+          <button type="button" class="sb-tab on" role="tab" aria-selected="true" data-stab="filters">Filters</button>
+          <button type="button" class="sb-tab" role="tab" aria-selected="false" data-stab="garages">Garage markers</button>
+        </div>
+
+        <div class="sb-live" id="sb-live" aria-live="polite">
+          <div class="sb-live-count" data-scope="routes">
+            <span class="sb-live-n" id="routeCount">—</span>
+            <span class="sb-live-l"> routes shown</span>
+          </div>
+          <div class="sb-live-count" data-scope="garages" hidden>
+            <span class="sb-live-n" id="garageCount">—</span>
+            <span class="sb-live-l"> garages shown</span>
+          </div>
+          <button type="button" class="sb-clear-btn" id="clearRouteFilters" aria-label="Clear route filters" hidden>Clear</button>
+          <button type="button" class="sb-clear-btn" id="clearGarageFilters" aria-label="Clear garage selection" hidden>Clear</button>
+        </div>
+
+        <!-- Filters body -->
+        <div class="sb-body" id="sb-filters" role="tabpanel">
+
+          <section class="sb-sec" style="border-top:none">
+            <div class="sb-sec-hd" data-sec="op">
+              <span class="sb-sec-lbl">Operator</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:140px">
+              <div class="pill-grp" role="group" aria-label="Operator filters">
+                <button type="button" class="pill" data-filter="operator" data-val="Arriva"><span class="op-dot" style="background:#2563eb"></span>Arriva</button>
+                <button type="button" class="pill" data-filter="operator" data-val="First"><span class="op-dot" style="background:#7c3aed"></span>First</button>
+                <button type="button" class="pill" data-filter="operator" data-val="Go-Ahead"><span class="op-dot" style="background:#e8192c"></span>Go-Ahead</button>
+                <button type="button" class="pill" data-filter="operator" data-val="Metroline"><span class="op-dot" style="background:#0891b2"></span>Metroline</button>
+                <button type="button" class="pill" data-filter="operator" data-val="Stagecoach London"><span class="op-dot" style="background:#1b3d72"></span>Stagecoach</button>
+                <button type="button" class="pill" data-filter="operator" data-val="Transport UK"><span class="op-dot" style="background:#db2777"></span>Transport UK</button>
+                <button type="button" class="pill" data-filter="operator" data-val="Uno"><span class="op-dot" style="background:#d97706"></span>Uno</button>
+                <button type="button" class="pill" data-filter="operator" data-val="__unknown__"><span class="op-dot" style="background:#6b7280"></span>Unknown</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec" id="garage-sec">
+            <div class="sb-sec-hd" data-sec="garage">
+              <span class="sb-sec-lbl">Garage</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:400px">
+              <div class="sb-ms" id="garage-ms">
+                <button type="button" class="sb-ms-btn" id="garage-ms-btn" aria-haspopup="true" aria-expanded="false">
+                  <span class="sb-ms-label sb-ms-label--placeholder" id="garage-ms-label">All garages</span>
+                  <svg class="sb-ms-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="sb-ms-chips" id="garage-ms-chips" hidden></div>
+                <div class="sb-ms-panel" id="garage-ms-panel" role="group" aria-label="Garages" hidden></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec">
+            <div class="sb-sec-hd" data-sec="type">
+              <span class="sb-sec-lbl">Route Type</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:80px">
+              <div class="pill-grp" role="group" aria-label="Route type filters">
+                <button type="button" class="pill" data-filter="routetype" data-val="regular"><span class="op-dot" style="background:#dc2626"></span>Regular</button>
+                <button type="button" class="pill" data-filter="routetype" data-val="night"><span class="op-dot" style="background:#6d28d9"></span>Night</button>
+                <button type="button" class="pill" data-filter="routetype" data-val="twentyfour"><span class="op-dot" style="background:#0e7490"></span>24 Hour</button>
+                <button type="button" class="pill" data-filter="routetype" data-val="school"><span class="op-dot" style="background:#15803d"></span>School</button>
+                <button type="button" class="pill" data-filter="routetype" data-val="prefix"><span class="op-dot" style="background:#a16207"></span>Prefix</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec">
+            <div class="sb-sec-hd" data-sec="prop">
+              <span class="sb-sec-lbl">Propulsion</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:80px">
+              <div class="pill-grp" role="group" aria-label="Propulsion filters">
+                <button type="button" class="pill" data-filter="propulsion" data-val="diesel">Diesel</button>
+                <button type="button" class="pill" data-filter="propulsion" data-val="electric">Electric ⚡</button>
+                <button type="button" class="pill" data-filter="propulsion" data-val="hybrid">Hybrid</button>
+                <button type="button" class="pill" data-filter="propulsion" data-val="hydrogen">Hydrogen</button>
+                <button type="button" class="pill" data-filter="propulsion" data-val="__unknown__">Unknown</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec">
+            <div class="sb-sec-hd" data-sec="freq">
+              <span class="sb-sec-lbl">Frequency</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:70px">
+              <div class="pill-grp" role="group" aria-label="Frequency filters">
+                <button type="button" class="pill" data-filter="frequency" data-val="high" title="High frequency (5 or more buses per hour · ≤12 min headway)">High</button>
+                <button type="button" class="pill" data-filter="frequency" data-val="low" title="Low frequency (fewer than 5 buses per hour · &gt;12 min headway)">Low</button>
+                <button type="button" class="pill" data-filter="frequency" data-val="__unknown__">Unknown</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec">
+            <div class="sb-sec-hd" data-sec="deck">
+              <span class="sb-sec-lbl">Deck Type</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:70px">
+              <div class="pill-grp" role="group" aria-label="Deck type filters">
+                <button type="button" class="pill" data-filter="deck" data-val="single">Single deck</button>
+                <button type="button" class="pill" data-filter="deck" data-val="double">Double deck</button>
+                <button type="button" class="pill" data-filter="deck" data-val="__unknown__">Unknown</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="sb-sec">
+            <div class="sb-sec-hd" data-sec="stop">
+              <span class="sb-sec-lbl">Bus Stop</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:180px">
+              <div class="sb-input">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <label for="stop-search-input" class="sr-only">Search a bus stop</label>
+                <input id="stop-search-input" placeholder="Search a stop…" autocomplete="off" spellcheck="false" />
+                <button type="button" id="stop-search-clear" class="sb-input-x" aria-label="Clear stop filter" hidden>
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                </button>
+              </div>
+              <ul id="stop-autocomplete-list" class="sb-autocomplete" role="listbox" hidden></ul>
+              <div id="stop-selected" class="sb-selected-pill" hidden></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Garages body -->
+        <div class="sb-body" id="sb-garages" role="tabpanel" style="display:none" hidden>
+          <section class="sb-sec" style="border-top:none">
+            <div class="sb-sec-hd" data-sec="garageops">
+              <span class="sb-sec-lbl">Show Garage Markers</span>
+              <svg class="chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+            <div class="sb-sec-bd" style="max-height:140px">
+              <div class="pill-grp" role="group" aria-label="Garage operator filters">
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Arriva"><span class="op-dot" style="background:#2563eb"></span>Arriva</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="First"><span class="op-dot" style="background:#7c3aed"></span>First</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Go-Ahead"><span class="op-dot" style="background:#e8192c"></span>Go-Ahead</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Metroline"><span class="op-dot" style="background:#0891b2"></span>Metroline</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Stagecoach London"><span class="op-dot" style="background:#1b3d72"></span>Stagecoach</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Transport UK"><span class="op-dot" style="background:#db2777"></span>Transport UK</button>
+                <button type="button" class="pill" data-filter="garageoperator" data-val="Uno"><span class="op-dot" style="background:#d97706"></span>Uno</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <!-- MAP -->
+      <main class="map-area">
+        <div id="map" role="application" aria-label="London bus route map"></div>
+
+        <div class="map-col-bar">
+          <div class="map-col-toggle" role="group" aria-label="Map colour mode">
+            <span class="map-col-label">Colour by</span>
+            <div class="map-col-seg">
+              <button type="button" class="map-col-opt on" data-paint="operator" aria-pressed="true">Operator</button>
+              <button type="button" class="map-col-opt" data-paint="type" aria-pressed="false">Route type</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-ctl">
+          <button type="button" class="mctl on" id="toggleLines" aria-pressed="true" aria-label="Toggle route lines">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            Route lines
+          </button>
+          <button type="button" class="mctl" id="toggleGarages" aria-pressed="false" aria-label="Toggle garage markers">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/></svg>
+            Garages
+          </button>
+          <button type="button" class="mctl on" id="toggleStops" aria-pressed="true" aria-label="Toggle bus stops">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>
+            Stops
+          </button>
+        </div>
+      </main>
+
+      <!-- RIGHT PANEL -->
+      <aside class="rp" aria-label="Details">
+        <div class="rp-tabs rp-tabs-top" role="tablist">
+          <button type="button" class="rp-tab on" role="tab" aria-selected="true" data-rp="overview">Overview</button>
+          <button type="button" class="rp-tab" role="tab" aria-selected="false" data-rp="routes">Routes</button>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div class="rp-body" id="rp-overview" role="tabpanel">
+          <div class="ov-kpis ov-kpis-4">
+            <div class="ov-kpi"><div class="ov-kpi-n" id="hero-routes">—</div><div class="ov-kpi-l">Routes</div></div>
+            <div class="ov-kpi"><div class="ov-kpi-n" id="hero-ops">—</div><div class="ov-kpi-l">Operators</div></div>
+            <div class="ov-kpi"><div class="ov-kpi-n" id="hero-garages">—</div><div class="ov-kpi-l">Garages</div></div>
+            <div class="ov-kpi"><div class="ov-kpi-n" id="hero-pvr">—</div><div class="ov-kpi-l">PVR</div></div>
+          </div>
+
+          <div class="ov-sec">
+            <table class="ov-ops" aria-label="Operator breakdown">
+              <thead>
+                <tr><th scope="col">Operator</th><th scope="col">Routes</th><th scope="col">PVR</th><th scope="col">EV</th><th scope="col">Age</th></tr>
+              </thead>
+              <tbody id="ov-ops-body"></tbody>
+            </table>
+          </div>
+
+          <div class="ov-sec">
+            <div class="slbl">Fleet Mix <span class="slbl-sub">· share of PVR</span></div>
+            <div class="fleet-mix">
+              <div class="fleet-mix-bar" id="fleet-mix-bar" role="img" aria-label="Fleet mix by propulsion"></div>
+              <div class="fleet-mix-legend" id="fleet-mix-legend"></div>
+            </div>
+          </div>
+
+          <!-- Legacy mount points kept so stats.js doesn't have to null-guard every write. -->
+          <div id="hero-op-share" hidden></div>
+          <div id="op-cards" hidden role="list">
+            <!-- Operator cards rendered by stats.js; placeholder examples below until then -->
+            <button type="button" class="op-card" data-op-card="Go-Ahead" role="listitem">
+              <span class="op-card-swatch" style="background:#e8192c"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">Go-Ahead London</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button type="button" class="op-card" data-op-card="Stagecoach London" role="listitem">
+              <span class="op-card-swatch" style="background:#1b3d72"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">Stagecoach London</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button type="button" class="op-card" data-op-card="Metroline" role="listitem">
+              <span class="op-card-swatch" style="background:#0891b2"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">Metroline</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button type="button" class="op-card" data-op-card="Arriva" role="listitem">
+              <span class="op-card-swatch" style="background:#2563eb"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">Arriva London</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button type="button" class="op-card" data-op-card="First" role="listitem">
+              <span class="op-card-swatch" style="background:#7c3aed"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">First London</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <button type="button" class="op-card" data-op-card="Transport UK" role="listitem">
+              <span class="op-card-swatch" style="background:#db2777"></span>
+              <div class="op-card-main">
+                <div class="op-card-name">Transport UK</div>
+                <div class="op-card-sub"><span data-op-routes>—</span> routes · <span data-op-garages>—</span> garages</div>
+              </div>
+              <div class="op-card-stats">
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">On-time</div></div>
+                <div class="op-stat"><span class="op-stat-n">XXX</span><div class="op-stat-l">EV</div></div>
+              </div>
+              <svg class="op-card-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ROUTES TAB -->
+        <div class="rp-body" id="rp-routes" role="tabpanel" style="display:none" hidden>
+          <div class="route-search-row">
+            <div class="sb-input" style="flex:1">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <label for="routeSearchInput" class="sr-only">Search a route</label>
+              <input id="routeSearchInput" placeholder="Type a route, e.g. 25 or N73…" autocomplete="off" spellcheck="false" />
+            </div>
+            <button type="button" class="sb-clear-btn" id="clearRouteSearch" aria-label="Clear route search" hidden>Clear</button>
+          </div>
+          <ul id="routeAutocomplete" class="sb-autocomplete" role="listbox" hidden style="margin-bottom:12px"></ul>
+
+          <div class="route-search-prompt" id="routePrompt">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <p>Search for a route above, or tap a line on the map.<br><br>Try <strong>25</strong>, <strong>38</strong> or <strong>149</strong>.</p>
+          </div>
+
+          <!-- Filtered-routes list — shown when sidebar filters are active but no
+               specific route is pinned. Lists the routes the filter kept; each
+               row opens that route's full card. Managed by filtered-routes.js. -->
+          <div id="routeFilteredList" class="rfl" hidden>
+            <div class="rfl-head"><span class="rfl-count" id="rflCount">0</span> <span id="rflLabel">routes match your filters</span></div>
+            <ul class="rfl-list" id="rflList" role="list"></ul>
+          </div>
+
+          <div id="routeResults" hidden>
+            <!-- Route cards rendered here by route-detail.js. Shape: -->
+            <template id="tpl-route-card">
+              <article class="route-card">
+                <div class="rc-top">
+                  <div class="rc-ident">
+                    <div class="rc-num-row">
+                      <div class="rc-num" data-rc-num>—</div>
+                      <!-- Type chip — only rendered for non-default classes
+                           where the badge actually adds info (24-hour and
+                           school). Night and letter-prefix routes already
+                           announce themselves via the route number itself. -->
+                      <span class="rc-type-chip" data-rc-type hidden></span>
+                    </div>
+                    <div class="rc-name-row">
+                      <div class="rc-name" data-rc-name>—</div>
+                      <!-- Direction swap — single-route mode only. Spins
+                           on click; the name text flips between directions. -->
+                      <button type="button" class="rc-dir-btn" data-rc-dir aria-label="Swap direction" title="Swap direction" hidden>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M7 4v14"/>
+                          <path d="M4 15l3 3 3-3"/>
+                          <path d="M17 20V6"/>
+                          <path d="M20 9l-3-3-3 3"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="rc-op" data-rc-op>—</div>
+                </div>
+                <div class="rc-section">
+                  <div class="rc-section-tag">Route</div>
+                  <div class="rc-kpis rc-kpis--five">
+                    <div class="rc-kpi"><div class="rc-kpi-l">PVR</div><div class="rc-kpi-v" data-rc-pvr>—</div></div>
+                    <div class="rc-kpi"><div class="rc-kpi-l">Stops</div><div class="rc-kpi-v" data-rc-stops>—</div></div>
+                    <div class="rc-kpi"><div class="rc-kpi-l">Freq</div><div class="rc-kpi-v" data-rc-freq>—</div></div>
+                    <div class="rc-kpi"><div class="rc-kpi-l" data-rc-perf-l>EWT</div><div class="rc-kpi-v" data-rc-perf>—</div></div>
+                    <div class="rc-kpi"><div class="rc-kpi-l" data-rc-perf-mps-l>MPS</div><div class="rc-kpi-v" data-rc-perf-mps>—</div></div>
+                  </div>
+                  <div class="rc-tender">
+                    <div class="rc-tr"><span class="rc-tr-l">Garage</span><span class="rc-tr-v" data-rc-garage>XXX</span></div>
+                  </div>
+                </div>
+
+                <div class="rc-section">
+                  <div class="rc-section-tag">Fleet</div>
+                  <div class="rc-tender">
+                    <div class="rc-tr"><span class="rc-tr-l">Deck</span><span class="rc-tr-v" data-rc-deck>XXX</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Propulsion</span><span class="rc-tr-v" data-rc-propulsion>XXX</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Make</span><span class="rc-tr-v" data-rc-vehicle-make>XXX</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Model</span><span class="rc-tr-v" data-rc-vehicle-model>XXX</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Avg fleet age</span><span class="rc-tr-v" data-rc-age>XXX</span></div>
+                  </div>
+                </div>
+
+                <div class="rc-section">
+                  <div class="rc-section-tag">Tender · Current active contract</div>
+                  <div class="rc-tender">
+                    <div class="rc-tr" data-rc-row="current-op" hidden><span class="rc-tr-l">Operator</span><span class="rc-tr-v" data-rc-current-op>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-award" hidden><span class="rc-tr-l">Awarded on</span><span class="rc-tr-v" data-rc-current-award>—</span></div>
+                    <div class="rc-tr" data-rc-row="contract-start" hidden><span class="rc-tr-l">Contract start</span><span class="rc-tr-v" data-rc-contract-start>—</span></div>
+                    <div class="rc-tr" data-rc-row="term" hidden><span class="rc-tr-l">Length</span><span class="rc-tr-v" data-rc-term>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-cpm" hidden><span class="rc-tr-l">Cost per mile</span><span class="rc-tr-v" data-rc-current-cpm>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-miles" hidden><span class="rc-tr-l">Contracted miles</span><span class="rc-tr-v" data-rc-current-miles>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-veh" hidden><span class="rc-tr-l">Awarded vehicle</span><span class="rc-tr-v" data-rc-current-veh>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-joint" hidden><span class="rc-tr-l">Joint bid</span><span class="rc-tr-v" data-rc-current-joint>—</span></div>
+                    <div class="rc-tr" data-rc-row="current-bids" hidden><span class="rc-tr-l">Bids received</span><span class="rc-tr-v" data-rc-current-bids>—</span></div>
+                  </div>
+                </div>
+
+                <div class="rc-section" data-rc-section="next-contract" hidden>
+                  <div class="rc-section-tag">Tender · Next contract — awarded</div>
+                  <div class="rc-tender">
+                    <div class="rc-tr">
+                      <span class="rc-tr-l">Operator</span>
+                      <span class="rc-tr-v">
+                        <span data-rc-next-op>—</span>
+                        <span class="rc-op-change" data-rc-op-change hidden>change</span>
+                      </span>
+                    </div>
+                    <div class="rc-tr" data-rc-row="tranche" hidden><span class="rc-tr-l">Tranche</span><span class="rc-tr-v" data-rc-tranche>—</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Awarded on</span><span class="rc-tr-v" data-rc-last-award>—</span></div>
+                    <div class="rc-tr" data-rc-row="next-start" hidden><span class="rc-tr-l">Contract start</span><span class="rc-tr-v" data-rc-next-start>—</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Cost per mile</span><span class="rc-tr-v" data-rc-value>—</span></div>
+                    <div class="rc-tr" data-rc-row="annual-miles" hidden><span class="rc-tr-l">Contracted miles</span><span class="rc-tr-v" data-rc-annual-miles>—</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Awarded vehicle</span><span class="rc-tr-v" data-rc-awarded-veh>—</span></div>
+                    <div class="rc-tr"><span class="rc-tr-l">Joint bid</span><span class="rc-tr-v" data-rc-joint>—</span></div>
+                    <div class="rc-tr" data-rc-row="bids" hidden><span class="rc-tr-l">Bids received</span><span class="rc-tr-v" data-rc-bids>—</span></div>
+                  </div>
+                </div>
+
+                <div class="rc-section">
+                  <div class="rc-section-tag">Tender · Previous operator</div>
+                  <div class="rc-tender">
+                    <div class="rc-tr"><span class="rc-tr-l">Operator</span><span class="rc-tr-v" data-rc-previous>XXX</span></div>
+                    <div class="rc-tr" data-rc-row="prev-award" hidden><span class="rc-tr-l">Awarded on</span><span class="rc-tr-v" data-rc-prev-award>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-term"  hidden><span class="rc-tr-l">Length</span><span class="rc-tr-v" data-rc-prev-term>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-cpm"   hidden><span class="rc-tr-l">Cost per mile</span><span class="rc-tr-v" data-rc-prev-cpm>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-miles" hidden><span class="rc-tr-l">Contracted miles</span><span class="rc-tr-v" data-rc-prev-miles>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-veh"   hidden><span class="rc-tr-l">Awarded vehicle</span><span class="rc-tr-v" data-rc-prev-veh>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-joint" hidden><span class="rc-tr-l">Joint bid</span><span class="rc-tr-v" data-rc-prev-joint>—</span></div>
+                    <div class="rc-tr" data-rc-row="prev-bids"  hidden><span class="rc-tr-l">Bids received</span><span class="rc-tr-v" data-rc-prev-bids>—</span></div>
+                  </div>
+                </div>
+              </article>
+            </template>
+
+            <div id="routeNoResult" hidden>
+              <div class="route-search-prompt">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="margin-bottom:10px;opacity:.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <p>No route found.<br>Try a different route number.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPERATOR DETAIL DRAWER -->
+        <div class="drawer" id="opDrawer" role="dialog" aria-label="Operator details" aria-hidden="true">
+          <div class="drawer-head">
+            <button type="button" class="drawer-back" id="drawerBack" aria-label="Close operator details">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <span class="drawer-head-swatch" id="drawerSwatch"></span>
+            <div>
+              <div class="drawer-head-name" id="drawerName">—</div>
+              <div class="drawer-head-sub" id="drawerSub">—</div>
+            </div>
+          </div>
+          <div class="drawer-body">
+            <!-- Four generic KPI slots — populated per-mode by stats.js.
+                 Labels change between the Operator and Garage views so we
+                 don't need to hide/show sub-cells. -->
+            <div class="drawer-kpi-pair">
+              <div class="dkpi"><div class="dkpi-n" data-dkpi="v1">—</div><div class="dkpi-l" data-dkpi="l1">—</div></div>
+              <div class="dkpi"><div class="dkpi-n" data-dkpi="v2">—</div><div class="dkpi-l" data-dkpi="l2">—</div></div>
+              <div class="dkpi"><div class="dkpi-n" data-dkpi="v3">—</div><div class="dkpi-l" data-dkpi="l3">—</div></div>
+              <div class="dkpi"><div class="dkpi-n" data-dkpi="v4">—</div><div class="dkpi-l" data-dkpi="l4">—</div></div>
+              <div class="dkpi" data-dkpi-slot="5" hidden><div class="dkpi-n" data-dkpi="v5">—</div><div class="dkpi-l" data-dkpi="l5">—</div></div>
+            </div>
+            <div class="dsec" id="dFleetSec">
+              <div class="dsec-lbl">Fleet Mix <span class="slbl-sub">· share of PVR</span></div>
+              <div class="fleet-mix">
+                <div class="fleet-mix-bar" id="dFleetMixBar" role="img" aria-label="Fleet mix by propulsion"></div>
+                <div class="fleet-mix-legend" id="dFleetMixLegend"></div>
+              </div>
+            </div>
+            <div class="dsec" id="dGarageSec">
+              <div class="dsec-lbl">Garages</div>
+              <div class="garage-list" id="dGarages"></div>
+            </div>
+            <div class="dsec" id="dContractsSec">
+              <div class="dsec-lbl">Upcoming contracts</div>
+              <div id="dContracts" style="display:flex;flex-direction:column;gap:8px"></div>
+            </div>
+            <div class="dsec" id="dCtaSec" hidden>
+              <button type="button" class="d-cta d-cta-full" id="dShowRoutes">
+                <span>View all routes operated here</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- APP FOOTER — original markup, slots into the shell's footer row. -->
+      <footer class="app-footer">
+        <button type="button" id="about-btn" class="footer-link-btn">About</button>
+        <span class="footer-sep"></span>
+        <button type="button" id="roadmap-btn" class="footer-link-btn">Roadmap</button>
+        <span class="footer-sep"></span>
+        <a href="changelog.html">Changelog</a>
+        <span class="footer-spacer"></span>
+        <span class="footer-data">
+          <span class="footer-data-dot" aria-hidden="true"></span>
+          <span class="footer-meta">Refreshed <span id="footer-date">–</span></span>
+          <span class="footer-meta footer-data-next">· Next <span id="footer-next-date">–</span></span>
+        </span>
+        <span class="footer-sep"></span>
+        <span class="footer-disclaimer">Not affiliated with TfL · Data may be inaccurate</span>
+        <span class="footer-sep"></span>
+        <span>Built by <a href="https://farhan.app" target="_blank" rel="noopener" style="display: inline">Farhan</a></span>
+      </footer>
+    </div>
+
+    <!-- ════════════════════════════════════════ MOBILE ════════════════════════════════════════ -->
+    <div class="mob-top" id="mob-top">
+      <a href="index.html" class="mob-brand" aria-label="London Buses home">
+        <div class="mob-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="7.5" y="7.5" width="17" height="15" rx="2.2"/>
+            <line x1="7.5" y1="14.5" x2="24.5" y2="14.5"/>
+            <line x1="11" y1="22.5" x2="11" y2="24"/>
+            <line x1="21" y1="22.5" x2="21" y2="24"/>
+            <circle cx="11" cy="19" r="1.2" fill="#fff"/>
+            <circle cx="21" cy="19" r="1.2" fill="#fff"/>
+          </svg>
+        </div>
+        <span class="mob-title">London Buses</span>
+      </a>
+      <a class="tb-ver" href="changelog.html" title="View changelog">v2.13</a>
+      <div style="flex:1"></div>
+      <button type="button" class="theme-btn" id="themeToggleMob" aria-label="Toggle theme">
+        <svg class="i-sun" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="i-moon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+
+    <div class="mob-sheet" id="mobSheet">
+      <button type="button" class="mob-pull" id="mobPull" aria-label="Toggle sheet"><div class="mob-handle"></div></button>
+      <div class="mob-peek">
+        <div class="mob-kpi"><div class="mob-kpi-n" id="mob-routes">—</div><div class="mob-kpi-l">Routes</div></div>
+        <div class="mob-kpi"><div class="mob-kpi-n" id="mob-ops">—</div><div class="mob-kpi-l">Operators</div></div>
+        <div class="mob-kpi"><div class="mob-kpi-n" id="mob-garages">—</div><div class="mob-kpi-l">Garages</div></div>
+      </div>
+      <div class="mob-stabs" role="tablist">
+        <button type="button" class="mob-stab on" role="tab" aria-selected="true" data-ms="filters">Filters</button>
+        <button type="button" class="mob-stab" role="tab" aria-selected="false" data-ms="overview">Overview</button>
+        <button type="button" class="mob-stab" role="tab" aria-selected="false" data-ms="routes">Routes</button>
+      </div>
+
+      <div class="mob-sbody" id="ms-filters" role="tabpanel">
+        <!-- Mobile mirrors the main filter rail — modules bind to the same pill data-attrs -->
+      </div>
+      <div class="mob-sbody" id="ms-overview" role="tabpanel" hidden style="display:none">
+        <!-- Populated by stats.js mobile overview render -->
+      </div>
+      <div class="mob-sbody" id="ms-routes" role="tabpanel" hidden style="display:none">
+        <!-- On mobile the real #rp-routes (search input + route-card template)
+             is relocated here by mobile-nav.js at ≤760px, so no duplicate
+             search field is needed. -->
+      </div>
+    </div>
+
+    <nav class="mob-nav" aria-label="Primary">
+      <div class="mob-nav-items">
+        <button type="button" class="mob-ni on" data-mn="map" aria-label="Map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 19l-6-2V5l6 2m0 12l6-2m-6 2V7m6 10l6 2V7l-6-2m0 12V5"/></svg>
+          <span>Map</span>
+        </button>
+        <button type="button" class="mob-ni" data-mn="filter" aria-label="Filters">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+          <span>Filters</span>
+        </button>
+        <button type="button" class="mob-ni" data-mn="insights" aria-label="Overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Overview</span>
+        </button>
+        <button type="button" class="mob-ni" data-mn="routes" aria-label="Routes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+          <span>Routes</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Modal injectors (standalone, work on every page). -->
+    <script src="js/about.js" defer></script>
+    <script src="js/roadmap.js" defer></script>
+
+    <!-- Boot orchestrator — pulls in every interactive module. -->
+    <script type="module" src="js/ui.js"></script>
+  </body>
+</html>

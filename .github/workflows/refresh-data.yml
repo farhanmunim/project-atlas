@@ -1,0 +1,67 @@
+name: Refresh data store
+
+# Unattended ingestion (claude.md → Pipelines): scheduled + manually dispatchable.
+# The pipeline is idempotent and degrades gracefully, so a flaky upstream never
+# corrupts the committed store — it keeps the last-good files.
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Comma-separated datasets (blank = all)"
+        required: false
+      force:
+        description: "Ignore TTLs"
+        type: boolean
+        default: false
+  schedule:
+    # Daily at 03:17 UTC (off-peak). Per-dataset TTLs gate the work: route geometry /
+    # meta / garages refresh weekly, fleet + live status daily. With the committed warm
+    # caches (HTTP validators + DVLA reg cache) a daily run is small and well inside the
+    # free API tiers (TfL 500 req/min; DVLA capped per run) and GitHub Actions minutes.
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write   # commit the refreshed store back to the repo
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"   # need node:sqlite (warehouse) + process.loadEnvFile
+      # Validator cache (ETag/Last-Modified) persists between runs → conditional
+      # requests, fewer bytes pulled, friendlier to the free API tier.
+      - name: Restore HTTP validator cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: http-cache-${{ github.run_id }}
+          restore-keys: http-cache-
+      - name: Run pipeline
+        env:
+          TFL_APP_KEY: ${{ secrets.TFL_APP_KEY }}    # optional; raises TfL limit to 500 req/min
+          DVLA_API_KEY: ${{ secrets.DVLA_API_KEY }}  # optional; enables fleet enrichment (VES)
+          # Cold-start ceiling on NEW DVLA lookups per run; the committed reg cache means
+          # steady-state runs only resolve the few regs that rotated in. Tune if needed.
+          DVLA_MAX_LOOKUPS: "5000"
+        run: |
+          node pipeline/run.js \
+            ${{ github.event.inputs.only && format('--only={0}', github.event.inputs.only) || '' }} \
+            ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+      - name: Commit refreshed store
+        run: |
+          git config user.name  "transit-instruments-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "chore(data): scheduled refresh $(date -u +%FT%TZ)"
+            git push
+          fi

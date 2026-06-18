@@ -1,0 +1,152 @@
+{
+  "_description": "Raw DVSA operator-licence operating-centre data, captured from vehicle-operator-licensing.service.gov.uk/view-details/licence/<id>. Each OC's `vehicles` is that operating centre's own authorised maximum (these do NOT sum to the licence total — the total is a separate licence-wide cap). Source for build-garage-capacity.js, which matches OC postcodes to our garages. Refresh via the bookmarklet in capacity/extract-bookmarklet.js (no screenshots needed) — see data.md.",
+  "capturedAt": "2026-05-22",
+  "licences": [
+    { "id": "19096", "operator": "Transport UK", "name": "Transport UK London Bus Limited", "total": 631, "ocs": [
+      { "address": "Silverthorne Road, Battersea, London, SW8 3HE", "vehicles": 245 },
+      { "address": "Unit 10 Beddington Cross, 136-138 Beddington Farm Road, Croydon, CR0 4XH", "vehicles": 201 },
+      { "address": "301 Camberwell New Road, London, SE5 0TF", "vehicles": 185 }
+    ]},
+    { "id": "20042", "operator": "Transport UK", "name": "Transport UK London Bus (Abellio West)", "total": 352, "ocs": [
+      { "address": "Abellio London, The Old Tram Depot, Stanley Road, Twickenham, TW2 5NP", "vehicles": 155 },
+      { "address": "40 Great Western Industrial Park, Armstrong Way, Southall, UB2 4SD", "vehicles": 135 },
+      { "address": "Unit 1, Waterway Business Park, Rigby Lane, Hayes, UB3 1EY", "vehicles": 8 },
+      { "address": "Abellio London, Dawley Road, Hayes, UB3 1EF", "vehicles": 56 }
+    ]},
+    { "id": "19828", "operator": "RATP", "name": "London Sovereign Ltd", "total": 230, "ocs": [
+      { "address": "331A Pinner Road, Harrow, HA1 4HJ", "vehicles": 40 },
+      { "address": "The Bus Garage, Station Road, Edgware, HA8 7AN", "vehicles": 100 },
+      { "address": "307 Pinner Road, Harrow, HA1 4HF", "vehicles": 30 },
+      { "address": "The Bus Depot, Parr Road, Honey Pot Lane, Stanmore, HA7 1QA", "vehicles": 30 },
+      { "address": "333 Pinner Road, Harrow, HA1 4JR", "vehicles": 30 },
+      { "address": "2 Tower Lane, East Lane, Wembley, HA9 7NB", "vehicles": 30 }
+    ]},
+    { "id": "19834", "operator": "Arriva", "name": "Arriva London South Ltd", "total": 680, "ocs": [
+      { "address": "Thornton Heath Bus Garage, 719 London Road, Thornton Heath, CR7 6AU", "vehicles": 120 },
+      { "address": "Brixton Bus Garage, 39 Streatham Hill, London, SW2 4TB", "vehicles": 135 },
+      { "address": "Croydon Bus Garage, Brighton Rd, South Croydon, CR2 6EL", "vehicles": 135 },
+      { "address": "Norwood Bus Garage, Ernest Avenue, West Norwood, London, SE27 0HN", "vehicles": 200 },
+      { "address": "Tramway Depot, 239 Brixton Hill, London, SW2 1NR", "vehicles": 50 },
+      { "address": "Beddington Outstation, Sidney House, Beddington Farm Rd, Croydon, CR0 4XB", "vehicles": 40 }
+    ]},
+    { "id": "19892", "operator": "Arriva", "name": "Arriva London North Ltd", "total": 932, "ocs": [
+      { "address": "Tottenham Bus Garage, Philip Lane, Tottenham, London, N15 4JB", "vehicles": 200 },
+      { "address": "Enfield Bus Garage, Southbury Road, Enfield, EN1 1YH", "vehicles": 140 },
+      { "address": "Palmers Green Bus Garage, Regents Avenue, Palmers Green, London, N13 5UR", "vehicles": 120 },
+      { "address": "Wood Green Bus Garage, High Road, Wood Green, London, N22 8HF", "vehicles": 154 },
+      { "address": "Clapton Bus Garage, Bohemia Place, Mare Street, Hackney, London, E8 1DU", "vehicles": 140 },
+      { "address": "Edmonton Bus Garage, Unit 15 Towpath Road, Stonehill Business Park, London, N18 3QX", "vehicles": 70 },
+      { "address": "Barking Bus Garage, 638 Ripple Road, Barking, IG11 0ST", "vehicles": 100 },
+      { "address": "Dartford Garage, Central Road, Dartford, DA1 5BG", "vehicles": 123 },
+      { "address": "Stafford Hill Garage, Rockwood Road, London, N16 6SS", "vehicles": 85 }
+    ]},
+    { "id": "20043", "operator": "Go-Ahead", "name": "London General Transport Services Limited", "total": 2507, "ocs": [
+      { "address": "Merton Garage, High Street, London, SW19 1DN", "vehicles": 217 },
+      { "address": "Putney Garage, Chelverton Road, London, SW15 1RN", "vehicles": 115 },
+      { "address": "Waterloo, Cornwall Road, London, SE1 8TE", "vehicles": 64 },
+      { "address": "Stockwell Garage, Binfield Road, London, SW4 6ST", "vehicles": 213 },
+      { "address": "Sutton Garage, Bushey Road, Sutton, SM1 1QJ", "vehicles": 94 },
+      { "address": "Northumberland Park, Marsh Lane, London, N18 0XB", "vehicles": 230 },
+      { "address": "Orpington Bus Depot, Farnborough Hill, Orpington, BR6 6DA", "vehicles": 228 },
+      { "address": "Croydon Bus Depot, 134 Beddington Lane, Beddington, Croydon, CR9 4ND", "vehicles": 147 },
+      { "address": "Crosskeys Coaches, Caesars Way, Folkestone, CT19 4AL", "vehicles": 8 },
+      { "address": "51-53 River Road, Barking, IG11 0SW", "vehicles": 250 },
+      { "address": "Camberwell Bus Garage, 2 Warner Road, London, SE5 9LU", "vehicles": 245 },
+      { "address": "Peckham Bus Garage, Blackpool Road, London, SE15 3SU", "vehicles": 82 },
+      { "address": "New Cross Garage, 28 New Cross Road, London, SE14 5UH", "vehicles": 229 },
+      { "address": "Bexley Heath Garage, Erith Road, Bexleyheath, DA7 6BX", "vehicles": 175 },
+      { "address": "Docklands Buses, Factory Road, London, E16 2EL", "vehicles": 100 },
+      { "address": "Morden Wharf Garage, Morden Wharf Road, Tunnel Avenue, Greenwich, London, SE10 0PA", "vehicles": 150 },
+      { "address": "Go Ahead London, Standard Industrial Estate, Factory Road, London, E16 2EJ", "vehicles": 150 },
+      { "address": "Waterside Way, London, SW17 0HB", "vehicles": 13 },
+      { "address": "Unit 1, Newtons Court, Crossways Business Park, Dartford, DA2 6QL", "vehicles": 41 },
+      { "address": "Go Ahead, 3 Ellis Road, Mitcham, CR4 4HX", "vehicles": 37 },
+      { "address": "Go Ahead London Sydenham Bus Garage, Kangley Bridge Road, London, SE26 5AT", "vehicles": 97 }
+    ]},
+    { "id": "19894", "operator": "First", "name": "First Bus London Ltd", "total": 950, "ocs": [
+      { "address": "Fulwell Garage, Wellington Road, Twickenham, TW2 5NX", "vehicles": 160 },
+      { "address": "Hounslow Heath Garage, Unit C1, Tamian Way, Hounslow, TW4 6BL", "vehicles": 110 },
+      { "address": "Shepherds Bush Garage, Wells Road, London, W12 8DA", "vehicles": 135 },
+      { "address": "Stamford Brook Garage, 72 Chiswick High Road, London, W4 1SY", "vehicles": 125 },
+      { "address": "Tolworth Goods Yard, Kingston Road, Surbiton, KT5 9NU", "vehicles": 115 },
+      { "address": "Hounslow Garage, Kingsley Road, Hounslow, TW3 1PA", "vehicles": 140 },
+      { "address": "Units 1, 2 & 6 Atlas House, Atlas Road, Park Royal, London, NW10 6DN", "vehicles": 165 }
+    ]},
+    { "id": "575966", "operator": "First", "name": "First Bus London Ltd (Westbourne Park)", "total": 173, "ocs": [
+      { "address": "Westbourne Park Garage, Great Western Road, London, W9 3NW", "vehicles": 173 }
+    ]},
+    { "id": "20091", "operator": "First", "name": "First (Tower Transit Operations)", "total": 78, "ocs": [
+      { "address": "Jews Row, London, SW18 1TB", "vehicles": 78 },
+      { "address": "Tower Transit Operations Ltd, Westbourne Park Garage, Great Western Road, London, W9 3NW", "vehicles": 45 }
+    ]},
+    { "id": "19915", "operator": "Metroline", "name": "Metroline Travel Ltd", "total": 1123, "ocs": [
+      { "address": "Willesden Garage, High Road, Willesden, London, NW10 2JX", "vehicles": 132 },
+      { "address": "Harrow Weald Garage, High Road, Harrow, HA3 6EJ", "vehicles": 73 },
+      { "address": "Cricklewood Garage, Edgware Road, London, NW2 6JP", "vehicles": 225 },
+      { "address": "Edgware Garage, Station Road, London, HA8 7AN", "vehicles": 89 },
+      { "address": "Holloway Garage, 37A Pemberton Gardens, Holloway, London, N19 5RR", "vehicles": 228 },
+      { "address": "Vanguard Site, Alperton Lane, Western Avenue, Perivale, Greenford, UB6 8DW", "vehicles": 95 },
+      { "address": "Armchair House, Commerce Road, Brentford, TW8 8LZ", "vehicles": 115 },
+      { "address": "1 Freight Lane, Off York Way, Kings Cross, N1 0FF", "vehicles": 60 },
+      { "address": "27a, Spring Grove Road, Hounslow, TW3 4BE", "vehicles": 50 },
+      { "address": "3 Capital Business Centre, Athlon Road, Alperton, Wembley, HA0 1YU", "vehicles": 38 },
+      { "address": "Metroline Travel Ltd, Unit 20-23, Perivale Industrial Estate, Horsenden Lane South, Greenford, UB6 7RJ", "vehicles": 18 }
+    ]},
+    { "id": "419032", "operator": "Metroline", "name": "Metroline West Ltd", "total": 560, "ocs": [
+      { "address": "Uxbridge Garage, Bakers Court, Bakers Road, Uxbridge, UB8 1RG", "vehicles": 94 },
+      { "address": "Greenford Depot, Greenford Road, Greenford, UB6 9AP", "vehicles": 151 },
+      { "address": "Willesden Junction Depot, 46 Station Road, Harlesden, London, NW10 4XB", "vehicles": 110 },
+      { "address": "Hayes Depot, 12 Rigby Lane, Hayes, UB3 1ET", "vehicles": 150 },
+      { "address": "51 Wallingford Road, Uxbridge, UB8 2RW", "vehicles": 90 }
+    ]},
+    { "id": "588359", "operator": "Stagecoach London", "name": "Lea Interchange Bus Company", "total": 250, "ocs": [
+      { "address": "Lea Interchange Bus Depot, 151 Ruckholt Road, London, E10 5PB", "vehicles": 250 },
+      { "address": "Stagecoach London, Stephenson Street, London, E16 4SA", "vehicles": 30 }
+    ]},
+    { "id": "19966", "operator": "Stagecoach London", "name": "Stagecoach East London Ltd", "total": null, "ocs": [
+      { "address": "Barking Bus Garage, 205 Longbridge Road, Barking, IG11 8UE", "vehicles": 140 },
+      { "address": "Bow Garage, Fairfield Road, London, E3 2QP", "vehicles": 125 },
+      { "address": "Romford Bus Garage, North Street, Romford, RM1 1DS", "vehicles": 111 },
+      { "address": "Leyton Bus Garage, High Road Leyton, London, E10 6AD", "vehicles": 120 },
+      { "address": "Rainham Garage Unit 2, Albright Industrial Estate, Ferry Lane, Rainham, RM13 9BU", "vehicles": 150 },
+      { "address": "West Ham Garage, Stagecoach London, Stephenson Street, London, E16 4SA", "vehicles": 160 },
+      { "address": "Ash Grove Bus Depot, Ash Grove, London, E8 4RH", "vehicles": 130 },
+      { "address": "Walthamstowe Avenue, London, E4 8SP", "vehicles": 90 },
+      { "address": "151 Ruckholt Road, London, E10 5PB", "vehicles": 38 }
+    ]},
+    { "id": "19754", "operator": "Stagecoach London", "name": "Selkent Ltd", "total": 550, "ocs": [
+      { "address": "Bromley Garage, 111 Hastings Road, Bromley, BR2 8NH", "vehicles": 110 },
+      { "address": "Catford Garage, 180 Bromley Road, Catford, London, SE6 2XA", "vehicles": 180 },
+      { "address": "Plumstead Garage, Pettman Crescent, Plumstead, London, SE28 0BJ", "vehicles": 210 },
+      { "address": "Kangley Bridge Road, Lower Sydenham, London, SE26 5AT", "vehicles": 50 }
+    ]},
+    { "id": "462612", "operator": "Arriva", "name": "Arriva (Grays, East of England)", "total": 70, "ocs": [
+      { "address": "Europa Park, London Road, Grays, RM20 4DB", "vehicles": 70 }
+    ]},
+    { "id": "295471", "operator": "Metroline", "name": "Metroline (Potters Bar, East of England)", "total": 190, "ocs": [
+      { "address": "Potters Bar Garage, High Street, Potters Bar, EN6 5BE", "vehicles": 190 }
+    ]},
+    { "id": "20449", "operator": "First", "name": "First (Slough, West of England)", "total": 136, "ocs": [
+      { "address": "Slough Depot, Stanley Cottages, Stoke Road, Slough, SL2 5AQ", "vehicles": 126 },
+      { "address": "Reading Buses, Great Knollys Street, Reading, RG1 7HH", "vehicles": 10 }
+    ]},
+    { "id": "20176", "operator": "Go-Ahead", "name": "Brighton & Hove / Metrobus", "total": 567, "ocs": [
+      { "address": "Conway Street, Hove, BN3 3LT", "vehicles": 287 },
+      { "address": "Whitehawk Road, Brighton, BN2 5NS", "vehicles": 250 },
+      { "address": "Tressler Coachworks, Bell Lane, Bellbrook Industrial Estate, Uckfield, TN22 1QL", "vehicles": 5 },
+      { "address": "Stagecoach Eastbourne, Birch Road, Eastbourne, BN23 6PD", "vehicles": 6 },
+      { "address": "Unit 1, Newhaven Workshops, Beach Close, Newhaven, BN9 0BY", "vehicles": 70 },
+      { "address": "107 Lewes Road, Brighton, BN2 4AE", "vehicles": 250 },
+      { "address": "Wheatstone Close, Crawley, RH10 9UA", "vehicles": 150 },
+      { "address": "Collinwood, Unit 3B, Wheatstone Close, Crawley, RH10 9UA", "vehicles": 12 },
+      { "address": "Southdown PSV Ltd, Unit 3, Silverwood, Snow Hill, Copthorne, RH10 3EN", "vehicles": 30 },
+      { "address": "Broyle Place Farm, Laughton Road, The Cloisters, Ringmer, Lewes, BN8 5SD", "vehicles": 45 },
+      { "address": "2a & 2b Birch Close, Eastbourne, BN23 6PE", "vehicles": 18 }
+    ]},
+    { "id": "22544", "operator": "Uno", "name": "Universitybus Ltd (Uno)", "total": 110, "ocs": [
+      { "address": "Gypsy Moth Avenue, Hatfield Business Park, Hatfield, AL10 9BS", "vehicles": 90 },
+      { "address": "Cranfield University, College Road, Cranfield, Bedford, MK43 0AL", "vehicles": 10 },
+      { "address": "Angerlands Park & Ride, Hatfield, AL10 8HS", "vehicles": 10 }
+    ]}
+  ]
+}

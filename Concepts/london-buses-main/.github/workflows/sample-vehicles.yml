@@ -1,0 +1,51 @@
+name: Daily Vehicle Sampler
+
+# Captures a daily snapshot of which registration is running which route
+# (TfL /Arrivals) and appends it to the rolling `route_vehicle_sightings`
+# Supabase table. The weekly refresh reads these samples back (via the
+# route_vehicle_recurrence RPC) to compute a dense per-route `days` recurrence
+# count, which build-classifications.js uses to separate each route's core
+# fleet from one-off cover buses.
+#
+# Deliberately lightweight: TfL → Supabase only. No DVLA, no geometry, no git
+# commit — so it never races the weekly committing workflow. Times are spread
+# across the day so the week's samples span different running patterns; the
+# off-the-hour minute avoids GitHub's on-the-hour scheduling congestion.
+on:
+  schedule:
+    - cron: "37 8 * * *"    # 08:37 UTC daily — AM peak, representative active fleet
+  workflow_dispatch:
+
+# No `contents: write` — this job writes only to Supabase, never to the repo.
+permissions:
+  contents: read
+
+# Never let two samplers (or a manual run overlapping the cron) write at once.
+concurrency:
+  group: daily-vehicle-sampler
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Sample arrivals → Supabase
+        env:
+          BUS_API_KEY:               ${{ secrets.BUS_API_KEY }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run sample-vehicles

@@ -1,0 +1,20 @@
+{
+  "name": "transit-instruments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Transit Instruments — London bus network analysis suite. Tools are dependency-free HTML; this package is the data pipeline that feeds them.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "refresh": "node pipeline/run.js",
+    "refresh:force": "node pipeline/run.js --force",
+    "refresh:routes": "node pipeline/run.js --only=routes",
+    "refresh:status": "node pipeline/run.js --only=status",
+    "validate:atlas": "node pipeline/validate-atlas.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.1.0"
+  }
+}

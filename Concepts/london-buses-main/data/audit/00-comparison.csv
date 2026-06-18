@@ -1,0 +1,748 @@
+route_id,lbr_vehicle_string,bustimes_types,bustimes_observed_regs,our_make,our_vehicle_type,our_propulsion,our_deck,tfl_observed_reg_count
+1,B5LH/Gemini 3,ADL Enviro400H MMC,18,ALEXANDER DENNIS,B5LH/Gemini 3,hybrid,double,36
+100,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,15
+101,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,19
+102,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,38,VOLVO,B5LH/Gemini 2,hybrid,double,38
+103,Trident/Enviro400,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400,32,VOLVO,Trident/Enviro400,diesel,double,32
+104,Trident/Enviro400,ADL Enviro400 | ADL Enviro400H,19,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,30
+105,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,34,VOLVO,B5LH/Gemini 3,hybrid,double,34
+106,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,36,BYD,DD/Enviro400EV City,electric,double,37
+107,B5LH/Gemini 3,Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,23,VOLVO,B5LH/Gemini 3,hybrid,double,23
+108,D9UR/Enviro200 MMC EV,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,3,BYD D9UR,D9UR/Enviro200 MMC EV,electric,single,27
+108D,,,0,,,,,0
+109,E40H/Enviro400H MMC,Wright StreetDeck Electroliner | ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,38,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,38
+11,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+110,E20D/Enviro200 MMC,ADL Enviro200 MMC,33,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,33
+111,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner | ADL Enviro400 MMC | ADL Enviro400H MMC,34,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,34
+112,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC | Wright GB Kite Electroliner,32,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,32
+113,Streetdeck Electroliner 10.5m,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,48,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,48
+114,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,45,VOLVO,B5LH/Gemini 3,hybrid,double,45
+115,E40H/Enviro400H MMC,ADL Enviro400H MMC,25,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,27
+116,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,22,VOLVO,B5LH/Gemini 3,hybrid,double,22
+117,Citaro K 10.5m,Mercedes-Benz Citaro O295K | ADL Enviro200 MMC,23,ALEXANDER DENNIS,Citaro K 10.5m,diesel,single,23
+119,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400,26,BYD,DD/Enviro400EV City,electric,double,34
+12,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+120,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,56,VOLVO,B5LH/Gemini 3,hybrid,double,56
+121,DB300/Gemini 2,VDL DB300 Wright Gemini 2,47,WRIGHTBUS,DB300/Gemini 2,diesel,double,47
+122,E40H/Enviro400H,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 | ADL Enviro400H | ADL Enviro400 MMC | ADL Enviro400H MMC,53,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,53
+123,?,ADL Enviro400H MMC,7,VOLVO,?,diesel,,51
+124,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,24,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,24
+125,DD/Enviro400EV City,Volvo B5LH Wright Eclipse Gemini 3 | BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright SRM | ADL Enviro400H | ADL Enviro400H MMC,29,BYD,DD/Enviro400EV City,electric,double,29
+126,E20D/Enviro200,ADL Enviro200,14,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,14
+127,Trident/Enviro400,ADL Enviro400,17,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,30
+128,E40D/Enviro400,ADL Enviro400 | ADL Enviro400 MMC | Wright StreetDeck Electroliner,22,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,22
+129,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,34
+13,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti | ADL Enviro400H,34,VOLVO,B5LH/EvoSeti,hybrid,double,34
+130,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+131,Streetdeck Electroliner 10.5m,BYD D8UR-DD ADL Enviro400EV,10,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,34
+132,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,18,BYD,DD/Enviro400EV City,electric,double,25
+133,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,52,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,52
+134,MetroDecker EV 10.5m,Volvo B5LH MCV EvoSeti | BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner | Optare MetroDecker EV,53,WRIGHTBUS,MetroDecker EV 10.5m,electric,double,53
+135,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,27,VOLVO,B5LH/Gemini 3,hybrid,double,27
+136,E40D/Enviro400,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 MMC,53,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,53
+137,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+138,E20D/Enviro200 1D ?,ADL Enviro200 MMC | ADL Enviro200,10,ALEXANDER DENNIS,E20D/Enviro200 1D ?,diesel,single,10
+139,B5LH/Eclipse Gemini,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H MMC | Volvo B5LH MCV EvoSeti,33,VOLVO,B5LH/Eclipse Gemini,hybrid,double,33
+14,E40H/Enviro400H MMC,ADL Enviro400H MMC,22,VOLVO,E40H/Enviro400H MMC,hybrid,double,61
+140,B5LH/Gemini 3,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,47,VOLVO,B5LH/Gemini 3,hybrid,double,47
+141,BYD B11E02 10.9m,Volvo B5LH Wright Eclipse Gemini 3 | BYD BD11 | Volvo B5LH Wright Eclipse Gemini 2,55,BYD,BYD B11E02 10.9m,electric,single,55
+142,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,32,BYD,DD/Enviro400EV City,electric,double,32
+143,Kite Electroliner 10.3m,BYD B12 | Wright GB Kite Electroliner,17,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,17
+144,B5LH/Gemini 3,ADL Enviro400H MMC,5,VOLVO,B5LH/Gemini 3,hybrid,double,42
+145,E40H/Enviro400H MMC,ADL Enviro400 MMC | ADL Enviro400H MMC,38,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,38
+146,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro100EV,4,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,4
+147,E40D/Enviro400,ADL Enviro400,12,VOLVO,E40D/Enviro400,diesel,double,38
+148,New Bus for London,BYD D8UR-DD ADL Enviro400EV,9,BYD,New Bus for London,hybrid,double,9
+149,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,5,VOLVO,New Bus for London,hybrid,double,5
+15,New Bus for London,,0,VOLVO,New Bus for London,hybrid,double,8
+150,Trident/Enviro400,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400 | VDL DB300 Wright Gemini 2 | Volvo B5LH Wright Eclipse Gemini 2,26,VOLVO,Trident/Enviro400,diesel,double,26
+151,Streetdeck Electroliner 10.5m,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,18
+152,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,20
+153,Kite Electroliner 10.9m,BYD D8UR ADL Enviro200EV | Wright GB Kite Electroliner,19,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,19
+154,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,51,BYD,DD/Enviro400EV City,electric,double,51
+155,B5LH/Gemini 3,ADL Enviro400H MMC,3,VOLVO,B5LH/Gemini 3,hybrid,double,32
+156,E40H/Enviro400H,ADL Enviro400H | ADL Enviro400H MMC,48,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,48
+157,DD/E400MMC EV,BYD D8UR-DD ADL Enviro400EV,37,BYD,DD/E400MMC EV,electric,double,38
+158,DB300/Gemini 2,VDL DB300 Wright Gemini 2 | ADL Enviro400H MMC,34,WRIGHTBUS,DB300/Gemini 2,diesel,double,34
+159,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+16,New Bus for London,Wright StreetDeck Electroliner,18,WRIGHTBUS,New Bus for London,hybrid,double,18
+160,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,16,BYD,DD/Enviro400EV City,electric,double,16
+161,E40H/Enviro400H MMC,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 | ADL Enviro400H | ADL Enviro400 MMC | ADL Enviro400H MMC,56,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,56
+162,E200Dart/Enviro200,ADL Enviro200,18,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,20
+163,D8UR/Enviro200MMC EV,ADL Enviro200,1,BYD,D8UR/Enviro200MMC EV,electric,single,32
+164,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,35
+165,Trident/Enviro400,Wright StreetDeck Electroliner,36,WRIGHTBUS,Trident/Enviro400,electric,double,36
+166,E200Dart/Enviro200,,0,BYD,E200Dart/Enviro200,electric,single,19
+167,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+169,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner | ADL Enviro400H MMC,30,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,30
+17,New Bus for London,BYD D8UR-DD ADL Enviro400EV | Volvo B5LH MCV EvoSeti,3,BYD,New Bus for London,hybrid,double,3
+170,E200Dart/Enviro200,ADL Enviro200,20,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,20
+171,E40H/Enviro400H MMC,ADL Enviro400H MMC,42,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,47
+172,E40H/Enviro400H MMC,,0,WRIGHTBUS,E40H/Enviro400H MMC,hybrid,double,19
+173,DD/Enviro400EV City,Wright StreetDeck Electroliner,28,WRIGHTBUS,DD/Enviro400EV City,electric,double,28
+174,DD/Enviro400EV City,Wright StreetDeck Electroliner | ADL Enviro400,51,WRIGHTBUS,DD/Enviro400EV City,electric,double,51
+175,DB300/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | VDL DB300 Wright Gemini 2,28,VOLVO,DB300/Gemini 2,diesel,double,28
+176,New Bus for London,ADL Enviro400H MMC,9,VOLVO,New Bus for London,hybrid,double,22
+177,B5LH/Enviro400H MMC,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 | ADL Enviro400H | ADL Enviro400H MMC | ADL Enviro400 MMC,59,ALEXANDER DENNIS,B5LH/Enviro400H MMC,hybrid,double,59
+178,E40D/Enviro400,ADL Enviro400,17,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,18
+179,E40D/Enviro400,ADL Enviro400 | ADL Enviro400 MMC | ADL Enviro400H MMC,34,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,34
+18,B5LH/Gemini 3,BYD BD11,56,BYD,B5LH/Gemini 3,hybrid,double,56
+180,E40H/Enviro400H,Volvo B5LH ADL Enviro400 MMC | BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H | ADL Enviro400 | ADL Enviro400H MMC | ADL Enviro400 MMC,49,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,49
+181,E20D/Enviro200 MMC,ADL Enviro200 MMC,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+182,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B9TL Wright Eclipse Gemini 2,54,VOLVO,B5LH/Gemini 3,hybrid,double,54
+183,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,23,BYD,DD/Enviro400EV City,electric,double,23
+184,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,33
+185,E40H/Enviro400H MMC,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,39,BYD,E40H/Enviro400H MMC,hybrid,double,41
+186,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B9TL Wright Eclipse Gemini 2,50,VOLVO,B5LH/Gemini 2,hybrid,double,50
+187,BZL (sd)/MCV,Volvo BZL,22,VOLVO,BZL (sd)/MCV,electric,single,22
+188,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,27
+189,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+19,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+190,E20D/Enviro200 MMC,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | ADL Enviro200 MMC,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+191,DB300/Gemini 2,VDL DB300 Wright Gemini 2,36,WRIGHTBUS,DB300/Gemini 2,diesel,double,36
+192,E20D/Enviro200 MMC,,0,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+193,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,15,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,15
+194,DB300/Gemini 2,VDL DB300 Wright Gemini 2 | ADL Enviro400,26,WRIGHTBUS,DB300/Gemini 2,diesel,double,26
+195,E20D/Enviro200 MMC,Wright GB Kite Electroliner | ADL Enviro200 MMC | ADL Enviro200,23,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,23
+196,Enviro400EV 10.5m,ADL Enviro400EV,18,ALEXANDER DENNIS,Enviro400EV 10.5m,electric,double,18
+197,E40H/Enviro400H MMC,ADL Enviro400H MMC,29,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,30
+198,E40H/Enviro400H City,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H City,19,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,19
+199,Streetdeck Electroliner 10.5m,Volvo B5LH ADL Enviro400 MMC | Wright StreetDeck Electroliner,20,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,20
+2,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H MMC,55,VOLVO,B5LH/Gemini 3,hybrid,double,55
+20,E40H/Enviro400H City,ADL Enviro400H City | ADL Enviro400H,22,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,22
+200,MetroDecker EV 10.5m,Wright StreetDeck Electroliner | Optare MetroDecker EV,17,OPTARE,MetroDecker EV 10.5m,electric,double,27
+201,E20D/Enviro200,ADL Enviro200 MMC | ADL Enviro200,18,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,18
+202,E40H/Enviro400H MMC,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H MMC,21,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,21
+203,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H,13,VOLVO,B5LH/Gemini 3,hybrid,double,13
+204,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,44,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,44
+205,E40H/Enviro400H,ADL Enviro400H | ADL Enviro400 MMC,27,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,27
+206,E20D/Enviro200,BYD BD11 | Volvo BZL | ADL Enviro200 MMC,31,VOLVO,E20D/Enviro200,electric,single,31
+207,E40H/Enviro400H MMC,ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,43,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,43
+208,E40H/Enviro400H MMC,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,19,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,22
+209,E20D/Enviro200 MMC,ADL Enviro200 MMC,9,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9
+21,New Bus for London,ADL Enviro400H MMC,12,ALEXANDER DENNIS,New Bus for London,hybrid,double,12
+210,BYD B11E02 10.9m,BYD BD11 | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,19,BYD,BYD B11E02 10.9m,electric,single,19
+211,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+212,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,32,BYD,DD/Enviro400EV City,electric,double,32
+213,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,48,BYD,DD/Enviro400EV City,electric,double,48
+214,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,24
+215,New Bus for London,ADL Enviro400 | ADL Enviro400H,5,ALEXANDER DENNIS,New Bus for London,hybrid,double,5
+216,E20D/Enviro200 MMC,ADL Enviro200 MMC,21,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,21
+217,DB300/Gemini 2,VDL DB300 Wright Gemini 2 | Wright StreetDeck Electroliner,24,WRIGHTBUS,DB300/Gemini 2,diesel,double,24
+218,Kite Electroliner 10.9m,Wright GB Kite Electroliner | ADL Enviro200,11,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,11
+219,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,32
+22,B5LH/EvoSeti,ADL Enviro400H MMC,1,WRIGHTBUS,B5LH/EvoSeti,hybrid,double,23
+220,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H,47,VOLVO,B5LH/Gemini 3,hybrid,double,47
+221,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,47,VOLVO,B5LH/Gemini 3,hybrid,double,47
+222,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,41,VOLVO,B5LH/Gemini 3,hybrid,double,41
+223,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+224,E20D/Enviro200 MMC,ADL Enviro200,11,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11
+225,E20D/Enviro200 2D ?,ADL Enviro200 MMC,8,ALEXANDER DENNIS,E20D/Enviro200 2D ?,diesel,single,8
+226,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | ADL Enviro200 MMC,22,BYD,D8UR/Enviro200MMC EV,electric,single,22
+227,Streetlite DF 11.5m,Wright StreetLite DF | ADL Enviro200,15,WRIGHTBUS,Streetlite DF 11.5m,diesel,single,15
+228,BZL (sd)/MCV,Volvo BZL,20,VOLVO,BZL (sd)/MCV,electric,single,20
+229,E40D/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2 | VDL DB300 Wright Gemini 2,38,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,38
+23,MetroDecker EV 10.5m,BYD D8UR-DD ADL Enviro400EV | Volvo B5LH MCV EvoSeti | ADL Enviro400H | Optare MetroDecker EV,36,OPTARE,MetroDecker EV 10.5m,electric,double,36
+230,Streetdeck Electroliner 10.5m,BYD D8UR-DD ADL Enviro400EV,6,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,18
+231,B9TL/Gemini 2,Volvo B9TL Wright Eclipse Gemini 2 | ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3,17,ALEXANDER DENNIS,B9TL/Gemini 2,diesel,double,17
+232,Streetlite DF 10.8m,Wright StreetLite DF,18,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,18
+233,E100EV/Enviro100EV 8.5m,ADL Enviro200,1,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,15
+234,E20D/Enviro200,ADL Enviro200 | Wright GB Kite Electroliner | ADL Enviro200 MMC,18,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,18
+235,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | ADL Enviro200 MMC,24,BYD,D8UR/Enviro200MMC EV,electric,single,24
+236,Streetlite DF 10.8m,Wright StreetLite DF | ADL Enviro200,23,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,23
+237,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2,63,VOLVO,B5LH/Gemini 3,hybrid,double,64
+238,E40D/Enviro400,ADL Enviro400 | ADL Enviro400 MMC | ADL Enviro400H MMC,34,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,34
+24,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+240,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,28,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,28
+241,E40D/Enviro400,ADL Enviro400 | ADL Enviro400 MMC,23,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,23
+242,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,33,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,33
+243,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,63,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,63
+244,E200Dart/Enviro200,ADL Enviro400,23,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,23
+245,B5LH/Gemini 3,Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Hydroliner,45,VOLVO,B5LH/Gemini 3,hybrid,double,45
+246,E200Dart/Enviro200,Volvo BZL | ADL Enviro400EV | ADL Enviro200 MMC,9,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,9
+247,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,30,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,31
+248,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3,8,VOLVO,New Bus for London,hybrid,double,8
+249,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,46,VOLVO,B5LH/Gemini 3,hybrid,double,46
+25,E40H/Enviro400H MMC,ADL Enviro400H | ADL Enviro400 MMC,55,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,55
+250,Trident/Enviro400,ADL Enviro400 | Wright StreetDeck Electroliner,41,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,41
+251,BZL (sd)/MCV,Volvo BZL,13,VOLVO,BZL (sd)/MCV,electric,single,13
+252,E40D/Enviro400,ADL Enviro400 | ADL Enviro400 MMC,40,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,41
+253,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+254,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+255,Kite Electroliner 10.3m,,0,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,11
+256,E40D/Enviro400,Wright StreetDeck Electroliner | ADL Enviro400 | ADL Enviro400 MMC,34,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,34
+257,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner | ADL Enviro400 | ADL Enviro400H,23,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,23
+258,B9TL/Gemini 2,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,25,VOLVO,B9TL/Gemini 2,diesel,double,25
+259,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3,1,VOLVO,New Bus for London,hybrid,double,1
+26,E40H/Enviro400H City,Volvo BZL DD | Wright StreetDeck Electroliner | ADL Enviro400H City | ADL Enviro400 MMC,40,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,40
+260,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,47,VOLVO,B5LH/Gemini 3,hybrid,double,47
+261,E40D/Enviro400,ADL Enviro400 | Wright StreetDeck Electroliner | ADL Enviro400EV | ADL Enviro400 MMC,28,WRIGHTBUS,E40D/Enviro400,electric,double,28
+262,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,11,BYD,DD/Enviro400EV City,electric,double,11
+263,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,44,WRIGHTBUS,B5LH/Gemini 2,hybrid,double,44
+264,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,23,BYD,DD/Enviro400EV City,electric,double,23
+265,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,28
+266,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,30,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,30
+267,New Bus for London,Wright StreetDeck Electroliner,1,WRIGHTBUS,New Bus for London,hybrid,double,1
+268,Kite Electroliner 10.3m,BYD B12,5,BYD,Kite Electroliner 10.3m,electric,single,5
+269,Streetdeck Electroliner 10.5m,ADL Enviro400,1,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,31
+27,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+270,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,17,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,17
+272,E20D/Enviro200 MMC,ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+273,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,21,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,21
+274,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti,32,VOLVO,B5LH/EvoSeti,hybrid,double,32
+275,E40D/Enviro400,ADL Enviro400 | ADL Enviro400H | ADL Enviro400H City,22,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,22
+276,BZL (sd)/MCV,Volvo BZL,27,VOLVO,BZL (sd)/MCV,electric,single,27
+277,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,37,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,37
+278,E40D/Enviro400H MMC,ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,18,ALEXANDER DENNIS,E40D/Enviro400H MMC,hybrid,double,18
+279,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,49,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,49
+28,B9TL/Gemini 2,Volvo B9TL Wright Eclipse Gemini 2,22,VOLVO,B9TL/Gemini 2,diesel,double,22
+280,B5LH/Gemini 2,,0,VOLVO,B5LH/Gemini 2,hybrid,double,21
+281,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright Eclipse Gemini 3,56,BYD,DD/Enviro400EV City,electric,double,56
+281N,,,0,,,,,0
+281R,,,0,,,,,0
+282,E40H/Enviro400H,Volvo B5LH MCV EvoSeti | ADL Enviro400H | Volvo B5LH Wright Eclipse Gemini 3,31,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,31
+284,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+285,E40D/Enviro400 MMC,Wright StreetDeck Electroliner | ADL Enviro400 MMC | ADL Enviro400H MMC,22,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,22
+286,Streetlite DF 10.8m,Wright StreetLite DF | ADL Enviro400 | ADL Enviro200 | Wright StreetLite DF HEV,20,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,24
+287,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,27,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,27
+288,E20D/Enviro200 MMC,ADL Enviro200 MMC,26,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,26
+289,Trident/Enviro400,ADL Enviro400,29,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,29
+29,B5LH/Eclipse Gemini,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,53,VOLVO,B5LH/Eclipse Gemini,hybrid,double,53
+290,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | ADL Enviro200 MMC | Wright GB Kite Electroliner,24,BYD,D8UR/Enviro200MMC EV,electric,single,24
+291,E40D/Enviro400,ADL Enviro400,15,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,15
+292,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | BYD BD11 | ADL Enviro400 | ADL Enviro400 MMC,15,ALEXANDER DENNIS,DD/Enviro400EV City,electric,double,15
+293,E20D/Enviro200 MMC,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+294,E40D/Enviro400 MMC,ADL Enviro400 | ADL Enviro400 MMC | Wright StreetDeck Electroliner,21,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,21
+295,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Volvo B5LH MCV EvoSeti | Optare MetroDecker EV,33,BYD,DD/Enviro400EV City,electric,double,33
+296,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,11,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,11
+297,B9TL/Gemini 2,Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,49,VOLVO,B9TL/Gemini 2,diesel,double,49
+298,E40D/Enviro400,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400 | ADL Enviro400 MMC,14,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,14
+299,E20D/Enviro200,ADL Enviro200,9,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,10
+3,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+30,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti,33,VOLVO,B5LH/EvoSeti,hybrid,double,33
+300,E200Dart/Enviro200,ADL Enviro200,12,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,12
+301,B5LH/Gemini 2,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2 | VDL DB300 Wright Gemini 2,38,VOLVO,B5LH/Gemini 2,hybrid,double,38
+302,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,40,VOLVO,B5LH/Gemini 3,hybrid,double,40
+303,E20D/Enviro200 MMC,ADL Enviro200 MMC,21,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,21
+304,E40D/Enviro400,ADL Enviro400 | ADL Enviro400H,19,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,31
+306,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,33,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,33
+307,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,35,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,35
+308,B5LH/EvoSeti,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | Wright StreetDeck HEV,27,VOLVO,B5LH/EvoSeti,hybrid,double,27
+309,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,13,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,13
+31,E40H/Enviro400H,BYD BD11 | Volvo B5LH MCV EvoSeti | Optare MetroDecker EV,51,BYD,E40H/Enviro400H,hybrid,double,51
+310,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,15,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,15
+312,E200Dart/Enviro200,,0,BYD,E200Dart/Enviro200,electric,single,25
+313,New Bus for London,VDL DB300 Wright Gemini 2,6,WRIGHTBUS,New Bus for London,hybrid,double,6
+314,BZL (sd)/MCV,Volvo BZL,19,VOLVO,BZL (sd)/MCV,electric,single,19
+315,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,12,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12
+316,BZL (sd)/MCV,Volvo BZL,37,VOLVO,BZL (sd)/MCV,electric,single,37
+317,Streetdeck Electroliner 10.5m,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Electroliner,16,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,16
+318,E20D/Enviro200,ADL Enviro200,10,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,10
+319,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,22,BYD,DD/Enviro400EV City,electric,double,22
+32,New Bus for London,Volvo B9TL Wright Eclipse Gemini 2 | ADL Enviro400H MMC,5,VOLVO,New Bus for London,hybrid,double,5
+320,BYD B11E02 10.9m,BYD D8UR-DD ADL Enviro400EV,1,BYD,BYD B11E02 10.9m,electric,single,17
+321,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,23
+322,E100EV/Enviro100EV 8.5m,,0,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,13
+323,E200Dart/Enviro200,ADL Enviro200,4,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,4
+324,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,19,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,19
+325,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,16
+326,E200Dart/Enviro200,ADL Enviro200 MMC,34,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,34
+327,E20D/Enviro200,ADL Enviro200,3,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,3
+328,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H MMC,29,VOLVO,B5LH/Gemini 2,hybrid,double,29
+329,Trident/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H City,22,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,22
+33,Kite Electroliner 10.9m,BYD D8UR ADL Enviro200EV | Wright GB Kite Electroliner | ADL Enviro200 MMC,34,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,34
+330,Trident/Enviro400,ADL Enviro400H MMC | ADL Enviro400,13,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,18
+331,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,16
+333,B5LH/EvoSeti,ADL Enviro400H MMC,1,VOLVO,B5LH/EvoSeti,hybrid,double,20
+335,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,19,VOLVO,B5LH/Gemini 2,hybrid,double,19
+336,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+337,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,36,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,36
+339,Metrocity EV 9.6m,Switch MetroCity EV | ADL Enviro200,12,SWITCH,Metrocity EV 9.6m,electric,single,12
+34,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | BYD BD11,42,BYD,B5LH/Gemini 3,hybrid,double,42
+340,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright SRM | ADL Enviro400H | ADL Enviro400H MMC,24,VOLVO,B5LH/Gemini 3,hybrid,double,24
+341,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,54,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,54
+343,E40H/Enviro400H MMC,ADL Enviro400H MMC,46,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,46
+344,E40H/Enviro400H MMC,Wright StreetDeck Electroliner | ADL Enviro400H | ADL Enviro400 MMC | ADL Enviro400H MMC,59,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,59
+345,E40H/Enviro400H,ADL Enviro400H | ADL Enviro400H MMC,65,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,65
+346,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,8,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,8
+349,New Bus for London,Wright StreetDeck Electroliner,2,WRIGHTBUS,New Bus for London,hybrid,double,2
+35,E40H/Enviro400H MMC,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,39,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,47
+350,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,11,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11
+352,Streetlite WF 8.8m,Wright StreetLite WF | ADL Enviro200,13,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,13
+353,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H MMC,11,BYD,DD/Enviro400EV City,electric,double,11
+354,E20D/Enviro200,ADL Enviro200,13,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13
+355,Kite Electroliner 10.9m,Wright StreetLite DF | ADL Enviro400H MMC,4,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,24
+356,E20D/Enviro200 MMC,ADL Enviro200 MMC,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+357,DD/Enviro400EV,BYD D8UR-DD ADL Enviro400EV,17,BYD,DD/Enviro400EV,electric,double,24
+358,ie-Tram 12m,ADL Enviro200,2,IRIZAR,ie-Tram 12m,electric,single,22
+359,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,3
+36,E40D/Enviro400,ADL Enviro400H MMC | ADL Enviro400 | ADL Enviro400H,62,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,62
+360,Kite Electroliner 10.9m,,0,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,26
+362,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,11,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,11
+363,E40H/Enviro400H MMC,Wright StreetDeck Electroliner | ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,35,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,35
+364,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,18
+365,Trident/Enviro400,Wright StreetDeck Electroliner | ADL Enviro400 | ADL Enviro400 MMC,36,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,37
+366,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,23
+367,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,24,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,24
+368,B5LH/Gemini 2,,0,BYD,B5LH/Gemini 2,hybrid,double,19
+37,E40H/Enviro400H MMC,ADL Enviro400H MMC,28,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,40
+370,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400,37,VOLVO,B5LH/Gemini 3,hybrid,double,37
+371,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | BYD D8UR-DD ADL Enviro400EV | Wright GB Kite Electroliner,38,BYD,D8UR/Enviro200MMC EV,electric,single,38
+372,E40D/Enviro400 MMC,Wright StreetDeck Electroliner | ADL Enviro400,26,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,26
+375,E200Dart/Enviro200,,0,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,1
+376,D8UR/Enviro200MMC EV,ADL Enviro200,1,BYD,D8UR/Enviro200MMC EV,electric,single,12
+377,Metrocity EV 9.6m,,0,SWITCH,Metrocity EV 9.6m,electric,single,4
+378,E20D/Enviro200 MMC,ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+379,Metrocity EV 8.7m,Switch MetroCity EV | ADL Enviro100EV,6,ALEXANDER DENNIS,Metrocity EV 8.7m,electric,single,6
+38,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+380,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+381,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,35,WRIGHTBUS,DD/Enviro400EV City,electric,double,35
+382,E20D/Enviro200,Volvo BZL,17,VOLVO,E20D/Enviro200,electric,single,17
+383,E20D/Enviro200,ADL Enviro200,5,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,5
+384,BZL (sd)/MCV,Volvo BZL | ADL Enviro200,18,VOLVO,BZL (sd)/MCV,electric,single,18
+385,E200Dart/Enviro200,ADL Enviro200,2,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,2
+386,E200Dart/Enviro200,ADL Enviro200,11,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,15
+388,E40H/Enviro400H City,Wright StreetDeck Electroliner | ADL Enviro400H City | ADL Enviro400 MMC,32,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,32
+389,E20D/Enviro200,ADL Enviro200,2,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,2
+39,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,29
+390,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+393,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+394,E20D/Enviro200 MMC,ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+395,E20D/Enviro200 MMC,ADL Enviro200 MMC,7,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7
+396,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,7
+397,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,13,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,13
+398,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV,14,BYD,D8UR/Enviro200MMC EV,electric,single,14
+399,E20D/Enviro200,ADL Enviro200,2,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,2
+4,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti | Wright StreetDeck Electroliner,32,WRIGHTBUS,B5LH/EvoSeti,hybrid,double,32
+40,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,32,BYD,DD/Enviro400EV City,electric,double,32
+401,Trident/Enviro400,,0,WRIGHTBUS,Trident/Enviro400,electric,double,20
+403,E40D/Enviro400,ADL Enviro400,9,VOLVO,E40D/Enviro400,diesel,double,18
+404,E20D/Enviro200 MMC,ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+405,BYD B11E02 10.9m,BYD BD11,27,BYD,BYD B11E02 10.9m,electric,single,27
+406,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H | ADL Enviro400,21,VOLVO,B5LH/Gemini 3,hybrid,double,21
+407,E40H/Enviro400H,ADL Enviro400H | ADL Enviro400H MMC,25,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,25
+41,DB300/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo BZL DD | Wright StreetDeck Electroliner,53,WRIGHTBUS,DB300/Gemini 2,electric,double,53
+410,E20D/Enviro200,,0,WRIGHTBUS,E20D/Enviro200,diesel,single,23
+411,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+412,BYD B11E02 10.9m,BYD BD11,19,BYD,BYD B11E02 10.9m,electric,single,19
+413,D8UR/Enviro200MMC EV,ADL Enviro200,1,BYD,D8UR/Enviro200MMC EV,electric,single,23
+415,New Bus for London,ADL Enviro400 MMC,3,ALEXANDER DENNIS,New Bus for London,hybrid,double,3
+417,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,25,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,25
+418,E40D/Enviro400,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H | ADL Enviro400,23,VOLVO,E40D/Enviro400,diesel,double,23
+419,E200Dart/Enviro200,ADL Enviro200 MMC,33,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,33
+42,E40H/Enviro400H MMC,ADL Enviro400H MMC,25,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,28
+422,Trident/Enviro400,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 | ADL Enviro400H | ADL Enviro400H MMC | ADL Enviro400 MMC,57,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,57
+423,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,22,VOLVO,B5LH/Gemini 3,hybrid,double,22
+424,Streetlite WF 8.8m,Wright StreetLite WF | ADL Enviro200,8,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,8
+425,E40H/Enviro400H MMC,ADL Enviro400 MMC,48,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,48
+427,E40H/Enviro400H MMC,ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,37,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,37
+428,Trident/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2 | VDL DB300 Wright Gemini 2,32,VOLVO,Trident/Enviro400,diesel,double,32
+43,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,40,BYD,DD/Enviro400EV City,electric,double,40
+430,B5LH/Gemini 3,ADL Enviro400H MMC,14,VOLVO,B5LH/Gemini 3,hybrid,double,41
+432,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,23,VOLVO,B5LH/Gemini 2,hybrid,double,23
+433,e.City Gold 10.7m,Caetano e.City Gold | Wright GB Kite Electroliner | ADL Enviro200 MMC,18,WRIGHTBUS,e.City Gold 10.7m,electric,single,18
+434,E20D/Enviro200,Wright StreetLite WF | ADL Enviro200,10,WRIGHTBUS,E20D/Enviro200,diesel,single,10
+436,B5LH/Eclipse Gemini,ADL Enviro400H MMC,42,ALEXANDER DENNIS,B5LH/Eclipse Gemini,hybrid,double,42
+439,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,12
+44,Streetdeck/Gemini 3,ADL Enviro400H MMC,12,VOLVO,Streetdeck/Gemini 3,diesel,double,29
+440,E20D/Enviro200 MMC,ADL Enviro200 MMC,21,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,21
+444,D9UR/Enviro200 MMC EV,,0,WRIGHTBUS,D9UR/Enviro200 MMC EV,electric,single,15
+45,E40H/Enviro400H,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner | ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400H MMC,40,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,40
+450,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,19
+452,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti | Optare MetroDecker EV,44,OPTARE,B5LH/EvoSeti,hybrid,double,44
+453,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+456,Streetlite WF 8.8m,Wright StreetLite WF | ADL Enviro200,7,WRIGHTBUS,Streetlite WF 8.8m,diesel,single,9
+46,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | Wright GB Kite Electroliner,26,BYD,D8UR/Enviro200MMC EV,electric,single,26
+460,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,33,VOLVO,B5LH/Gemini 3,hybrid,double,33
+462,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,12,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,12
+463,Streetlite WF 8.8m,Wright StreetLite WF | ADL Enviro200,17,WRIGHTBUS,Streetlite WF 8.8m,diesel,single,17
+464,E20D/Enviro200 MMC,ADL Enviro200 MMC,8,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8
+465,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,16,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+466,BYD B11E02 10.9m,BYD BD11,38,BYD,BYD B11E02 10.9m,electric,single,38
+467,Trident/Enviro400,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H | ADL Enviro400,6,VOLVO,Trident/Enviro400,diesel,double,6
+468,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,55,VOLVO,B5LH/Gemini 3,hybrid,double,55
+469,E20D/Enviro200 MMC,ADL Enviro200,6,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,16
+47,B5LH/Enviro400H MMC,Volvo B5LH ADL Enviro400 MMC | Wright StreetDeck Electroliner | ADL Enviro400 MMC,41,VOLVO,B5LH/Enviro400H MMC,hybrid,double,41
+470,E20D/Enviro200,ADL Enviro200,5,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,5
+473,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,27
+474,Trident/Enviro400,ADL Enviro400,4,VOLVO,Trident/Enviro400,diesel,double,22
+476,B9TL/Gemini 2,BYD D8UR-DD ADL Enviro400EV,9,VOLVO,B9TL/Gemini 2,diesel,double,41
+481,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,19,VOLVO,B5LH/Gemini 3,hybrid,double,19
+481D,,,0,,,,,0
+482,E40H/Enviro400H MMC,ADL Enviro400 MMC | ADL Enviro400H MMC,15,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,15
+483,B9TL/Gemini 2,Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,56,VOLVO,B9TL/Gemini 2,diesel,double,56
+484,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,14
+485,Kite Electroliner 10.3m,Wright GB Kite Electroliner,5,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,5
+486,B9TL/Gemini 2,ADL Enviro400,17,ALEXANDER DENNIS,B9TL/Gemini 2,diesel,double,34
+487,BZL (sd)/MCV,Volvo BZL,23,VOLVO,BZL (sd)/MCV,electric,single,23
+488,E20D/Enviro200,ADL Enviro200,13,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13
+49,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,31,BYD,DD/Enviro400EV City,electric,double,31
+490,E20D/Enviro200,Wright GB Kite Electroliner | ADL Enviro200 MMC | ADL Enviro200,36,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,36
+491,E20D/Enviro200,BYD B12 | ADL Enviro200,23,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,23
+492,E40D/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 2 | VDL DB300 Wright Gemini 2,27,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,27
+493,,Wright GB Kite Electroliner | ADL Enviro200,29,WRIGHTBUS,,electric,,29
+496,Trident/Enviro400,ADL Enviro400 | Wright StreetDeck Electroliner,21,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,21
+498,E40D/Enviro400 MMC,ADL Enviro400 | ADL Enviro400 MMC | Wright StreetDeck Electroliner,19,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,19
+499,E20D/Enviro200 MMC,ADL Enviro400,19,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,19
+5,New Bus for London,ADL Enviro400H | ADL Enviro400H MMC,4,ALEXANDER DENNIS,New Bus for London,hybrid,double,5
+50,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,27,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,27
+51,Trident/Enviro400,ADL Enviro400,15,VOLVO,Trident/Enviro400,diesel,double,32
+52,B5LH/Eclipse Gemini,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,47,VOLVO,B5LH/Eclipse Gemini,hybrid,double,47
+53,E40H/Enviro400H MMC,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400H | ADL Enviro400 MMC | ADL Enviro400H MMC,61,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,61
+533,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+54,E40D/Enviro400 MMC,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 | ADL Enviro400 MMC,47,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,47
+55,New Bus for London,ADL Enviro400H | ADL Enviro400H City,4,ALEXANDER DENNIS,New Bus for London,hybrid,double,4
+56,E40H/Enviro400H,ADL Enviro400H City | ADL Enviro400H,37,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,37
+57,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,37,BYD,DD/Enviro400EV City,electric,double,38
+58,BZL (dd)/MCV,Volvo BZL DD,24,VOLVO,BZL (dd)/MCV,electric,double,24
+59,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+6,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,51,VOLVO,B5LH/Gemini 3,hybrid,double,51
+60,BYD B11E02 10.9m,BYD BD11 | VDL DB300 Wright Gemini 2,52,BYD,BYD B11E02 10.9m,electric,single,52
+601,E40H/Enviro400H MMC,ADL Enviro400,1,VOLVO,E40H/Enviro400H MMC,hybrid,double,6
+602,E40D/Enviro400,ADL Enviro400 | ADL Enviro400H,2,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,2
+603,,Wright StreetDeck Electroliner,2,WRIGHTBUS,,diesel,single,2
+606,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,2,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2
+608,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+61,Trident/Enviro400,ADL Enviro400 | Wright StreetDeck Electroliner | ADL Enviro400EV | ADL Enviro400 MMC,24,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,24
+612,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,1,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1
+613,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+616,?,ADL Enviro400H City,1,ALEXANDER DENNIS,?,diesel,single,1
+617,?,,0,,?,diesel,single,0
+618,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+62,E40D/Enviro400 MMC,ADL Enviro400 | ADL Enviro400 MMC | ADL Enviro400H MMC,30,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,30
+621,E40D/Enviro400H MMC,,0,ALEXANDER DENNIS,E40D/Enviro400H MMC,hybrid,double,0
+624,B9TL/Gemini 2,,0,VOLVO,B9TL/Gemini 2,diesel,double,0
+625,B9TL/Gemini 2,,0,VOLVO,B9TL/Gemini 2,diesel,double,2
+626,B5LH/Gemini 3,Wright StreetDeck Electroliner,4,WRIGHTBUS,B5LH/Gemini 3,hybrid,double,4
+627,?,,0,,?,diesel,single,0
+628,?,,0,,?,diesel,single,0
+629,?,,0,,?,diesel,single,0
+63,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,41,BYD,DD/Enviro400EV City,electric,double,41
+631,Solo SR 7.9m,Optare Solo SR,1,OPTARE,Solo SR 7.9m,diesel,single,1
+632,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+633,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+634,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+635,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,1,VOLVO,B5LH/Gemini 3,hybrid,double,1
+638,Trident/Enviro400,Wright StreetDeck Electroliner,2,WRIGHTBUS,Trident/Enviro400,diesel,double,2
+639,E40H/Enviro400H,ADL Enviro400H,1,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,1
+64,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,30,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,30
+640,B5LH/Gemini 3,Volvo B9TL Wright Eclipse Gemini 2,1,VOLVO,B5LH/Gemini 3,hybrid,double,1
+642,DD/Enviro400EV City,,0,BYD,DD/Enviro400EV City,electric,double,0
+643,?,,0,,?,diesel,single,0
+645,DB300/Gemini 2,,0,VOLVO,DB300/Gemini 2,diesel,double,0
+646,E200Dart/Enviro200,ADL Enviro200 MMC,2,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,2
+649,?,,0,,?,diesel,single,0
+65,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Volvo B5LH Wright Eclipse Gemini 3,52,BYD,DD/Enviro400EV City,electric,double,52
+650,?,,0,,?,diesel,single,0
+651,?,,0,,?,diesel,single,0
+652,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+653,?,ADL Enviro400,2,ALEXANDER DENNIS,?,diesel,single,2
+655,E40D/Enviro400,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+656,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+657,?,,0,,?,diesel,single,0
+658,B9TL/Gemini 2,,0,VOLVO,B9TL/Gemini 2,diesel,double,1
+66,Trident/Enviro400,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400,29,VOLVO,Trident/Enviro400,diesel,double,29
+660,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+661,Trident/Enviro400,,0,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,0
+662,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+663,?,,0,,?,diesel,single,0
+664,E40D/Enviro400,ADL Enviro400H MMC,1,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,1
+665,E20D/Enviro200 MMC,,0,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,0
+667,E40D/Enviro400 MMC,,0,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,0
+669,E40H/Enviro400H MMC,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+67,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+670,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+671,E40H/Enviro400H,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+672,?,,0,,?,diesel,single,0
+674,DD/Enviro400EV City,,0,BYD,DD/Enviro400EV City,electric,double,0
+675,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,0
+677,B5LH/Gemini 2,BYD D8UR-DD ADL Enviro400EV,1,BYD,B5LH/Gemini 2,hybrid,double,1
+678,B5LH/EvoSeti,,0,VOLVO,B5LH/EvoSeti,hybrid,double,0
+679,E40H/Enviro400H,ADL Enviro400H,1,VOLVO,E40H/Enviro400H,hybrid,double,2
+68,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+681,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+683,?,ADL Enviro400,2,ALEXANDER DENNIS,?,diesel,single,2
+684,E40D/Enviro400,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+685,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,0
+686,E40H/Enviro400H,,0,VOLVO,E40H/Enviro400H,hybrid,double,2
+687,?,,0,ALEXANDER DENNIS,?,diesel,single,0
+688,?,ADL Enviro400 | ADL Enviro400 MMC,2,ALEXANDER DENNIS,?,diesel,single,2
+689,Streetdeck Electroliner 10.5m,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0
+69,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,20,BYD,DD/Enviro400EV City,electric,double,23
+690,B5LH/Gemini3,,0,VOLVO,B5LH/Gemini3,hybrid,double,0
+695,B5LH/SRM,,0,VOLVO,B5LH/SRM,hybrid,double,0
+696,E40D/Enviro400,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+697,?,,0,,?,diesel,single,0
+698,B5LH/SRM,,0,VOLVO,B5LH/SRM,hybrid,double,0
+699,K8SR 10.2m,BYD D8UR-DD ADL Enviro400EV,1,BYD,K8SR 10.2m,diesel,single,1
+7,Streetdeck FCEV,Volvo B5LH Wright Eclipse Gemini 3 | Wright StreetDeck Hydroliner,28,WRIGHTBUS,Streetdeck FCEV,hydrogen,double,28
+70,D8UR/Enviro200MMC EV,ADL Enviro200 MMC | BYD D8UR ADL Enviro200EV,37,BYD,D8UR/Enviro200MMC EV,electric,single,37
+71,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,21,VOLVO,B5LH/Gemini 3,hybrid,double,21
+72,E20D/Enviro200 MMC,ADL Enviro200 MMC,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+73,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+74,B5LH/Gemini 3,ADL Enviro400H MMC,15,VOLVO,B5LH/Gemini 3,hybrid,double,50
+75,E40D/Enviro400 MMC,Volvo B5LH ADL Enviro400 MMC | ADL Enviro400 MMC,53,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,53
+76,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+77,E40H/Enviro400H MMC,ADL Enviro400H MMC,34,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,34
+78,E40H/Enviro400H MMC,ADL Enviro400H MMC,30,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,31
+79,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright SRM | ADL Enviro400H | ADL Enviro400H MMC,33,VOLVO,B5LH/Gemini 3,hybrid,double,33
+8,New Bus for London,ADL Enviro400H | ADL Enviro400 MMC,13,ALEXANDER DENNIS,New Bus for London,hybrid,double,13
+80,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,28,BYD,DD/Enviro400EV City,electric,double,37
+81,B9TL/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,45,VOLVO,B9TL/Gemini 2,diesel,double,45
+83,B9TL/Gemini 2,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,43,VOLVO,B9TL/Gemini 2,diesel,double,43
+85,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,28,VOLVO,B5LH/Gemini 3,hybrid,double,28
+86,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,47,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,48
+87,New Bus for London,ADL Enviro400H MMC,3,VOLVO,New Bus for London,hybrid,double,10
+88,E40H/Enviro400H,ADL Enviro400H | ADL Enviro400H MMC,35,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,52
+89,E40D/Enviro400,ADL Enviro400,16,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,32
+9,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+90,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,33,VOLVO,B5LH/EvoSeti,hybrid,double,33
+91,B5LH/Enviro400H MMC,,0,VOLVO,B5LH/Enviro400H MMC,hybrid,double,44
+92,B5LH/Gemini 3,Volvo B5LH MCV EvoSeti | ADL Enviro400H | Volvo B5LH Wright Eclipse Gemini 3,36,VOLVO,B5LH/Gemini 3,hybrid,double,36
+93,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,58,BYD,DD/Enviro400EV City,electric,double,58
+94,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,35,BYD,DD/Enviro400EV City,electric,double,35
+95,B5LH/Gemini 3,Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,23,VOLVO,B5LH/Gemini 3,hybrid,double,23
+96,B5LH/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright Eclipse Gemini 2,48,VOLVO,B5LH/Gemini 2,hybrid,double,48
+969,E20D/Enviro200,,0,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,0
+97,Streetdeck/Gemini 3,Volvo B5LH ADL Enviro400 MMC | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | Wright StreetDeck HEV,31,WRIGHTBUS,Streetdeck/Gemini 3,diesel,double,31
+98,Streetdeck Electroliner 10.5m,BYD BD11 | Wright StreetDeck Electroliner,32,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,32
+99,Trident/Enviro400,,0,WRIGHTBUS,Trident/Enviro400,electric,double,35
+A10,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B9TL Wright Eclipse Gemini 2,17,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,17
+B11,E200Dart/Enviro200,ADL Enviro200,13,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,17
+B12,E20D/Enviro200 MMC,ADL Enviro200,15,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+B13,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,5
+B14,E100EV/Enviro100EV 8.5m,ADL Enviro200 MMC | ADL Enviro100EV,12,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,12
+B15,E200Dart/Enviro200,ADL Enviro200,9,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,13
+B16,Kite Electroliner 10.9m,,0,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,15
+BL1,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,12,BYD,DD/Enviro400EV City,electric,double,12
+C1,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV,31,BYD,D8UR/Enviro200MMC EV,electric,single,31
+C10,e.City Gold 10.7m,Wright GB Kite Electroliner,34,WRIGHTBUS,e.City Gold 10.7m,electric,single,34
+C11,Kite Electroliner 10.3m,Wright GB Kite Electroliner,18,WRIGHTBUS,Kite Electroliner 10.3m,electric,single,18
+C3,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,33,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,33
+D3,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,10
+D6,E20D/Enviro200 MMC,ADL Enviro400 | ADL Enviro200 | ADL Enviro200 MMC,19,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,19
+D7,BZL (dd)/MCV,Volvo BZL DD | Wright StreetDeck Electroliner,25,WRIGHTBUS,BZL (dd)/MCV,electric,double,25
+D8,BZL (dd)/MCV,Volvo BZL DD,16,VOLVO,BZL (dd)/MCV,electric,double,16
+E1,B9TL/Gemini 2,Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,14,VOLVO,B9TL/Gemini 2,diesel,double,14
+E10,E20D/Enviro200 MMC,ADL Enviro200 | ADL Enviro200 MMC,12,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,12
+E11,E20D/Enviro200 MMC,ADL Enviro200 MMC,8,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,8
+E2,B9TL/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2,48,VOLVO,B9TL/Gemini 2,diesel,double,48
+E3,E40H/Enviro400H,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H,47,VOLVO,E40H/Enviro400H,hybrid,double,47
+E5,E20D/Enviro200 MMC,Switch MetroCity EV | ADL Enviro200 | ADL Enviro200 MMC,18,SWITCH,E20D/Enviro200 MMC,electric,single,18
+E6,Kite Electroliner 10.9m,Wright GB Kite Electroliner | ADL Enviro200 MMC,13,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,13
+E7,Kite Electroliner 10.9m,Wright GB Kite Electroliner | ADL Enviro200 MMC | ADL Enviro200,14,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,14
+E8,B9TL/Gemini 2,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti | Volvo B9TL Wright Eclipse Gemini 2,52,VOLVO,B9TL/Gemini 2,diesel,double,53
+E9,Trident/Enviro400,Volvo B5LH MCV EvoSeti | ADL Enviro400 | ADL Enviro400H | Volvo B5LH Wright Eclipse Gemini 3,18,VOLVO,Trident/Enviro400,diesel,double,18
+EL1,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+EL2,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+EL3,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+G1,E100EV/Enviro100EV 8.5m,ADL Enviro100EV,13,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,13
+H10,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV,23,BYD,D8UR/Enviro200MMC EV,electric,single,23
+H11,E20D/Enviro200 MMC,ADL Enviro200 MMC,19,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,19
+H12,E40H/Enviro400H MMC,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH Wright SRM | ADL Enviro400H | ADL Enviro400H MMC,32,VOLVO,E40H/Enviro400H MMC,hybrid,double,32
+H13,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,15,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,15
+H14,E40H/Enviro400H MMC,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400H | ADL Enviro400H MMC,10,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10
+H17,E20D/Enviro200 MMC,ADL Enviro200 MMC,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+H18,E20D/Enviro200 MMC,ADL Enviro200 MMC,7,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,7
+H19,E20D/Enviro200 MMC,ADL Enviro200 MMC,9,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,9
+H2,Solo SR 7.9m,Optare Solo SR,6,OPTARE,Solo SR 7.9m,diesel,single,6
+H20,MetroCity EV 8.7m,ADL Enviro200 MMC | ADL Enviro200,11,ALEXANDER DENNIS,MetroCity EV 8.7m,electric,single,11
+H22,E20D/Enviro200 MMC,ADL Enviro200 MMC,29,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,29
+H25,E20D/Enviro200,ADL Enviro200 MMC | ADL Enviro200,21,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,21
+H26,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+H28,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,17,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,17
+H3,Solo SR 7.9m,Optare Solo SR,2,OPTARE,Solo SR 7.9m,diesel,single,2
+H32,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+H37,E20D/Enviro200 MMC,ADL Enviro200 MMC,14,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,14
+H9,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV | ADL Enviro200 MMC,24,BYD,D8UR/Enviro200MMC EV,electric,single,24
+H91,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3 | Volvo B5LH MCV EvoSeti,18,VOLVO,New Bus for London,hybrid,double,18
+H98,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H | ADL Enviro400,8,VOLVO,New Bus for London,hybrid,double,8
+K1,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,21,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,21
+K2,E20D/Enviro200 MMC,ADL Enviro200 MMC,20,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,20
+K3,E20D/Enviro200 MMC,ADL Enviro200 MMC,22,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,22
+K4,E20D/Enviro200 MMC,ADL Enviro200 MMC,4,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,4
+K5,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,10
+N1,E40H/Enviro400H MMC,ADL Enviro400H MMC,1,VOLVO,E40H/Enviro400H MMC,hybrid,double,3
+N102,,,0,VOLVO,B5LH/Gemini 2,hybrid,double,0
+N105,,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N108,,,0,BYD,D9UR/Enviro200 MMC EV,electric,single,0
+N109,E40H/Enviro400H MMC,ADL Enviro400H MMC,2,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,2
+N11,E40H/Enviro400H MMC,ADL Enviro400H MMC,1,VOLVO,E40H/Enviro400H MMC,hybrid,double,2
+N111,,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0
+N113,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,2,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,2
+N118,B5LH/Gemini 3,BYD BD11,4,BYD,B5LH/Gemini 3,hybrid,double,4
+N119,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N12,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N123,,,0,,?,diesel,,0
+N128,,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+N13,,,0,VOLVO,B5LH/EvoSeti,hybrid,double,0
+N133,E40H/Enviro400H City,,0,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,0
+N134,,,0,OPTARE,MetroDecker EV 10.5m,electric,double,0
+N136,B5LH/Eclipse Gemini,ADL Enviro400H MMC,3,ALEXANDER DENNIS,B5LH/Eclipse Gemini,hybrid,double,3
+N137,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N139,,,0,VOLVO,B5LH/Eclipse Gemini,hybrid,double,0
+N14,,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+N140,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,5,VOLVO,B5LH/Gemini 3,hybrid,double,5
+N148,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N149,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N15,New Bus for London,ADL Enviro400H MMC,1,VOLVO,New Bus for London,hybrid,double,2
+N155,B5LH/Gemini 3,ADL Enviro400H MMC,1,VOLVO,B5LH/Gemini 3,hybrid,double,6
+N158,,,0,VOLVO,DB300/Gemini 2,diesel,double,0
+N159,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N171,E40H/Enviro400H MMC,ADL Enviro400H MMC,3,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,3
+N176,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N18,B5LH/Gemini 3,BYD BD11,5,BYD,B5LH/Gemini 3,hybrid,double,5
+N188,,,0,BYD,BYD B11E02 10.9m,electric,single,0
+N189,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N19,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N199,E40D/Enviro400,Wright StreetDeck Electroliner,3,WRIGHTBUS,E40D/Enviro400,diesel,double,3
+N2,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,3,VOLVO,B5LH/Gemini 3,hybrid,double,3
+N20,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N205,E40H/Enviro400H,ADL Enviro400 MMC | ADL Enviro400H,2,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,2
+N207,E40H/Enviro400H MMC,ADL Enviro400H MMC | ADL Enviro400 MMC,6,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,6
+N21,E40H/Enviro400H MMC,ADL Enviro400H MMC,2,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,2
+N213,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N214,,,0,BYD,D8UR/Enviro200MMC EV,electric,single,0
+N22,B5LH/EvoSeti,ADL Enviro400H MMC,2,VOLVO,B5LH/EvoSeti,hybrid,double,4
+N220,,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N222,,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N23,,,0,OPTARE,MetroDecker EV 10.5m,electric,double,0
+N238,,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+N24,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N242,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,4,VOLVO,Streetdeck Electroliner 10.5m,electric,double,4
+N243,,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0
+N25,E40H/Enviro400H MMC,ADL Enviro400 MMC,10,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,10
+N250,Trident/Enviro400,ADL Enviro400,1,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,1
+N253,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N26,E40H/Enviro400H City,Volvo BZL DD | ADL Enviro400H City,5,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,5
+N263,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,3,VOLVO,B5LH/Gemini 3,hybrid,double,3
+N264,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N266,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,3,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,3
+N27,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N277,Streetdeck Electroliner 10.5m,Volvo BZL DD | Wright StreetDeck Electroliner,4,VOLVO,Streetdeck Electroliner 10.5m,electric,double,4
+N279,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,5,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,5
+N28,B5LH/EvoSeti,Volvo B9TL Wright Eclipse Gemini 2,2,VOLVO,B5LH/EvoSeti,hybrid,double,2
+N281,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N285,,,0,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,0
+N29,B5LH/Eclipse Gemini,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,5,VOLVO,B5LH/Eclipse Gemini,hybrid,double,5
+N295,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N297,,,0,VOLVO,B9TL/Gemini 2,diesel,double,0
+N3,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N31,E40H/Enviro400H,BYD BD11 | Volvo B5LH MCV EvoSeti,2,BYD,E40H/Enviro400H,hybrid,double,2
+N32,New Bus for London,Volvo B5LH Wright Eclipse Gemini 3,3,VOLVO,New Bus for London,hybrid,double,3
+N321,,,0,BYD,BYD B11E02 10.9m,electric,single,0
+N33,E200Dart/Enviro200,BYD D8UR ADL Enviro200EV,1,BYD,E200Dart/Enviro200,diesel,single,1
+N341,,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0
+N343,E40H/Enviro400H MMC,ADL Enviro400H MMC,3,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,3
+N344,,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+N345,,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+N35,,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+N36,,,0,ALEXANDER DENNIS,E40D/Enviro400,diesel,double,0
+N365,,,0,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,0
+N37,,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+N38,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N381,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | Wright StreetDeck Electroliner,4,WRIGHTBUS,DD/Enviro400EV City,electric,double,4
+N390,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N41,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,2,VOLVO,B5LH/Gemini 3,hybrid,double,2
+N43,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N44,E40H/Enviro400H MMC,ADL Enviro400H MMC,4,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,4
+N453,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N47,,,0,VOLVO,B5LH/Enviro400H MMC,hybrid,double,0
+N472,B9TL/Gemini 2,,0,VOLVO,B9TL/Gemini 2,diesel,double,0
+N474,,,0,ALEXANDER DENNIS,Trident/Enviro400,diesel,double,0
+N486,,,0,VOLVO,B9TL/Gemini 2,diesel,double,0
+N5,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro400H MMC,3,ALEXANDER DENNIS,B5LH/Gemini 3,hybrid,double,3
+N52,,,0,VOLVO,B5LH/Eclipse Gemini,hybrid,double,0
+N53,E40H/Enviro400H MMC,ADL Enviro400H MMC,3,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,3
+N55,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N550,E40H/Enviro400H City,Volvo BZL DD | ADL Enviro400H City,5,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,5
+N551,E40D/Enviro400 MMC,ADL Enviro400H MMC,5,ALEXANDER DENNIS,E40D/Enviro400 MMC,diesel,double,5
+N57,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N6,,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N63,E40H/Enviro400H,Wright StreetDeck Electroliner | ADL Enviro400H MMC,3,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,3
+N64,,,0,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,0
+N65,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,1,VOLVO,B5LH/Gemini 3,hybrid,double,1
+N68,E40H/Enviro400H MMC,,0,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,0
+N69,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N7,Streetdeck FCEV,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,5,VOLVO,Streetdeck FCEV,hydrogen,double,5
+N72,E200Dart/Enviro200,ADL Enviro200 MMC,1,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,1
+N73,New Bus for London,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N74,B5LH/Gemini 3,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N76,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+N8,New Bus for London,ADL Enviro400 MMC,1,ALEXANDER DENNIS,New Bus for London,hybrid,double,1
+N83,B9TL/Gemini 2,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,3,VOLVO,B9TL/Gemini 2,diesel,double,3
+N85,,,0,VOLVO,B5LH/Gemini 3,hybrid,double,0
+N86,Streetdeck Electroliner 10.5m,Wright StreetDeck Electroliner,1,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,1
+N87,New Bus for London,ADL Enviro400H MMC,4,ALEXANDER DENNIS,New Bus for London,hybrid,double,5
+N88,,,0,ALEXANDER DENNIS,E40H/Enviro400H,hybrid,double,0
+N89,E40H/Enviro400H MMC,ADL Enviro400H MMC,7,ALEXANDER DENNIS,E40H/Enviro400H MMC,hybrid,double,7
+N9,New Bus for London,Volvo B5LH MCV EvoSeti | Volvo B5LH Wright Eclipse Gemini 3,6,VOLVO,New Bus for London,hybrid,double,6
+N91,B5LH/Enviro400H MMC,,0,VOLVO,B5LH/Enviro400H MMC,hybrid,double,4
+N93,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N94,,,0,BYD,DD/Enviro400EV City,electric,double,0
+N97,B5LH/Gemini 3,ADL Enviro400H MMC,1,VOLVO,B5LH/Gemini 3,hybrid,double,2
+N98,B5LH/Gemini 3,Volvo B5LH Wright Eclipse Gemini 3,7,VOLVO,B5LH/Gemini 3,hybrid,double,7
+NEL1,,,0,WRIGHTBUS,New Bus for London,hybrid,double,0
+P12,E20D/Enviro200,ADL Enviro200,9,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,13
+P13,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,15,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,15
+P4,Streetlite DF 10.8m,Wright StreetLite DF,16,WRIGHTBUS,Streetlite DF 10.8m,diesel,single,16
+P5,e.City Gold 10.7m,Caetano e.City Gold | Wright GB Kite Electroliner,26,WRIGHTBUS,e.City Gold 10.7m,electric,single,26
+R1,E20D/Enviro200,ADL Enviro200,9,ALEXANDER DENNIS,E20D/Enviro200,electric,single,19
+R10,E20D/Enviro200,ADL Enviro200,3,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,3
+R11,E20D/Enviro200,ADL Enviro200,11,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,21
+R2,E20D/Enviro200,ADL Enviro200,6,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,9
+R3,E100EV/Enviro100EV 8.5m,ADL Enviro200,1,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,16
+R4,E20D/Enviro200,ADL Enviro200,9,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,12
+R5,E20D/Enviro200,ADL Enviro200,3,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,3
+R68,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,29,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,29
+R7,Streetlite WF 8.8m,Wright StreetLite WF | ADL Enviro200,9,ALEXANDER DENNIS,Streetlite WF 8.8m,diesel,single,9
+R70,Kite Electroliner 10.9m,Wright GB Kite Electroliner | ADL Enviro200 MMC | ADL Enviro200,16,WRIGHTBUS,Kite Electroliner 10.9m,electric,single,16
+R8,E100EV/Enviro100EV 8.5m,,0,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,2
+R9,E200Dart/Enviro200,ADL Enviro400H MMC | ADL Enviro200,8,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,11
+S1,E200Dart/Enviro200,Wright GB Kite Electroliner,13,WRIGHTBUS,E200Dart/Enviro200,electric,single,13
+S2,D8UR/Enviro200 MMC EV,,0,BYD,D8UR/Enviro200 MMC EV,electric,single,9
+S3,E20D/Enviro200 MMC,ADL Enviro200 MMC,10,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+S4,E20D/Enviro200,Wright StreetLite WF | ADL Enviro200,13,WRIGHTBUS,E20D/Enviro200,diesel,single,17
+SCS,D8UR/Enviro200MMC EV,BYD D8UR ADL Enviro200EV,5,BYD,D8UR/Enviro200MMC EV,electric,single,5
+SL1,E40H/Enviro400H City,BYD BD11 | ADL Enviro400H City,15,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,15
+SL10,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,15,BYD,DD/Enviro400EV City,electric,double,15
+SL11,New Bus for London,,0,VOLVO,New Bus for London,hybrid,double,2
+SL2,E40H/Enviro400H City,ADL Enviro400H City,16,ALEXANDER DENNIS,E40H/Enviro400H City,hybrid,double,16
+SL3,E400EV 10.5m,ADL Enviro400EV,18,ALEXANDER DENNIS,E400EV 10.5m,electric,double,18
+SL4,BYD B11E02 10.9m,,0,BYD,BYD B11E02 10.9m,electric,single,21
+SL5,BYD B11E02 10.9m,BYD BD11,12,BYD,BYD B11E02 10.9m,electric,single,12
+SL6,Enviro400EV 10.5m,ADL Enviro400EV,4,ALEXANDER DENNIS,Enviro400EV 10.5m,electric,double,4
+SL7,B9TL/Gemini 2,,0,VOLVO,B9TL/Gemini 2,diesel,double,25
+SL8,B5LH/EvoSeti,Volvo B5LH MCV EvoSeti,28,VOLVO,B5LH/EvoSeti,hybrid,double,28
+SL9,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV,16,BYD,DD/Enviro400EV City,electric,double,16
+T1,,,0,,,,,0
+T2,,,0,,,,,0
+T3,,,0,,,,,0
+U1,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | ADL Enviro200 MMC,24,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,24
+U10,E20D/Enviro200,ADL Enviro200,4,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,4
+U2,E200Dart/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,19,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,19
+U3,Trident/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B9TL Wright Eclipse Gemini 2,37,VOLVO,Trident/Enviro400,diesel,double,37
+U4,Trident/Enviro400,ADL Enviro400 | Volvo B5LH Wright Eclipse Gemini 3 | Volvo B9TL Wright Eclipse Gemini 2,36,VOLVO,Trident/Enviro400,diesel,double,36
+U5,DD/Enviro400EV City,BYD D8UR-DD ADL Enviro400EV | ADL Enviro400 MMC,13,BYD,DD/Enviro400EV City,electric,double,13
+U7,E200Dart/Enviro200,ADL Enviro200 MMC | ADL Enviro200,6,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,6
+U9,E20D/Enviro200 MMC,ADL Enviro200 MMC,3,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,3
+UL13,,,0,,,,,0
+UL19,,,0,,,,,0
+UL26,,,0,,,,,0
+UL30,,,0,,,,,0
+UL40,,,0,,,,,0
+UL61,,,0,,,,,0
+W11,MetroCity EV 9.5m,Switch MetroCity EV | ADL Enviro200,11,SWITCH,MetroCity EV 9.5m,electric,single,11
+W12,E100EV/Enviro100EV 8.5m,ADL Enviro200 MMC | ADL Enviro100EV | ADL Enviro200,19,ALEXANDER DENNIS,E100EV/Enviro100EV 8.5m,electric,single,19
+W13,E20D/Enviro200,Volvo BZL,23,VOLVO,E20D/Enviro200,electric,single,23
+W14,E200Dart/Enviro200,Volvo BZL,7,VOLVO,E200Dart/Enviro200,electric,single,7
+W15,D8UR/Enviro200MMC EV,,0,BYD,D8UR/Enviro200MMC EV,electric,single,34
+W16,E20D/Enviro200 MMC,ADL Enviro200 MMC | ADL Enviro200,17,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,17
+W19,E20D/Enviro200,ADL Enviro200 | ADL Enviro200 MMC,25,ALEXANDER DENNIS,E20D/Enviro200,diesel,single,25
+W3,E40D/Enviro400,Volvo B5LH Wright Eclipse Gemini 2 | Volvo B5LH Wright Eclipse Gemini 3,40,VOLVO,E40D/Enviro400,diesel,double,40
+W4,E20D/Enviro200 MMC,ADL Enviro200 MMC,2,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,18
+W5,MetroCity EV 8.7m,Switch MetroCity EV,10,SWITCH,MetroCity EV 8.7m,electric,single,10
+W6,E20D/Enviro200 MMC,,0,ALEXANDER DENNIS,E20D/Enviro200 MMC,diesel,single,10
+W7,Streetdeck Electroliner 10.5m,BYD BD11 | Wright StreetDeck Electroliner,27,WRIGHTBUS,Streetdeck Electroliner 10.5m,electric,double,27
+W8,Trident/Enviro400,BYD BD11,17,BYD,Trident/Enviro400,electric,double,17
+W9,E200Dart/Enviro200,ADL Enviro200,16,ALEXANDER DENNIS,E200Dart/Enviro200,diesel,single,16

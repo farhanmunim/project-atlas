@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Headway — London Bus Network Analysis</title>
+<style>
+/* ============================================================
+   HEADWAY — London bus network analysis instrument
+   Thesis: the network is best understood as buses moving
+   through space and time. The hero is the stringline
+   (time–distance) diagram — each bus a diagonal line.
+   Palette: "transit night" — inked data on deep navy.
+   Quantitative values are monospace (instrument readout).
+   Red is reserved strictly for alerts, never decoration.
+   ============================================================ */
+:root{
+  --ink:#0a0e16; --ink-2:#0c111b;
+  --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
+  --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
+  --paper:#e7edf6; --paper-2:#9fb0c8;
+  --paper-3:#647691; --paper-4:#3f4d63;
+  --amber:#f5a524; --amber-dim:#b87d1c;
+  --cyan:#37c5c5; --cyan-dim:#2a9090;
+  --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
+  --mono:"SF Mono","JetBrains Mono",ui-monospace,"Consolas",monospace;
+  --sans:"Inter",system-ui,-apple-system,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans); background:var(--ink); color:var(--paper);
+  font-size:13px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  letter-spacing:-.006em; overflow:hidden;
+}
+.mono{font-family:var(--mono);font-feature-settings:"tnum";letter-spacing:-.02em}
+::selection{background:color-mix(in srgb,var(--amber) 30%,transparent)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px;border:2px solid var(--ink)}
+::-webkit-scrollbar-thumb:hover{background:var(--line-3)}
+svg:not([width]){width:1em;height:1em}
+/* large data SVGs must override the icon-safety default */
+.sl-svg,.map-svg,.spark{width:100%!important}
+.sl-svg{height:auto!important}
+.map-svg{height:100%!important}
+.spark{height:34px!important}
+button{font-family:inherit}
+
+/* ============================ FRAME ============================ */
+.app{display:grid;grid-template-columns:236px 1fr 320px;grid-template-rows:52px 1fr;height:100vh}
+
+/* ---- topbar ---- */
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 16px;
+  border-bottom:1px solid var(--line);background:var(--ink-2);z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.glyph{width:26px;height:26px;position:relative;flex:none}
+.glyph svg{width:26px;height:26px}
+.logo b{font-size:14px;font-weight:680;letter-spacing:-.03em}
+.logo span{font-size:9px;color:var(--paper-3);font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;display:block;margin-top:-1px}
+.bar-sep{width:1px;height:22px;background:var(--line)}
+.bar-time{font-family:var(--mono);font-size:12px;color:var(--paper-2);display:flex;align-items:center;gap:9px}
+.livedot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green);animation:lp 2.2s infinite}
+@keyframes lp{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.bar-spread{flex:1}
+.bar-stat{display:flex;flex-direction:column;align-items:flex-end;padding:0 12px;border-left:1px solid var(--line)}
+.bar-stat .v{font-family:var(--mono);font-size:14px;font-weight:600;line-height:1.1}
+.bar-stat .l{font-size:9px;color:var(--paper-3);text-transform:uppercase;letter-spacing:.08em}
+.bar-stat .v.amber{color:var(--amber)} .bar-stat .v.cyan{color:var(--cyan)} .bar-stat .v.alert{color:var(--alert)}
+
+/* ---- left rail ---- */
+.rail-l{grid-row:2;border-right:1px solid var(--line);background:var(--ink-2);
+  display:flex;flex-direction:column;overflow:hidden}
+.rail-h{padding:13px 15px 9px;font-size:10px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--paper-4);display:flex;align-items:center;justify-content:space-between}
+.search{margin:4px 12px 8px;display:flex;align-items:center;gap:7px;padding:7px 10px;
+  background:var(--panel);border:1px solid var(--line);border-radius:7px;color:var(--paper-3);font-size:12px}
+.search svg{width:14px;height:14px}
+.routes{flex:1;overflow-y:auto;padding:0 8px 12px}
+.route{display:flex;align-items:center;gap:10px;padding:8px 9px;border-radius:7px;cursor:pointer;
+  border:1px solid transparent;transition:background .13s,border-color .13s;margin-bottom:1px}
+.route:hover{background:var(--panel)}
+.route.sel{background:var(--panel-2);border-color:var(--line-2)}
+.route.sel .rnum{background:var(--amber);color:var(--ink)}
+.rnum{min-width:34px;height:24px;padding:0 7px;border-radius:5px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;font-weight:650;background:var(--panel-3);color:var(--paper);flex:none;transition:all .13s}
+.rinfo{flex:1;min-width:0}
+.rinfo b{font-size:12px;font-weight:550;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rinfo span{font-size:10.5px;color:var(--paper-3);font-family:var(--mono)}
+.rstat{width:7px;height:7px;border-radius:50%;flex:none}
+.rstat.ok{background:var(--green)} .rstat.warn{background:var(--amber)} .rstat.bad{background:var(--alert)}
+.rail-foot{padding:11px 14px;border-top:1px solid var(--line);font-family:var(--mono);
+  font-size:10px;color:var(--paper-4);line-height:1.7}
+
+/* ---- center canvas ---- */
+.canvas{grid-row:2;display:flex;flex-direction:column;overflow:hidden;background:var(--ink)}
+.canvas-h{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line)}
+.ctitle b{font-size:15px;font-weight:680;letter-spacing:-.02em}
+.ctitle span{font-size:11px;color:var(--paper-3);margin-left:9px;font-family:var(--mono)}
+.modes{display:flex;gap:2px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-left:auto}
+.modes button{padding:6px 13px;border:none;background:none;color:var(--paper-3);font-size:11.5px;
+  font-weight:550;cursor:pointer;border-radius:5px;transition:all .13s;display:flex;align-items:center;gap:6px}
+.modes button svg{width:14px;height:14px}
+.modes button.on{background:var(--panel-3);color:var(--paper)}
+.modes button:hover:not(.on){color:var(--paper-2)}
+.canvas-b{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;padding:18px 20px;overflow:auto;opacity:0;pointer-events:none;transition:opacity .25s}
+.view.on{opacity:1;pointer-events:auto}
+
+/* stringline diagram */
+.sl-wrap{height:100%;display:flex;flex-direction:column}
+.sl-legend{display:flex;gap:18px;flex-wrap:wrap;font-size:11px;color:var(--paper-2);margin-bottom:12px;align-items:center}
+.sl-legend .k{display:inline-flex;align-items:center;gap:6px}
+.sl-chip{width:18px;height:3px;border-radius:3px}
+.sl-svg{flex:1;width:100%;min-height:0}
+.gridln{stroke:var(--line);stroke-width:1}
+.gridln.major{stroke:var(--line-2)}
+.axt{font-family:var(--mono);font-size:9px;fill:var(--paper-3)}
+.axlbl{font-family:var(--mono);font-size:10px;fill:var(--paper-2);font-weight:600}
+.busline{fill:none;stroke-width:1.8;stroke-linecap:round;opacity:.92}
+.busline.gap{stroke:var(--alert);stroke-width:2.4}
+.stopdot{fill:var(--paper-4)}
+
+/* map */
+.map-wrap{height:100%;position:relative}
+.map-svg{width:100%;height:100%}
+.thames{fill:none;stroke:color-mix(in srgb,var(--cyan) 32%,transparent);stroke-linecap:round}
+.maproute{fill:none;stroke-linecap:round;transition:stroke-width .15s,opacity .15s}
+.stopnode{cursor:pointer;transition:r .12s}
+.maplabel{font-family:var(--mono);font-size:9px;fill:var(--paper-3)}
+
+/* heatmap view */
+.hm-grid{display:inline-block}
+.hm-row{display:flex;gap:2px;margin-bottom:2px;align-items:center}
+.hm-cell{width:30px;height:24px;border-radius:4px;cursor:pointer;transition:transform .1s}
+.hm-cell:hover{transform:scale(1.14);outline:1.5px solid var(--paper)}
+.hm-lbl{width:54px;font-size:10px;color:var(--paper-2);text-align:right;padding-right:8px;font-family:var(--mono)}
+.hm-coll{font-family:var(--mono);font-size:9px;color:var(--paper-3);width:30px;text-align:center}
+
+/* ---- right rail ---- */
+.rail-r{grid-row:2;border-left:1px solid var(--line);background:var(--ink-2);overflow-y:auto}
+.metric{padding:15px 16px;border-bottom:1px solid var(--line)}
+.metric-h{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);margin-bottom:13px}
+.big{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:-.04em;line-height:.95}
+.big .u{font-size:15px;color:var(--paper-3);font-weight:500}
+.big.amber{color:var(--amber)} .big.cyan{color:var(--cyan)} .big.alert{color:var(--alert)} .big.green{color:var(--green)}
+.metric-sub{font-size:11px;color:var(--paper-2);margin-top:8px;display:flex;align-items:center;gap:7px}
+.delta{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:20px}
+.delta.up{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.delta.down{color:var(--alert);background:color-mix(in srgb,var(--alert) 14%,transparent)}
+.spark{margin-top:12px;width:100%;height:34px;display:block}
+.row2{display:grid;grid-template-columns:1fr 1fr}
+.row2 .metric{border-right:1px solid var(--line)}
+.row2 .metric:nth-child(2){border-right:none}
+.row2 .big{font-size:24px}
+
+.statline{display:flex;flex-direction:column;gap:11px}
+.sr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sr .l{font-size:11.5px;color:var(--paper-2)}
+.sr .v{font-family:var(--mono);font-size:12px;font-weight:600}
+.meter{height:6px;border-radius:6px;background:var(--panel-3);overflow:hidden;margin-top:5px}
+.meter>i{display:block;height:100%;border-radius:6px}
+
+.alertbox{display:flex;gap:10px;padding:11px 13px;border-radius:8px;
+  background:color-mix(in srgb,var(--alert) 9%,transparent);border:1px solid color-mix(in srgb,var(--alert) 26%,transparent)}
+.alertbox svg{width:15px;height:15px;color:var(--alert);flex:none;margin-top:1px}
+.alertbox b{font-size:12px;font-weight:600;display:block}
+.alertbox p{font-size:11px;color:var(--paper-2);margin-top:2px;line-height:1.45}
+
+.seg{display:flex;gap:2px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:7px}
+.seg button{flex:1;padding:5px;border:none;background:none;color:var(--paper-3);font-family:var(--mono);
+  font-size:10.5px;cursor:pointer;border-radius:4px;transition:all .12s}
+.seg button.on{background:var(--panel-3);color:var(--paper)}
+
+.tip{position:fixed;pointer-events:none;background:var(--panel-3);border:1px solid var(--line-3);
+  border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:11px;z-index:50;opacity:0;
+  transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.5);white-space:nowrap}
+.tip.show{opacity:1}
+.tip .tl{color:var(--paper-3);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+
+@media (max-width:1100px){
+  .app{grid-template-columns:200px 1fr}
+  .rail-r{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="bar">
+    <div class="logo">
+      <span class="glyph"><svg viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="6" fill="var(--amber)"/><path d="M5 17 L11 9 L15 14 L21 7" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5" cy="17" r="1.6" fill="var(--ink)"/><circle cx="21" cy="7" r="1.6" fill="var(--ink)"/></svg></span>
+      <div><b>Headway</b><span>Network Analysis</span></div>
+    </div>
+    <div class="bar-sep"></div>
+    <div class="bar-time"><span class="livedot"></span><span id="clock">--:--:--</span><span style="color:var(--paper-4)">·</span><span style="color:var(--paper-3)">Tue, peak AM</span></div>
+    <div class="bar-spread"></div>
+    <div class="bar-stat"><span class="v" id="bsRoutes">62</span><span class="l">routes</span></div>
+    <div class="bar-stat"><span class="v cyan" id="bsBuses">312</span><span class="l">in service</span></div>
+    <div class="bar-stat"><span class="v amber" id="bsEwt">1.4′</span><span class="l">avg excess wait</span></div>
+    <div class="bar-stat"><span class="v alert" id="bsGaps">18</span><span class="l">big gaps</span></div>
+  </header>
+
+  <!-- LEFT RAIL: routes -->
+  <aside class="rail-l">
+    <div class="rail-h"><span>Routes</span><span class="mono" style="color:var(--paper-3)">62</span></div>
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>Filter routes…</div>
+    <div class="routes" id="routeList"></div>
+    <div class="rail-foot">
+      <div>Source · iBus AVL (30s)</div>
+      <div>Window · 06:00–10:00</div>
+    </div>
+  </aside>
+
+  <!-- CENTER CANVAS -->
+  <main class="canvas">
+    <div class="canvas-h">
+      <div class="ctitle"><b id="cRoute">Route 73</b><span id="cName">Stoke Newington → Victoria</span></div>
+      <div class="modes" id="modes">
+        <button class="on" data-v="string" onclick="setView('string')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21 21 3M3 14 14 3M10 21 21 10"/></svg>Stringline</button>
+        <button data-v="map" onclick="setView('map')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Map</button>
+        <button data-v="heat" onclick="setView('heat')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Reliability</button>
+      </div>
+    </div>
+    <div class="canvas-b">
+      <div class="view on" id="v-string"></div>
+      <div class="view" id="v-map"></div>
+      <div class="view" id="v-heat"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL: analysis -->
+  <aside class="rail-r" id="analysis"></aside>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============================================================
+   DATA MODEL (placeholder, deterministic-ish)
+   ============================================================ */
+const ROUTES = [
+  ['73','Stoke Newington → Victoria','warn',12,1.4,'high'],
+  ['24','Pimlico → Hampstead Hth','ok',9,0.9,'high'],
+  ['38','Victoria → Clapton','warn',11,1.3,'high'],
+  ['N29','Trafalgar Sq → Wood Green','ok',15,1.1,'night'],
+  ['134','Tottenham C.R → Warren St','ok',10,1.0,'high'],
+  ['390','Notting Hill → Archway','bad',14,1.8,'high'],
+  ['205','Paddington → Bow Church','ok',8,0.8,'high'],
+  ['55','Leyton → Oxford Circus','warn',13,1.5,'high'],
+  ['8','Bow → Tottenham Ct Rd','ok',10,1.1,'high'],
+  ['43','London Bridge → Friern Barnet','warn',12,1.4,'high'],
+  ['476','Euston → Northumberland Pk','ok',11,1.0,'high'],
+  ['141','London Bridge → Palmers Grn','bad',16,2.1,'high'],
+];
+const STOPS = ['Stoke Newington','Dalston Jn','Kingsland','Haggerston','Hoxton','Old Street','Moorgate','Bank','London Bridge','Borough','Elephant','Walworth','Victoria'];
+
+let CURRENT = ROUTES[0];
+
+/* ============================================================
+   STRINGLINE (time–distance) DIAGRAM — the hero
+   x = time (06:00–10:00), y = distance along route (stops),
+   each diagonal line = one bus journey. Slope = speed.
+   Converging lines = bunching. Wide gaps = service gaps.
+   ============================================================ */
+function buildStringline(){
+  const W=920,H=560,pad={l:128,r:24,t:20,b:34};
+  const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const t0=6*60, t1=10*60; // minutes
+  const nStops=STOPS.length;
+  const X=t=>pad.l+(t-t0)/(t1-t0)*iw;
+  const Y=s=>pad.t+s/(nStops-1)*ih;
+
+  // generate bus trajectories: a bus departs every ~headway mins,
+  // travels stop->stop with slight per-segment variance; inject bunching + a gap
+  const headway = CURRENT[3]; // scheduled mins
+  const reliability = CURRENT[2];
+  let buses=[]; let dep=t0-headway;
+  let busIdx=0;
+  while(dep < t1){
+    busIdx++;
+    // vary actual departure to create irregularity for less-reliable routes
+    const jitter = reliability==='ok'? (Math.random()-0.5)*2.5 : reliability==='warn'? (Math.random()-0.5)*6 : (Math.random()-0.5)*10;
+    let t = dep + jitter;
+    const pts=[]; let cur=t;
+    const baseSeg = (t1-t0)/ (nStops*1.6); // mins per segment baseline
+    for(let s=0;s<nStops;s++){
+      pts.push([cur,s]);
+      // dwell + run time with congestion bump mid-route
+      const congestion = (s>4&&s<9)? 1.5 : 1;
+      const segVar = reliability==='bad'? 1.8 : reliability==='warn'? 1.3 : 1.05;
+      cur += baseSeg*congestion*(0.7+Math.random()*0.5*segVar);
+    }
+    buses.push({i:busIdx, dep:t, pts});
+    dep += headway;
+  }
+  // detect bunching: two buses within 2 min at same stop -> mark; detect a gap (skip one)
+  // inject a deliberate gap by removing one mid bus on warn/bad
+  if(reliability!=='ok' && buses.length>5){ buses.splice(Math.floor(buses.length/2),1); }
+
+  // build SVG
+  let g='';
+  // vertical time gridlines every 30 min, major every hour
+  for(let t=t0;t<=t1;t+=15){
+    const major=t%60===0;
+    g+=`<line class="gridln ${major?'major':''}" x1="${X(t)}" y1="${pad.t}" x2="${X(t)}" y2="${pad.t+ih}"/>`;
+    if(t%30===0){const hh=Math.floor(t/60),mm=t%60; g+=`<text class="axt" x="${X(t)}" y="${H-12}" text-anchor="middle">${hh}:${String(mm).padStart(2,'0')}</text>`;}
+  }
+  // horizontal stop lines
+  STOPS.forEach((s,i)=>{
+    g+=`<line class="gridln" x1="${pad.l}" y1="${Y(i)}" x2="${W-pad.r}" y2="${Y(i)}"/>`;
+    g+=`<text class="axt" x="${pad.l-10}" y="${Y(i)+3}" text-anchor="end">${s}</text>`;
+    g+=`<circle class="stopdot" cx="${pad.l}" cy="${Y(i)}" r="2"/>`;
+  });
+  // axis labels
+  g+=`<text class="axlbl" x="${pad.l+iw/2}" y="${H-1}" text-anchor="middle">TIME →</text>`;
+
+  // bus polylines
+  let lines='';
+  buses.forEach((bus,bi)=>{
+    const pts=bus.pts.map(([t,s])=>`${X(t)},${Y(s)}`).join(' ');
+    // colour: alternate amber/cyan so adjacent buses are distinguishable; bunched pair flagged
+    const col = bi%2===0? 'var(--amber)':'var(--cyan)';
+    lines+=`<polyline class="busline" points="${pts}" stroke="${col}"
+      onmousemove="slTip(event,${bus.i},${Math.round(bus.dep)})" onmouseleave="hideTip()"/>`;
+  });
+  // mark the gap region (where we removed a bus) with a subtle band
+  if(reliability!=='ok'){
+    const gapT = t0 + (t1-t0)*0.5;
+    lines+=`<line class="busline gap" x1="${X(gapT-headway*0.4)}" y1="${pad.t}" x2="${X(gapT+headway*0.9)}" y2="${pad.t+ih}" stroke-dasharray="2 5" opacity=".5"/>`;
+    lines+=`<text class="axt" x="${X(gapT)}" y="${pad.t+14}" text-anchor="middle" fill="var(--alert)" style="font-weight:600">SERVICE GAP</text>`;
+  }
+
+  document.getElementById('v-string').innerHTML = `
+    <div class="sl-wrap">
+      <div class="sl-legend">
+        <span class="k"><span class="sl-chip" style="background:var(--amber)"></span>Bus trajectory</span>
+        <span class="k"><span class="sl-chip" style="background:var(--cyan)"></span>(alternating for clarity)</span>
+        <span class="k"><span class="sl-chip" style="background:var(--alert)"></span>Detected service gap</span>
+        <span class="k" style="margin-left:auto;color:var(--paper-3)">Steeper line = faster · converging lines = bunching</span>
+      </div>
+      <svg class="sl-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${lines}</svg>
+    </div>`;
+}
+function slTip(e,i,dep){
+  const hh=Math.floor(dep/60),mm=dep%60;
+  showTip(e,`Bus #${i}`,`departed ${hh}:${String(mm).padStart(2,'0')}`);
+}
+
+/* ============================================================
+   SCHEMATIC ROUTE MAP
+   ============================================================ */
+function buildMap(){
+  const W=900,H=560;
+  // route as a smooth path with stop nodes; bus positions live along it
+  const path = 'M90,460 C180,420 220,360 320,360 C420,360 440,280 540,260 C640,240 660,170 760,150 C800,143 820,135 840,120';
+  // sample stop positions along a manual set
+  const stops=[[90,460],[200,400],[320,360],[440,300],[540,260],[640,225],[760,150],[840,120]];
+  const buses=[[0.12,'ok'],[0.28,'ok'],[0.34,'warn'],[0.55,'ok'],[0.71,'ok'],[0.88,'ok']]; // t along path, bunched pair at .28/.34
+  const thames='M40,500 C180,470 280,520 420,495 C560,470 660,515 860,490';
+  let nodes = stops.map((s,i)=>`<g class="stopnode" onmousemove="showTip(event,'${STOPS[i]||'Stop '+(i+1)}','stop ${i+1} of ${stops.length}')" onmouseleave="hideTip()">
+      <circle cx="${s[0]}" cy="${s[1]}" r="5.5" fill="var(--ink)" stroke="var(--paper-3)" stroke-width="1.6"/>
+      ${i===0||i===stops.length-1?`<circle cx="${s[0]}" cy="${s[1]}" r="2.4" fill="var(--amber)"/>`:''}
+    </g>`).join('');
+  // place buses along the path via getPointAtLength simulation (approx using stop interpolation)
+  function alongPath(t){ // crude: interpolate across stops
+    const seg=t*(stops.length-1); const i=Math.floor(seg); const f=seg-i;
+    const a=stops[Math.min(i,stops.length-1)], b=stops[Math.min(i+1,stops.length-1)];
+    return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f];
+  }
+  let busMarks = buses.map((b,i)=>{const p=alongPath(b[0]);const col=b[1]==='warn'?'var(--alert)':'var(--amber)';
+    return `<g onmousemove="showTip(event,'Bus #${i+1}','${b[1]==='warn'?'bunched':'on time'}')" onmouseleave="hideTip()" style="cursor:pointer">
+      <circle cx="${p[0]}" cy="${p[1]}" r="8" fill="${col}" opacity=".18"/>
+      <rect x="${p[0]-5}" y="${p[1]-4}" width="10" height="8" rx="2" fill="${col}" stroke="var(--ink)" stroke-width="1.2"/></g>`;}).join('');
+  document.getElementById('v-map').innerHTML = `<div class="map-wrap"><svg class="map-svg" viewBox="0 0 ${W} ${H}">
+    <path class="thames" d="${thames}" stroke-width="14" opacity=".4"/>
+    <path class="thames" d="${thames}" stroke-width="3"/>
+    <path class="maproute" d="${path}" stroke="var(--line-3)" stroke-width="10"/>
+    <path class="maproute" d="${path}" stroke="var(--amber)" stroke-width="3" opacity=".85"/>
+    ${nodes}${busMarks}
+    <text class="maplabel" x="90" y="485" text-anchor="middle">${STOPS[0]}</text>
+    <text class="maplabel" x="840" y="105" text-anchor="middle">${STOPS[STOPS.length-1]}</text>
+  </svg>
+  <div style="position:absolute;bottom:14px;left:18px;display:flex;gap:16px;font-size:11px;color:var(--paper-2)">
+    <span style="display:inline-flex;gap:6px;align-items:center"><span style="width:10px;height:8px;border-radius:2px;background:var(--amber);display:inline-block"></span>Bus on time</span>
+    <span style="display:inline-flex;gap:6px;align-items:center"><span style="width:10px;height:8px;border-radius:2px;background:var(--alert);display:inline-block"></span>Bunched</span>
+  </div></div>`;
+}
+
+/* ============================================================
+   RELIABILITY HEATMAP (stop × time-of-day, excess wait)
+   ============================================================ */
+function buildHeat(){
+  const hours=['06','07','08','09','10','11','12','13','14','15','16','17','18','19','20'];
+  const cells = STOPS.map((s,si)=> hours.map((h,hi)=>{
+    const hour=+h; const peak=(hour>=7&&hour<=9)||(hour>=16&&hour<=18);
+    const congMid = (si>4&&si<9)?0.35:0;
+    let v = (peak?0.5:0.2) + congMid + Math.random()*0.3;
+    if(CURRENT[2]==='bad') v+=0.18; if(CURRENT[2]==='warn') v+=0.08;
+    return Math.min(v,1);
+  }));
+  const color = v => `color-mix(in srgb, var(--alert) ${Math.round(v*78)}%, color-mix(in srgb, var(--amber) ${Math.round((1-Math.abs(v-.5)*2)*26)}%, var(--panel-2)))`;
+  let html=`<div style="font-size:12px;color:var(--paper-2);margin-bottom:16px">Excess wait time by stop and hour — where and when this route loses reliability. Hotter = longer waits beyond schedule.</div>`;
+  html+='<div class="hm-grid">';
+  html+=`<div class="hm-row"><div class="hm-lbl"></div>${hours.map(h=>`<div class="hm-coll">${h}</div>`).join('')}</div>`;
+  cells.forEach((row,si)=>{
+    html+=`<div class="hm-row"><div class="hm-lbl" title="${STOPS[si]}">${STOPS[si].slice(0,7)}</div>`;
+    row.forEach((v,hi)=>{ html+=`<div class="hm-cell" style="background:${color(v)}" onmousemove="showTip(event,'${STOPS[si]} · ${hours[hi]}:00','EWT ${(v*3).toFixed(1)}′')" onmouseleave="hideTip()"></div>`; });
+    html+='</div>';
+  });
+  html+='</div>';
+  html+=`<div style="display:flex;align-items:center;gap:10px;margin-top:18px;font-size:10.5px;color:var(--paper-3)"><span>0′</span><div style="width:140px;height:8px;border-radius:5px;background:linear-gradient(90deg,var(--panel-2),var(--amber),var(--alert))"></div><span>3′+ excess wait</span></div>`;
+  html+=`<div style="margin-top:24px;max-width:560px"><div class="alertbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>Mid-route congestion band</b><p>Stops Old Street → London Bridge show persistent peak-hour excess wait. Headway management or a timing-point review would help most here.</p></div></div></div>`;
+  document.getElementById('v-heat').innerHTML=html;
+}
+
+/* ============================================================
+   RIGHT RAIL — per-route analysis
+   ============================================================ */
+function sparkline(data,color){
+  const w=120,h=34,mx=Math.max(...data),mn=Math.min(...data),rg=mx-mn||1;
+  const pts=data.map((v,i)=>`${i/(data.length-1)*w},${h-2-(v-mn)/rg*(h-6)}`).join(' ');
+  const id='s'+Math.random().toString(36).slice(2,7);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".3"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><polygon points="0,${h} ${pts} ${w},${h}" fill="url(#${id})"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function buildAnalysis(){
+  const r=CURRENT, ewt=r[4], rel=r[2];
+  const ewtTrend=[1.1,1.2,1.15,1.3,1.25,1.4,1.35,ewt];
+  const relPct = rel==='ok'?94:rel==='warn'?88:81;
+  const a=document.getElementById('analysis');
+  a.innerHTML=`
+    <div class="metric">
+      <div class="metric-h">Excess Wait Time</div>
+      <div class="big ${rel==='bad'?'alert':rel==='warn'?'amber':'green'}">${ewt.toFixed(1)}<span class="u">min</span></div>
+      <div class="metric-sub"><span class="delta ${ewt>1.2?'down':'up'}">${ewt>1.2?'▲':'▼'} ${(Math.abs(ewt-1.15)).toFixed(2)}</span>vs route MPS 1.15′</div>
+      ${sparkline(ewtTrend, rel==='bad'?'var(--alert)':'var(--amber)')}
+    </div>
+    <div class="row2">
+      <div class="metric"><div class="metric-h">Headway</div><div class="big cyan">${r[3]}<span class="u">min</span></div><div class="metric-sub">scheduled</div></div>
+      <div class="metric"><div class="metric-h">Regularity</div><div class="big">${relPct}<span class="u">%</span></div><div class="metric-sub">even spacing</div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-h">Headway adherence</div>
+      <div class="statline">
+        <div><div class="sr"><span class="l">On schedule</span><span class="v">${relPct}%</span></div><div class="meter"><i style="width:${relPct}%;background:var(--green)"></i></div></div>
+        <div><div class="sr"><span class="l">Bunched (&lt;½ gap)</span><span class="v">${rel==='ok'?5:rel==='warn'?9:14}%</span></div><div class="meter"><i style="width:${rel==='ok'?5:rel==='warn'?9:14}%;background:var(--amber)"></i></div></div>
+        <div><div class="sr"><span class="l">Big gaps (&gt;2× gap)</span><span class="v">${rel==='ok'?1:rel==='warn'?3:5}%</span></div><div class="meter"><i style="width:${(rel==='ok'?1:rel==='warn'?3:5)*4}%;background:var(--alert)"></i></div></div>
+      </div>
+    </div>
+    <div class="metric">
+      <div class="metric-h">Run time · ${'06:00–10:00'}</div>
+      <div class="statline">
+        <div class="sr"><span class="l">Scheduled end-to-end</span><span class="v">${42+r[3]}′</span></div>
+        <div class="sr"><span class="l">Actual (median)</span><span class="v" style="color:${rel==='bad'?'var(--alert)':'var(--paper)'}">${42+r[3]+(rel==='bad'?9:rel==='warn'?5:2)}′</span></div>
+        <div class="sr"><span class="l">Slowest segment</span><span class="v">Old St→Bank</span></div>
+        <div class="sr"><span class="l">Avg speed</span><span class="v">${rel==='bad'?'7.2':'9.4'} mph</span></div>
+      </div>
+    </div>
+    ${rel!=='ok'?`<div class="metric"><div class="alertbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>${rel==='bad'?'Reliability breach':'Watch — bunching'}</b><p>${rel==='bad'?'EWT above MPS for 4+ periods. Mid-route bunching on the congested core is the main driver.':'Intermittent bunching at the AM peak. Headway holding at Old Street would smooth the service.'}</p></div></div></div>`:`<div class="metric"><div class="metric-h">Status</div><div class="statline"><div class="sr"><span class="l">Reliability</span><span class="v" style="color:var(--green)">Within standard</span></div></div></div>`}
+  `;
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+let VIEW='string';
+function setView(v){
+  VIEW=v;
+  document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  if(v==='string')buildStringline(); if(v==='map')buildMap(); if(v==='heat')buildHeat();
+}
+function selectRoute(idx){
+  CURRENT=ROUTES[idx];
+  document.querySelectorAll('.route').forEach((el,i)=>el.classList.toggle('sel',i===idx));
+  document.getElementById('cRoute').textContent='Route '+CURRENT[0];
+  document.getElementById('cName').textContent=CURRENT[1];
+  buildAnalysis();
+  if(VIEW==='string')buildStringline(); if(VIEW==='map')buildMap(); if(VIEW==='heat')buildHeat();
+}
+function buildRouteList(){
+  document.getElementById('routeList').innerHTML=ROUTES.map((r,i)=>`
+    <div class="route ${i===0?'sel':''}" onclick="selectRoute(${i})">
+      <span class="rnum">${r[0]}</span>
+      <span class="rinfo"><b>${r[1]}</b><span>${r[3]}′ headway · ${r[5]}-freq</span></span>
+      <span class="rstat ${r[2]}"></span>
+    </div>`).join('');
+}
+/* tooltip */
+const tipEl=document.getElementById('tip');
+function showTip(e,title,sub){tipEl.innerHTML=`<div class="tl">${title}</div>${sub}`;tipEl.classList.add('show');moveTip(e);}
+function moveTip(e){tipEl.style.left=(e.clientX+14)+'px';tipEl.style.top=(e.clientY+14)+'px';}
+function hideTip(){tipEl.classList.remove('show');}
+document.addEventListener('mousemove',e=>{if(tipEl.classList.contains('show'))moveTip(e);});
+/* clock */
+setInterval(()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');document.getElementById('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;},1000);
+
+/* init */
+buildRouteList(); buildAnalysis(); buildStringline();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-06-15T15:51:41.960Z",
+  "summary": {
+    "critical": 0,
+    "warn": 5,
+    "info": 5
+  },
+  "issues": [
+    {
+      "severity": "WARN",
+      "scope": "rc",
+      "id": "60",
+      "field": "vehicleAgeYears",
+      "expected": "<=12 for electric",
+      "actual": 14.8,
+      "note": "electric London fleets are post-2015"
+    },
+    {
+      "severity": "WARN",
+      "scope": "rc",
+      "id": "134",
+      "field": "make↔model",
+      "expected": "SWITCH for \"MetroDecker EV 10.5m\"",
+      "actual": "WRIGHTBUS",
+      "note": "make contradicts a manufacturer-complete model — fleet make likely contaminated"
+    },
+    {
+      "severity": "WARN",
+      "scope": "rc",
+      "id": "379",
+      "field": "make↔model",
+      "expected": "SWITCH for \"Metrocity EV 8.7m\"",
+      "actual": "ALEXANDER DENNIS",
+      "note": "make contradicts a manufacturer-complete model — fleet make likely contaminated"
+    },
+    {
+      "severity": "WARN",
+      "scope": "rc",
+      "id": "533",
+      "field": "otpMps",
+      "expected": "present for low-frequency",
+      "actual": null,
+      "note": ""
+    },
+    {
+      "severity": "WARN",
+      "scope": "rc",
+      "id": "H20",
+      "field": "make↔model",
+      "expected": "SWITCH for \"MetroCity EV 8.7m\"",
+      "actual": "ALEXANDER DENNIS",
+      "note": "make contradicts a manufacturer-complete model — fleet make likely contaminated"
+    },
+    {
+      "severity": "INFO",
+      "scope": "rc",
+      "id": "-",
+      "field": "coverage",
+      "expected": "—",
+      "actual": {
+        "operator": 734,
+        "garage": 734,
+        "pvr": 730,
+        "vt": 732,
+        "prop": 734,
+        "deck": 731,
+        "ewtOrOtp": 665,
+        "mileageMps": 664,
+        "age": 602
+      },
+      "note": "of 747"
+    },
+    {
+      "severity": "INFO",
+      "scope": "fleet",
+      "id": "-",
+      "field": "coverage",
+      "expected": "—",
+      "actual": {
+        "total": 9423,
+        "validVrm": 9423,
+        "invalidVrm": 0,
+        "dvla200": 9396,
+        "dvla404": 27,
+        "dvla400": 0,
+        "dvlaOther": 0,
+        "neverChecked": 0,
+        "ageOK": 9396,
+        "ageMissing": 27,
+        "ageImplausible": 0,
+        "propByFuel": {
+          "diesel": 5992,
+          "electric": 3403,
+          "gas": 1
+        }
+      },
+      "note": ""
+    },
+    {
+      "severity": "INFO",
+      "scope": "gar",
+      "id": "-",
+      "field": "coverage",
+      "expected": "—",
+      "actual": {
+        "count": 81
+      },
+      "note": ""
+    },
+    {
+      "severity": "INFO",
+      "scope": "obs",
+      "id": "-",
+      "field": "coverage",
+      "expected": "—",
+      "actual": {
+        "totalObs": 15123,
+        "missingFleet": 0
+      },
+      "note": ""
+    },
+    {
+      "severity": "INFO",
+      "scope": "mps",
+      "id": "-",
+      "field": "coherence",
+      "expected": "—",
+      "actual": {
+        "coherent": 664,
+        "mismatch": 0
+      },
+      "note": ""
+    }
+  ]
+}

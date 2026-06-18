@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mandate — London Bus Tender Analysis</title>
+<style>
+/* ============================================================
+   MANDATE — London bus tender analysis instrument
+   Companion to Headway, same design language.
+   Thesis: a tender is a fixed-term contract on a timeline —
+   awarded, run for 5+2 years, then re-tendered. The hero is
+   the contract HORIZON: every route a bar marching toward its
+   re-tender date, with expiry waves clustering ahead.
+   Palette: "transit night". Quantitative values monospace.
+   Red is reserved for imminent expiry / at-risk contracts.
+   ============================================================ */
+:root{
+  --ink:#0a0e16; --ink-2:#0c111b;
+  --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
+  --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
+  --paper:#e7edf6; --paper-2:#9fb0c8;
+  --paper-3:#647691; --paper-4:#3f4d63;
+  --amber:#f5a524; --amber-dim:#b87d1c;
+  --cyan:#37c5c5; --cyan-dim:#2a9090;
+  --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
+  --mono:"SF Mono","JetBrains Mono",ui-monospace,"Consolas",monospace;
+  --sans:"Inter",system-ui,-apple-system,sans-serif;
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--sans); background:var(--ink); color:var(--paper);
+  font-size:13px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  letter-spacing:-.006em; overflow:hidden;
+}
+.mono{font-family:var(--mono);font-feature-settings:"tnum";letter-spacing:-.02em}
+::selection{background:color-mix(in srgb,var(--amber) 30%,transparent)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:9px;border:2px solid var(--ink)}
+::-webkit-scrollbar-thumb:hover{background:var(--line-3)}
+svg:not([width]){width:1em;height:1em}
+.big-svg{width:100%!important}
+.big-svg.h-auto{height:auto!important}
+.big-svg.h-full{height:100%!important}
+.spark{width:100%!important;height:34px!important}
+button{font-family:inherit}
+
+/* ============================ FRAME ============================ */
+.app{display:grid;grid-template-columns:248px 1fr 326px;grid-template-rows:52px 1fr;height:100vh}
+
+/* ---- topbar ---- */
+.bar{grid-column:1/-1;display:flex;align-items:center;gap:18px;padding:0 16px;
+  border-bottom:1px solid var(--line);background:var(--ink-2);z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.glyph{width:26px;height:26px;flex:none}
+.glyph svg{width:26px;height:26px}
+.logo b{font-size:14px;font-weight:680;letter-spacing:-.03em}
+.logo span{font-size:9px;color:var(--paper-3);font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;display:block;margin-top:-1px}
+.bar-sep{width:1px;height:22px;background:var(--line)}
+.bar-time{font-family:var(--mono);font-size:12px;color:var(--paper-2);display:flex;align-items:center;gap:9px}
+.livedot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:lp 2.2s infinite}
+@keyframes lp{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent)}70%{box-shadow:0 0 0 5px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.bar-spread{flex:1}
+.bar-stat{display:flex;flex-direction:column;align-items:flex-end;padding:0 12px;border-left:1px solid var(--line)}
+.bar-stat .v{font-family:var(--mono);font-size:14px;font-weight:600;line-height:1.1}
+.bar-stat .l{font-size:9px;color:var(--paper-3);text-transform:uppercase;letter-spacing:.08em}
+.bar-stat .v.amber{color:var(--amber)} .bar-stat .v.cyan{color:var(--cyan)} .bar-stat .v.alert{color:var(--alert)}
+
+/* ---- left rail ---- */
+.rail-l{grid-row:2;border-right:1px solid var(--line);background:var(--ink-2);display:flex;flex-direction:column;overflow:hidden}
+.rail-h{padding:13px 15px 9px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-4);display:flex;align-items:center;justify-content:space-between}
+.filters{display:flex;gap:5px;padding:0 12px 9px}
+.fbtn{flex:1;padding:5px;border:1px solid var(--line);background:var(--panel);color:var(--paper-3);
+  font-family:var(--mono);font-size:9.5px;border-radius:6px;cursor:pointer;transition:all .12s;text-transform:uppercase;letter-spacing:.04em}
+.fbtn.on{background:var(--panel-3);color:var(--paper);border-color:var(--line-2)}
+.tenders{flex:1;overflow-y:auto;padding:0 8px 12px}
+.tender{display:flex;align-items:center;gap:11px;padding:9px;border-radius:7px;cursor:pointer;
+  border:1px solid transparent;transition:background .13s,border-color .13s;margin-bottom:1px}
+.tender:hover{background:var(--panel)}
+.tender.sel{background:var(--panel-2);border-color:var(--line-2)}
+.tender.sel .tnum{background:var(--amber);color:var(--ink)}
+.tnum{min-width:36px;height:24px;padding:0 7px;border-radius:5px;display:grid;place-items:center;
+  font-family:var(--mono);font-size:12px;font-weight:650;background:var(--panel-3);color:var(--paper);flex:none;transition:all .13s}
+.tinfo{flex:1;min-width:0}
+.tinfo b{font-size:12px;font-weight:550;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tinfo span{font-size:10.5px;color:var(--paper-3);font-family:var(--mono)}
+.tend{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}
+.tend .yrs{font-family:var(--mono);font-size:11px;font-weight:600}
+.tend .yrs.soon{color:var(--alert)} .tend .yrs.mid{color:var(--amber)} .tend .yrs.far{color:var(--paper-3)}
+.tdot{width:6px;height:6px;border-radius:50%}
+.rail-foot{padding:11px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--paper-4);line-height:1.7}
+
+/* ---- center canvas ---- */
+.canvas{grid-row:2;display:flex;flex-direction:column;overflow:hidden;background:var(--ink)}
+.canvas-h{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line)}
+.ctitle b{font-size:15px;font-weight:680;letter-spacing:-.02em}
+.ctitle span{font-size:11px;color:var(--paper-3);margin-left:9px;font-family:var(--mono)}
+.modes{display:flex;gap:2px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-left:auto}
+.modes button{padding:6px 13px;border:none;background:none;color:var(--paper-3);font-size:11.5px;font-weight:550;cursor:pointer;border-radius:5px;transition:all .13s;display:flex;align-items:center;gap:6px}
+.modes button svg{width:14px;height:14px}
+.modes button.on{background:var(--panel-3);color:var(--paper)}
+.modes button:hover:not(.on){color:var(--paper-2)}
+.canvas-b{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;padding:16px 20px;overflow:auto;opacity:0;pointer-events:none;transition:opacity .25s}
+.view.on{opacity:1;pointer-events:auto}
+
+/* horizon (gantt) */
+.hz-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--paper-2);margin-bottom:10px;align-items:center}
+.hz-legend .k{display:inline-flex;align-items:center;gap:6px}
+.hz-chip{width:14px;height:10px;border-radius:3px}
+.gridln{stroke:var(--line);stroke-width:1}
+.gridln.major{stroke:var(--line-2)}
+.gridln.now{stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3 3}
+.axt{font-family:var(--mono);font-size:9.5px;fill:var(--paper-3)}
+.axlbl{font-family:var(--mono);font-size:10px;fill:var(--paper-2);font-weight:600}
+.bar-route{font-family:var(--mono);font-size:10px;fill:var(--paper-2)}
+.cbar{rx:3;cursor:pointer;transition:opacity .12s}
+.cbar:hover{opacity:.8}
+.cbar-ext{opacity:.32}
+.wave-band{fill:var(--alert);opacity:.06}
+.wave-lbl{font-family:var(--mono);font-size:9px;fill:var(--alert);font-weight:600}
+
+/* scatter (pricing) */
+.scatter-wrap{height:100%;display:flex;flex-direction:column}
+.dotpt{cursor:pointer;transition:r .12s}
+
+/* operators (treemap-ish bars) */
+.op-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;padding:6px;border-radius:7px;transition:background .12s}
+.op-row:hover{background:var(--panel)}
+.op-name{width:140px;font-size:12.5px;font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-bar{flex:1;height:26px;border-radius:5px;background:var(--panel-3);overflow:hidden;position:relative}
+.op-bar>i{display:block;height:100%;border-radius:5px;position:relative}
+.op-val{width:96px;text-align:right;font-family:var(--mono);font-size:11.5px;color:var(--paper-2)}
+
+/* ---- right rail ---- */
+.rail-r{grid-row:2;border-left:1px solid var(--line);background:var(--ink-2);overflow-y:auto}
+.metric{padding:15px 16px;border-bottom:1px solid var(--line)}
+.metric-h{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-4);margin-bottom:13px;display:flex;align-items:center;justify-content:space-between}
+.big{font-family:var(--mono);font-size:32px;font-weight:600;letter-spacing:-.04em;line-height:.95}
+.big .u{font-size:15px;color:var(--paper-3);font-weight:500}
+.big.amber{color:var(--amber)} .big.cyan{color:var(--cyan)} .big.alert{color:var(--alert)} .big.green{color:var(--green)} .big.violet{color:var(--violet)}
+.metric-sub{font-size:11px;color:var(--paper-2);margin-top:8px;display:flex;align-items:center;gap:7px}
+.tag{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px}
+.tag.you{color:var(--amber);background:color-mix(in srgb,var(--amber) 15%,transparent)}
+.tag.win{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.tag.risk{color:var(--alert);background:color-mix(in srgb,var(--alert) 14%,transparent)}
+.tag.n{color:var(--paper-2);background:var(--panel-3)}
+.spark{margin-top:12px;display:block}
+.row2{display:grid;grid-template-columns:1fr 1fr}
+.row2 .metric{border-right:1px solid var(--line)}
+.row2 .metric:nth-child(2){border-right:none}
+.row2 .big{font-size:22px}
+
+.statline{display:flex;flex-direction:column;gap:11px}
+.sr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sr .l{font-size:11.5px;color:var(--paper-2)}
+.sr .v{font-family:var(--mono);font-size:12px;font-weight:600}
+.meter{height:6px;border-radius:6px;background:var(--panel-3);overflow:hidden;margin-top:5px}
+.meter>i{display:block;height:100%;border-radius:6px}
+
+/* countdown ring */
+.ring-wrap{display:flex;align-items:center;gap:16px}
+.ring{flex:none}
+.ring-txt{flex:1}
+
+.alertbox{display:flex;gap:10px;padding:11px 13px;border-radius:8px;
+  background:color-mix(in srgb,var(--alert) 9%,transparent);border:1px solid color-mix(in srgb,var(--alert) 26%,transparent)}
+.alertbox.amber{background:color-mix(in srgb,var(--amber) 9%,transparent);border-color:color-mix(in srgb,var(--amber) 26%,transparent)}
+.alertbox svg{width:15px;height:15px;color:var(--alert);flex:none;margin-top:1px}
+.alertbox.amber svg{color:var(--amber)}
+.alertbox b{font-size:12px;font-weight:600;display:block}
+.alertbox p{font-size:11px;color:var(--paper-2);margin-top:2px;line-height:1.45}
+
+.bidlist{display:flex;flex-direction:column;gap:9px}
+.bid{display:flex;align-items:center;gap:10px}
+.bid-op{width:78px;font-size:11px;color:var(--paper-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bid-bar{flex:1;height:18px;border-radius:4px;background:var(--panel-3);overflow:hidden;position:relative}
+.bid-bar>i{display:block;height:100%;border-radius:4px}
+.bid-bar .win-mark{position:absolute;top:0;bottom:0;width:2px;background:var(--paper)}
+.bid-v{width:48px;text-align:right;font-family:var(--mono);font-size:11px}
+
+.tip{position:fixed;pointer-events:none;background:var(--panel-3);border:1px solid var(--line-3);
+  border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:11px;z-index:50;opacity:0;
+  transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.5);white-space:nowrap}
+.tip.show{opacity:1}
+.tip .tl{color:var(--paper-3);font-size:9px;text-transform:uppercase;letter-spacing:.06em}
+
+@media (max-width:1100px){.app{grid-template-columns:210px 1fr}.rail-r{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="bar">
+    <div class="logo">
+      <span class="glyph"><svg viewBox="0 0 26 26" fill="none"><rect x="1" y="1" width="24" height="24" rx="6" fill="var(--amber)"/><rect x="5" y="7" width="13" height="3" rx="1.5" fill="var(--ink)"/><rect x="5" y="12" width="9" height="3" rx="1.5" fill="var(--ink)"/><rect x="5" y="17" width="6" height="3" rx="1.5" fill="var(--ink)"/><circle cx="20" cy="18.5" r="2.4" fill="var(--ink)"/></svg></span>
+      <div><b>Mandate</b><span>Tender Analysis</span></div>
+    </div>
+    <div class="bar-sep"></div>
+    <div class="bar-time"><span class="livedot"></span><span id="clock">--:--:--</span><span style="color:var(--paper-4)">·</span><span style="color:var(--paper-3)">OCDS · daily refresh</span></div>
+    <div class="bar-spread"></div>
+    <div class="bar-stat"><span class="v" id="bsContracts">62</span><span class="l">contracts</span></div>
+    <div class="bar-stat"><span class="v cyan" id="bsValue">£214m</span><span class="l">portfolio value</span></div>
+    <div class="bar-stat"><span class="v amber" id="bsExpiring">11</span><span class="l">expiring &lt;18m</span></div>
+    <div class="bar-stat"><span class="v alert" id="bsAtRisk">4</span><span class="l">at-risk</span></div>
+  </header>
+
+  <!-- LEFT RAIL: contracts -->
+  <aside class="rail-l">
+    <div class="rail-h"><span>Contracts</span><span class="mono" style="color:var(--paper-3)" id="railCount">62</span></div>
+    <div class="filters" id="filters">
+      <button class="fbtn on" data-f="all" onclick="setFilter('all')">All</button>
+      <button class="fbtn" data-f="held" onclick="setFilter('held')">Held</button>
+      <button class="fbtn" data-f="target" onclick="setFilter('target')">Targets</button>
+      <button class="fbtn" data-f="risk" onclick="setFilter('risk')">At-risk</button>
+    </div>
+    <div class="tenders" id="tenderList"></div>
+    <div class="rail-foot">
+      <div>Source · Find a Tender (OCDS)</div>
+      <div>Horizon · 2024 – 2031</div>
+    </div>
+  </aside>
+
+  <!-- CENTER CANVAS -->
+  <main class="canvas">
+    <div class="canvas-h">
+      <div class="ctitle"><b id="cTitle">Contract Horizon</b><span id="cSub">62 contracts · re-tender timeline</span></div>
+      <div class="modes" id="modes">
+        <button class="on" data-v="horizon" onclick="setView('horizon')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h9M3 18h16"/></svg>Horizon</button>
+        <button data-v="pricing" onclick="setView('pricing')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="14" r="2"/><circle cx="14" cy="8" r="2"/><circle cx="18" cy="16" r="2"/><path d="M3 21V3"/></svg>Pricing</button>
+        <button data-v="operators" onclick="setView('operators')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>Operators</button>
+      </div>
+    </div>
+    <div class="canvas-b">
+      <div class="view on" id="v-horizon"></div>
+      <div class="view" id="v-pricing"></div>
+      <div class="view" id="v-operators"></div>
+    </div>
+  </main>
+
+  <!-- RIGHT RAIL: analysis -->
+  <aside class="rail-r" id="analysis"></aside>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============================================================
+   DATA MODEL (placeholder)
+   contract = [route, corridor, operator, awardYr, termYrs, extYrs,
+               valueM, status, ourBidRank, winProb]
+   status: held | target | risk | other
+   ============================================================ */
+const OPCOL = {Aldgate:'var(--amber)','Go-Ahead':'var(--cyan)',Metroline:'var(--violet)',Arriva:'var(--green)',Stagecoach:'#e08a4f',RATP:'#6f8fd6',Abellio:'#b07fd0'};
+
+const CONTRACTS = [
+  ['24','Pimlico – Hampstead','Aldgate',2024,5,2,9.8,'held',1,null],
+  ['36','Queens Pk – Lewisham','Aldgate',2024,5,2,12.4,'held',1,null],
+  ['73','Stoke N. – Victoria','Aldgate',2022,5,2,14.1,'risk',1,null],
+  ['88','Camden – Clapham','RATP',2019,5,2,8.2,'target',null,71],
+  ['159','Marble Arch – Streatham','Abellio',2019,5,2,11.4,'target',null,64],
+  ['12','Dulwich – Oxford Circus','Go-Ahead',2021,5,2,14.1,'other',null,38],
+  ['277','Highbury – Crossharbour','RATP',2020,5,2,7.1,'target',null,68],
+  ['25','Ilford – City','Stagecoach',2023,5,2,22.4,'other',null,42],
+  ['205','Paddington – Bow','Aldgate',2021,5,2,10.2,'held',1,null],
+  ['390','Notting Hill – Archway','Metroline',2020,5,2,9.6,'target',null,55],
+  ['8','Bow – Tottenham Ct Rd','Arriva',2022,5,2,10.8,'other',null,40],
+  ['141','London Bdg – Palmers Grn','Metroline',2019,5,2,13.2,'target',null,59],
+  ['55','Leyton – Oxford Circus','Aldgate',2025,5,2,11.0,'held',1,null],
+  ['476','Euston – Northumberland','Go-Ahead',2023,5,2,9.9,'other',null,44],
+  ['43','London Bdg – Friern Barnet','Arriva',2021,5,2,12.0,'other',null,41],
+];
+const NOW = 2026.0; // decimal year "now"
+let CURRENT = CONTRACTS[2]; // route 73 (held, at risk)
+let FILTER='all';
+
+function yrsToExpiry(c){ return (c[3]+c[4]+c[5]) - NOW; } // award + term + ext
+function expiry(c){ return c[3]+c[4]+c[5]; }
+function statusColor(s){ return s==='risk'?'var(--alert)':s==='target'?'var(--cyan)':s==='held'?'var(--amber)':'var(--paper-3)'; }
+
+/* ============================================================
+   HERO — CONTRACT HORIZON (gantt timeline)
+   x = years (2024..2031), y = contracts. Each bar runs from
+   award to core-term end, with a dimmer extension segment,
+   and a glow as expiry nears. "Now" line sweeps; expiry waves
+   shaded as clusters approach.
+   ============================================================ */
+function buildHorizon(){
+  const list = filtered();
+  const W=940, rowH=26, padTop=46, padBot=30, padL=78, padR=20;
+  const H = padTop + list.length*rowH + padBot;
+  const y0=2024, y1=2031;
+  const X=y=>padL+(y-y0)/(y1-y0)*(W-padL-padR);
+
+  let g='';
+  // year gridlines
+  for(let y=y0;y<=y1;y++){
+    g+=`<line class="gridln ${y%1===0?'major':''}" x1="${X(y)}" y1="${padTop-8}" x2="${X(y)}" y2="${H-padBot}"/>`;
+    g+=`<text class="axt" x="${X(y)}" y="${padTop-14}" text-anchor="middle">${y}</text>`;
+    g+=`<text class="axt" x="${X(y)}" y="${H-padBot+16}" text-anchor="middle">${y}</text>`;
+  }
+  // re-tender wave bands (clusters of expiries) — shade 6-month windows with many expiries
+  const waves=[[2026.3,'Apr 26'],[2026.6,'Aug 26'],[2026.9,'Dec 26']];
+  waves.forEach(w=>{
+    g+=`<rect class="wave-band" x="${X(w[0]-0.12)}" y="${padTop-8}" width="${X(w[0]+0.12)-X(w[0]-0.12)}" height="${H-padBot-(padTop-8)}"/>`;
+  });
+
+  // bars
+  let bars='';
+  list.forEach((c,i)=>{
+    const y=padTop+i*rowH;
+    const x0=X(c[3]), xCore=X(c[3]+c[4]), xExt=X(c[3]+c[4]+c[5]);
+    const col=statusColor(c[7]);
+    const yte=yrsToExpiry(c);
+    // route label
+    bars+=`<text class="bar-route" x="${padL-10}" y="${y+rowH/2+3}" text-anchor="end">${c[0]}</text>`;
+    // core term bar
+    bars+=`<rect class="cbar" x="${x0}" y="${y+5}" width="${xCore-x0}" height="${rowH-12}" rx="3" fill="${col}" fill-opacity="${c[7]==='other'?.5:.85}"
+      onmousemove="showTip(event,'${c[2]} · Route ${c[0]}','£${c[6]}m · expires ${expiry(c).toFixed(0).replace('.','')}')" onmouseleave="hideTip()" onclick="selectByRoute('${c[0]}')"/>`;
+    // extension segment (dimmed, hatched feel via opacity)
+    bars+=`<rect class="cbar cbar-ext" x="${xCore}" y="${y+5}" width="${xExt-xCore}" height="${rowH-12}" rx="3" fill="${col}"/>`;
+    // expiry marker glow if near
+    if(yte>0 && yte<1.6){
+      bars+=`<circle cx="${xExt}" cy="${y+rowH/2}" r="4" fill="var(--alert)"><animate attributeName="opacity" values="1;.3;1" dur="1.8s" repeatCount="indefinite"/></circle>`;
+    }
+    // selected highlight
+    if(c[0]===CURRENT[0]){
+      bars+=`<rect x="${padL-2}" y="${y+2}" width="${W-padL-padR+2}" height="${rowH-4}" rx="4" fill="none" stroke="var(--paper)" stroke-opacity=".25" stroke-width="1"/>`;
+    }
+  });
+
+  // now line (on top)
+  const nowX=X(NOW);
+  let nowLine=`<line class="gridln now" x1="${nowX}" y1="${padTop-18}" x2="${nowX}" y2="${H-padBot}"/>
+    <text class="axlbl" x="${nowX}" y="${padTop-22}" text-anchor="middle" fill="var(--amber)">NOW</text>`;
+
+  document.getElementById('v-horizon').innerHTML=`
+    <div class="hz-legend">
+      <span class="k"><span class="hz-chip" style="background:var(--amber)"></span>Held (Aldgate)</span>
+      <span class="k"><span class="hz-chip" style="background:var(--cyan)"></span>Target (winnable)</span>
+      <span class="k"><span class="hz-chip" style="background:var(--alert)"></span>At-risk (defend)</span>
+      <span class="k"><span class="hz-chip" style="background:var(--paper-3);opacity:.6"></span>Other operator</span>
+      <span class="k" style="margin-left:auto;color:var(--paper-3)">Solid = core 5yr term · faded = 2yr extension · ◉ = expiring soon</span>
+    </div>
+    <svg class="big-svg h-auto" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${bars}${nowLine}</svg>`;
+}
+
+/* ============================================================
+   PRICING — £/mile bid benchmark scatter
+   x = route PVR (scale), y = £/mile bid. Your bids highlighted.
+   ============================================================ */
+function buildPricing(){
+  const W=900,H=540,pad={l:58,r:24,t:24,b:46};
+  const iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const xmin=8,xmax=32,ymin=3.9,ymax=4.8;
+  const X=v=>pad.l+(v-xmin)/(xmax-xmin)*iw, Y=v=>pad.t+ih-(v-ymin)/(ymax-ymin)*ih;
+  const pts=[
+    [15,4.10,'Go-Ahead'],[22,4.02,'Go-Ahead'],[29,4.18,'Metroline'],[18,4.30,'Metroline'],
+    [14,4.42,'Arriva'],[24,4.35,'Arriva'],[11,4.66,'RATP'],[17,4.55,'RATP'],[20,4.48,'Abellio'],
+    [15,4.08,'Aldgate'],[19,4.12,'Aldgate'],[11,4.20,'Aldgate'],[10,4.15,'Aldgate'],
+  ];
+  let g='';
+  for(let k=0;k<=4;k++){const yy=pad.t+(k/4)*ih,v=ymax-(ymax-ymin)*k/4;
+    g+=`<line class="gridln" x1="${pad.l}" y1="${yy}" x2="${W-pad.r}" y2="${yy}"/><text class="axt" x="${pad.l-8}" y="${yy+3}" text-anchor="end">£${v.toFixed(1)}</text>`;}
+  for(let k=0;k<=4;k++){const xx=pad.l+(k/4)*iw,v=xmin+(xmax-xmin)*k/4;
+    g+=`<text class="axt" x="${xx}" y="${H-pad.b+18}" text-anchor="middle">${Math.round(v)}</text>`;}
+  // market median line
+  const med=4.28;
+  g+=`<line x1="${pad.l}" y1="${Y(med)}" x2="${W-pad.r}" y2="${Y(med)}" stroke="var(--paper-4)" stroke-dasharray="4 4"/>`;
+  g+=`<text class="axt" x="${W-pad.r}" y="${Y(med)-5}" text-anchor="end" fill="var(--paper-3)">market median £4.28</text>`;
+  g+=`<text class="axlbl" x="${pad.l+iw/2}" y="${H-6}" text-anchor="middle">ROUTE SIZE (PVR) →</text>`;
+  g+=`<text class="axlbl" x="16" y="${pad.t+ih/2}" text-anchor="middle" transform="rotate(-90 16 ${pad.t+ih/2})">£ PER MILE BID →</text>`;
+  let dots='';
+  pts.forEach(p=>{const you=p[2]==='Aldgate';const col=you?'var(--amber)':OPCOL[p[2]]||'var(--paper-3)';
+    dots+=`<g class="dotpt" onmousemove="showTip(event,'${p[2]}','${p[0]} PVR · £${p[1]}/mi')" onmouseleave="hideTip()">
+      ${you?`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="9" fill="${col}" opacity=".16"/>`:''}
+      <circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${you?6:5}" fill="${col}" fill-opacity=".85" stroke="${col}" stroke-width="1.5"/></g>`;});
+  document.getElementById('v-pricing').innerHTML=`
+    <div class="hz-legend">
+      <span class="k"><span class="hz-chip" style="background:var(--amber);border-radius:50%"></span>Aldgate bids</span>
+      <span class="k"><span class="hz-chip" style="background:var(--cyan);border-radius:50%"></span>Go-Ahead</span>
+      <span class="k"><span class="hz-chip" style="background:var(--violet);border-radius:50%"></span>Metroline</span>
+      <span class="k"><span class="hz-chip" style="background:var(--green);border-radius:50%"></span>Arriva</span>
+      <span class="k" style="margin-left:auto;color:var(--paper-3)">Below the median line = cheaper than market</span>
+    </div>
+    <svg class="big-svg h-auto" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}${dots}</svg>`;
+}
+
+/* ============================================================
+   OPERATORS — market holdings
+   ============================================================ */
+function buildOperators(){
+  const ops=[['Go-Ahead',1640,131,'var(--cyan)'],['Metroline',1480,118,'var(--violet)'],['Arriva',1360,109,'var(--green)'],['Stagecoach',1070,86,'#e08a4f'],['RATP',950,77,'#6f8fd6'],['Abellio',825,68,'#b07fd0'],['Aldgate',766,62,'var(--amber)'],['Others',515,41,'var(--paper-3)']];
+  const max=Math.max(...ops.map(o=>o[1]));
+  let rows=ops.map(o=>{const you=o[0]==='Aldgate';
+    return `<div class="op-row" onmousemove="showTip(event,'${o[0]}','${o[2]} routes · ${o[1]} PVR')" onmouseleave="hideTip()">
+      <span class="op-name" style="${you?'color:var(--amber);font-weight:650':''}">${o[0]}</span>
+      <div class="op-bar"><i style="width:${o[1]/max*100}%;background:${o[3]};${you?'box-shadow:inset 0 0 0 1.5px var(--paper)':''}"></i></div>
+      <span class="op-val">${o[2]} routes</span></div>`;}).join('');
+  document.getElementById('v-operators').innerHTML=`
+    <div style="font-size:12px;color:var(--paper-2);margin-bottom:18px">Market holdings by operator — route count and peak vehicle requirement (PVR). Aldgate holds 8.9% by PVR, 6th of 8.</div>
+    ${rows}
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:620px">
+      <div style="padding:14px;border:1px solid var(--line);border-radius:9px;background:var(--panel)">
+        <div style="font-size:10px;color:var(--paper-4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">Net change · 12m</div>
+        <div class="statline">
+          <div class="sr"><span class="l">Go-Ahead</span><span class="v" style="color:var(--green)">+5 routes</span></div>
+          <div class="sr"><span class="l">Aldgate</span><span class="v" style="color:var(--green)">+3 routes</span></div>
+          <div class="sr"><span class="l">RATP</span><span class="v" style="color:var(--alert)">−4 routes</span></div>
+          <div class="sr"><span class="l">Abellio</span><span class="v" style="color:var(--alert)">−3 routes</span></div>
+        </div>
+      </div>
+      <div style="padding:14px;border:1px solid var(--line);border-radius:9px;background:var(--panel)">
+        <div style="font-size:10px;color:var(--paper-4);text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px">Fragmentation</div>
+        <div class="big cyan" style="font-size:28px">0.14<span class="u"> HHI</span></div>
+        <div style="font-size:11px;color:var(--paper-2);margin-top:8px;line-height:1.4">No operator above 20%. Competitive tendering keeps the market unconcentrated.</div>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   RIGHT RAIL — per-contract analysis
+   ============================================================ */
+function ringSvg(frac,color,label,big){
+  const r=30,c=2*Math.PI*r,off=c*(1-frac);
+  return `<svg class="ring" width="76" height="76" viewBox="0 0 76 76">
+    <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="7"/>
+    <circle cx="38" cy="38" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 38 38)"/>
+    <text x="38" y="36" text-anchor="middle" font-family="var(--mono)" font-size="17" font-weight="600" fill="var(--paper)">${big}</text>
+    <text x="38" y="50" text-anchor="middle" font-size="8" fill="var(--paper-3)">${label}</text></svg>`;
+}
+function sparkline(data,color){
+  const w=120,h=34,mx=Math.max(...data),mn=Math.min(...data),rg=mx-mn||1;
+  const pts=data.map((v,i)=>`${i/(data.length-1)*w},${h-2-(v-mn)/rg*(h-6)}`).join(' ');
+  const id='s'+Math.random().toString(36).slice(2,7);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".3"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><polygon points="0,${h} ${pts} ${w},${h}" fill="url(#${id})"/><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6"/></svg>`;
+}
+function buildAnalysis(){
+  const c=CURRENT, st=c[7], yte=yrsToExpiry(c), held=(st==='held'||st==='risk');
+  const a=document.getElementById('analysis');
+  const ringFrac=Math.max(0,Math.min(1,1-yte/7));
+  const ringColor = yte<1.6?'var(--alert)':yte<3?'var(--amber)':'var(--cyan)';
+  // bid history (placeholder)
+  const bids = held
+    ? [['Aldgate',4.08,true],['Go-Ahead',4.14,false],['Metroline',4.22,false],['RATP',4.35,false]]
+    : [[c[2],4.31,true],['Aldgate',4.20,false],['Go-Ahead',4.16,false],['Arriva',4.40,false]];
+  const minBid=Math.min(...bids.map(b=>b[1])), maxBid=Math.max(...bids.map(b=>b[1]));
+  a.innerHTML=`
+    <div class="metric">
+      <div class="metric-h"><span>Route ${c[0]}</span>
+        <span class="tag ${st==='risk'?'risk':st==='held'?'you':st==='target'?'win':'n'}">${st==='risk'?'AT RISK':st==='held'?'HELD':st==='target'?'TARGET':'OTHER'}</span></div>
+      <div class="ring-wrap">
+        ${ringSvg(ringFrac,ringColor, '', yte>0?yte.toFixed(1):'0')}
+        <div class="ring-txt">
+          <div style="font-size:11px;color:var(--paper-3)">Years to re-tender</div>
+          <div class="mono" style="font-size:15px;font-weight:600;margin-top:2px;color:${ringColor}">${expiry(c).toFixed(0).replace('.','')} expiry</div>
+          <div style="font-size:11px;color:var(--paper-2);margin-top:5px">${c[1]}</div>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="metric"><div class="metric-h">Value</div><div class="big cyan">£${c[6]}<span class="u">m</span></div><div class="metric-sub">7yr TCV</div></div>
+      <div class="metric"><div class="metric-h">Incumbent</div><div class="big" style="font-size:18px;${c[2]==='Aldgate'?'color:var(--amber)':''}">${c[2]}</div><div class="metric-sub">${c[3]} award</div></div>
+    </div>
+    ${held?`
+    <div class="metric">
+      <div class="metric-h">Winning bid · ${c[3]}</div>
+      <div class="bidlist">${bids.map(b=>`<div class="bid"><span class="bid-op" style="${b[2]?'color:var(--amber)':''}">${b[0]}</span>
+        <div class="bid-bar"><i style="width:${(maxBid-b[1])/(maxBid-minBid)*100}%;background:${b[2]?'var(--amber)':'var(--line-3)'}"></i>${b[2]?'<span class="win-mark" style="left:calc('+((maxBid-b[1])/(maxBid-minBid)*100)+'% - 1px)"></span>':''}</div>
+        <span class="bid-v" style="${b[2]?'color:var(--amber)':'color:var(--paper-3)'}">£${b[1]}</span></div>`).join('')}</div>
+      <div style="font-size:10px;color:var(--paper-4);margin-top:9px;font-family:var(--mono)">lower bar = cheaper bid · won at £${bids.find(b=>b[2])[1]}/mi</div>
+    </div>`:`
+    <div class="metric">
+      <div class="metric-h">Win probability <span class="tag win">MODEL</span></div>
+      <div class="big ${c[9]>65?'green':c[9]>50?'amber':'alert'}">${c[9]||'—'}<span class="u">%</span></div>
+      <div class="metric-sub">if Aldgate bids at market price</div>
+      <div class="statline" style="margin-top:14px">
+        <div><div class="sr"><span class="l">Incumbent performance</span><span class="v">${st==='target'?'Poor':'OK'}</span></div><div class="meter"><i style="width:${st==='target'?82:50}%;background:${st==='target'?'var(--green)':'var(--amber)'}"></i></div></div>
+        <div><div class="sr"><span class="l">Garage proximity</span><span class="v">${st==='target'?'2.1mi':'5.4mi'}</span></div><div class="meter"><i style="width:${st==='target'?88:55}%;background:var(--green)"></i></div></div>
+        <div><div class="sr"><span class="l">Price headroom</span><span class="v">${st==='target'?'£0.08/mi':'tight'}</span></div><div class="meter"><i style="width:${st==='target'?68:40}%;background:var(--amber)"></i></div></div>
+      </div>
+    </div>`}
+    <div class="metric">
+      <div class="metric-h">Contract terms</div>
+      <div class="statline">
+        <div class="sr"><span class="l">Core term</span><span class="v">${c[4]} years</span></div>
+        <div class="sr"><span class="l">Performance extension</span><span class="v">+${c[5]} years</span></div>
+        <div class="sr"><span class="l">PVR</span><span class="v">${10+Math.round(c[6])}</span></div>
+        <div class="sr"><span class="l">Annual value</span><span class="v">£${(c[6]/7).toFixed(1)}m</span></div>
+      </div>
+    </div>
+    ${st==='risk'?`<div class="metric"><div class="alertbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><div><b>Defend — expires ${expiry(c).toFixed(0).replace('.','')}</b><p>Held route re-tendering within 18 months. Reliability is below MPS (see Headway) — a weak performance record exposes it to a challenger. Prioritise service recovery before the bid.</p></div></div></div>`
+    :st==='target'?`<div class="metric"><div class="alertbox amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg><div><b>Winnable target</b><p>Held by an underperforming incumbent (${c[2]}) and within catchment of your garages. Modelled win probability ${c[9]}% at a competitive price.</p></div></div></div>`
+    :''}
+  `;
+}
+
+/* ============================================================
+   WIRING
+   ============================================================ */
+let VIEW='horizon';
+function setView(v){
+  VIEW=v;
+  document.querySelectorAll('.modes button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  const titles={horizon:['Contract Horizon','62 contracts · re-tender timeline'],pricing:['Pricing Benchmark','£/mile bids vs route size'],operators:['Market Holdings','route & PVR share by operator']};
+  document.getElementById('cTitle').textContent=titles[v][0];
+  document.getElementById('cSub').textContent=titles[v][1];
+  if(v==='horizon')buildHorizon(); if(v==='pricing')buildPricing(); if(v==='operators')buildOperators();
+}
+function filtered(){
+  if(FILTER==='all')return CONTRACTS;
+  if(FILTER==='held')return CONTRACTS.filter(c=>c[7]==='held'||c[7]==='risk');
+  if(FILTER==='target')return CONTRACTS.filter(c=>c[7]==='target');
+  if(FILTER==='risk')return CONTRACTS.filter(c=>c[7]==='risk');
+  return CONTRACTS;
+}
+function setFilter(f){
+  FILTER=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  buildTenderList();
+  document.getElementById('railCount').textContent=filtered().length;
+  if(VIEW==='horizon')buildHorizon();
+}
+function selectByRoute(route){
+  const idx=CONTRACTS.findIndex(c=>c[0]===route);
+  if(idx>=0)selectContract(idx);
+}
+function selectContract(idx){
+  CURRENT=CONTRACTS[idx];
+  document.querySelectorAll('.tender').forEach(el=>el.classList.toggle('sel',el.dataset.route===CURRENT[0]));
+  buildAnalysis();
+  if(VIEW==='horizon')buildHorizon();
+}
+function buildTenderList(){
+  const list=filtered();
+  document.getElementById('tenderList').innerHTML=list.map(c=>{
+    const yte=yrsToExpiry(c), cls=yte<1.6?'soon':yte<3?'mid':'far';
+    return `<div class="tender ${c[0]===CURRENT[0]?'sel':''}" data-route="${c[0]}" onclick="selectByRoute('${c[0]}')">
+      <span class="tnum">${c[0]}</span>
+      <span class="tinfo"><b>${c[1]}</b><span>${c[2]} · £${c[6]}m</span></span>
+      <span class="tend"><span class="yrs ${cls}">${yte.toFixed(1)}y</span><span class="tdot" style="background:${statusColor(c[7])}"></span></span>
+    </div>`;}).join('');
+}
+/* tooltip */
+const tipEl=document.getElementById('tip');
+function showTip(e,title,sub){tipEl.innerHTML=`<div class="tl">${title}</div>${sub}`;tipEl.classList.add('show');moveTip(e);}
+function moveTip(e){tipEl.style.left=(e.clientX+14)+'px';tipEl.style.top=(e.clientY+14)+'px';}
+function hideTip(){tipEl.classList.remove('show');}
+document.addEventListener('mousemove',e=>{if(tipEl.classList.contains('show'))moveTip(e);});
+/* clock */
+setInterval(()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');document.getElementById('clock').textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;},1000);
+
+/* init */
+buildTenderList(); buildAnalysis(); buildHorizon();
+</script>
+</body>
+</html>

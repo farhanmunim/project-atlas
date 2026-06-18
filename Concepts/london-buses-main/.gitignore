@@ -1,0 +1,60 @@
+# ── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Secrets (NEVER commit) ──────────────────────────────────────────────────
+# `.env*` covers .env, .env.local, .env.development, .env.production, etc.
+# `*.env` covers files like dev.env / prod.env at any depth.
+.env*
+*.env
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# ── Editor / IDE ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# ── OS cruft ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+# `*.log` already covers npm-debug.log, yarn-debug.log, yarn-error.log, etc.
+*.log
+
+# ── Agent / assistant artefacts (not part of the shipped app) ──────────────
+.claude/
+screenshots/
+reference/
+# Internal AI/dev framework docs — kept local only, never in the repo.
+agent.md
+audit.md
+
+# ── Garage-capacity source captures (heavy reference only) ─────────────────
+# The DVSA licence-page screenshots / crops are reference material for the
+# hand-curated capacity/licences.json — they don't need to be in the repo.
+# The extracted data (capacity/licences.json) and the bookmarklet ARE tracked.
+capacity/*.png
+capacity/_crops/
+
+# ── Pipeline intermediates ─────────────────────────────────────────────────
+# Most files in data/source/ are pipeline working state. The weekly workflow
+# `force-adds` the few we want to persist across runs (vehicle-fleet.json,
+# route-vehicles.json, route-performance.json, route-performance-raw.txt,
+# tenders.json, tender-programme.json, geocode_cache.json) — see
+# .github/workflows/refresh-data.yml for the exhaustive list.
+data/source/
+
+# ── Temp / backup ──────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*~
+
+# ── Local test harness (one-off puppeteer / scratchpads, never shipped) ────
+_test_*.mjs
+_tmp_*
