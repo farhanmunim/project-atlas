@@ -919,6 +919,8 @@ async function loadStore(){
     if(fleet && fleet.byRoute) store.fleet = fleet.byRoute;           // { [routeName]: { count, avgAgeYears, propulsion, makes } }
     const vehicles = await fetchData("vehicles","vehicles.json");
     if(vehicles && vehicles.byReg) store.vehicles = vehicles.byReg;   // { [reg]: { routes, operator, make, year, fuel } }
+    const perf = await fetchData("route-performance","route-performance.json");
+    if(perf && perf.routes){ store.perf = perf.routes; store.perfPeriod = perf.periodLabel || null; }   // { [routeId]: { serviceClass, ewtMinutes, onTimePercent, ewtMps, … } }
     store.manifest = manifest;
     if(overview && Array.isArray(overview.features)){
       overview.features.forEach(f => {
@@ -2163,6 +2165,31 @@ function renderContext(){
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
       (stops.length?`<div class="journey" title="${esc(termA+" → "+termB)}"><span class="jt">${esc(termA)}</span><span class="jarr">→</span><span class="jt">${esc(termB)}</span></div>`:""));
+  // Reliability — actual EWT (high-freq) / OTP (low-freq) + % mileage operated, each vs its
+  // contractual Minimum Performance Standard (breach → red). Source: TfL QSI + per-route MPS PDFs.
+  const perfBlock = (()=>{
+    const p = store.perf && (store.perf[r.name] || store.perf[String(r.name).toUpperCase()]);
+    if(!p) return "";
+    const isHF = p.serviceClass==="high-frequency";
+    const breachStyle = bad => bad ? "color:var(--alert)" : "color:var(--green)";
+    const cards=[];
+    if(isHF && p.ewtMinutes!=null){
+      const bad = p.ewtMps!=null && p.ewtMinutes>p.ewtMps;
+      cards.push(mcard("Excess wait",`${p.ewtMinutes.toFixed(2)}<span class="u">min</span>`, p.ewtMps!=null?`MPS ≤ ${p.ewtMps.toFixed(2)}`:"actual EWT", breachStyle(bad)));
+    } else if(p.onTimePercent!=null){
+      const bad = p.otpMps!=null && p.onTimePercent<p.otpMps;
+      cards.push(mcard("On time",`${p.onTimePercent.toFixed(1)}<span class="u">%</span>`, p.otpMps!=null?`MPS ≥ ${p.otpMps.toFixed(0)}%`:"0–5 min late", breachStyle(bad)));
+    }
+    if(p.mileagePercent!=null){
+      const bad = p.mileageMps!=null && p.mileagePercent<p.mileageMps;
+      cards.push(mcard("Mileage run",`${p.mileagePercent.toFixed(1)}<span class="u">%</span>`, p.mileageMps!=null?`MPS ≥ ${p.mileageMps.toFixed(0)}%`:"scheduled km", breachStyle(bad)));
+    }
+    if(!cards.length) return "";
+    return metricBlock(`Reliability <span class="mono" style="color:var(--paper-4)">${esc(store.perfPeriod||"")}</span>`,
+      metrics(cards)+
+      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} service · actual vs contractual minimum standard (MPS)</div>`+
+      crossLink("source · TfL Bus Performance (QSI) + per-route MPS"));
+  })();
   const servicePatternsBlock = sections.length?metricBlock(`Service patterns <span class="mono">${sections.length}</span>`,
        sections.map(s=>kv(`<span style="text-transform:capitalize">${esc(s.direction)}</span>`,`<span class="vc">${esc(trunc(s.origin+" → "+s.destination,30))}</span>`,s.origin+" → "+s.destination)).join("")+
        (sections[0]&&sections[0].validFrom?kv("Valid from",esc(fmtDate(sections[0].validFrom))):"")):"";
@@ -2185,7 +2212,7 @@ function renderContext(){
   // ── grouped readout: a handful of collapsible top-level groups ──
   el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
-    group("route","Route","var(--green)", geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
     group("fleet","Fleet","var(--violet)", fleetProfileBlock+fleetBlock, fdata&&fdata.avgAgeYears!=null?`${fdata.avgAgeYears}y avg`:"")+
     group("commercial","Commercial","var(--amber)", commercialBlock+opBlock+tenderAnalysisBlock+tenderBlock, tenders.length?`${tenders.length} tenders`:"");
 }
