@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T21:14:19.593Z",
+  "generatedAt": "2026-06-18T23:24:52.786Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -94,6 +94,17 @@
       ],
       "cadence": "~4-weekly · TfL QSI + MPS PDFs",
       "note": "738 routes · QSI cached · MPS ok=58 skip=0 err=0"
+    },
+    "accidents": {
+      "source": "DfT STATS19 road safety data (collision + vehicle tables, bus/coach-involved)",
+      "fetchedAt": "2026-06-18T23:24:52.785Z",
+      "status": "ok",
+      "rows": 4515,
+      "files": [
+        "data/accidents.json"
+      ],
+      "cadence": "annual · DfT STATS19",
+      "note": "4515 collisions · live · 2021–2023 · fatal=25 serious=787 slight=3703"
     }
   }
 }

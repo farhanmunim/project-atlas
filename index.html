@@ -573,6 +573,8 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></button>
           <button type="button" data-k="live" class="on" aria-pressed="true" aria-label="Show or hide live buses" data-tip="Show / hide live buses">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 L19 21 L12 16 L5 21 Z"/></svg></button>
+          <button type="button" data-k="accidents" aria-pressed="false" aria-label="Show or hide bus collisions (Sentinel)" data-tip="Show / hide bus collisions — Sentinel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></button>
         </div>
         <div class="seg" aria-label="Colour routes by">
           <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
@@ -718,7 +720,7 @@ const CONFIG = {
    SHARED SETTINGS (same key as the hub)
    =========================================================================== */
 const SETTINGS_KEY = "transit-instruments:settings";
-const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:true, showLive:true };
+const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:true, showLive:true, showAccidents:false };
 /* Operator colours (distinct hues; used for colour-by-operator + garage markers). */
 // operator primary brand colours (approx) — also used for colour-by-operator + garage badges
 const OP_COLORS = {
@@ -831,6 +833,24 @@ const SAMPLE_NEAR = { stops:[
   {id:"N2",name:"Charing Cross",lat:51.5074,lng:-0.1245,lines:["6","9","11","15","23","87","91","139","176"]},
   {id:"N3",name:"Strand / Aldwych",lat:51.5115,lng:-0.1175,lines:["1","4","26","59","68","168","171","172","188","243"]},
 ]};
+// Sentinel offline fallback — a few illustrative bus-collision points (real data lands via
+// data/accidents.json from the STATS19 pipeline; this is the labelled offline tier).
+const SAMPLE_ACCIDENTS = { sample:true, source:"sample — synthetic (offline)", period:"illustrative", bbox:[-0.55,51.25,0.30,51.71], accidents:[
+  {id:"a1",lat:51.5145,lng:-0.0840,severity:"serious",date:"2024-11-12",borough:"Tower Hamlets",vehicles:2},
+  {id:"a2",lat:51.5412,lng:-0.1430,severity:"slight",date:"2024-09-03",borough:"Camden",vehicles:2},
+  {id:"a3",lat:51.4626,lng:-0.1150,severity:"fatal",date:"2024-06-21",borough:"Lambeth",vehicles:3},
+  {id:"a4",lat:51.5074,lng:-0.1278,severity:"slight",date:"2025-01-18",borough:"Westminster",vehicles:2},
+  {id:"a5",lat:51.5462,lng:-0.0553,severity:"serious",date:"2024-12-02",borough:"Hackney",vehicles:2},
+  {id:"a6",lat:51.4710,lng:-0.4530,severity:"slight",date:"2024-10-27",borough:"Hounslow",vehicles:1},
+  {id:"a7",lat:51.5588,lng:-0.2790,severity:"slight",date:"2025-02-09",borough:"Brent",vehicles:2},
+  {id:"a8",lat:51.4452,lng:-0.0207,severity:"serious",date:"2024-08-15",borough:"Lewisham",vehicles:2},
+]};
+const SEV = { fatal:{label:"Fatal",color:"#ff2d55",rank:3}, serious:{label:"Serious",color:"#ff5470",rank:2}, slight:{label:"Slight",color:"#f5a524",rank:1} };
+function sevOf(a){ return SEV[a&&a.severity] ? a.severity : "slight"; }
+// STATS19 carries the local authority as an ONS code — map the 33 London boroughs to names; codes
+// outside London (within the M25 bbox) read "Outside London"; an already-resolved name passes through.
+const BOROUGH_NAMES = {E09000001:"City of London",E09000002:"Barking & Dagenham",E09000003:"Barnet",E09000004:"Bexley",E09000005:"Brent",E09000006:"Bromley",E09000007:"Camden",E09000008:"Croydon",E09000009:"Ealing",E09000010:"Enfield",E09000011:"Greenwich",E09000012:"Hackney",E09000013:"Hammersmith & Fulham",E09000014:"Haringey",E09000015:"Harrow",E09000016:"Havering",E09000017:"Hillingdon",E09000018:"Hounslow",E09000019:"Islington",E09000020:"Kensington & Chelsea",E09000021:"Kingston upon Thames",E09000022:"Lambeth",E09000023:"Lewisham",E09000024:"Merton",E09000025:"Newham",E09000026:"Redbridge",E09000027:"Richmond upon Thames",E09000028:"Southwark",E09000029:"Sutton",E09000030:"Tower Hamlets",E09000031:"Waltham Forest",E09000032:"Wandsworth",E09000033:"Westminster"};
+function boroughName(b){ if(!b) return "—"; if(BOROUGH_NAMES[b]) return BOROUGH_NAMES[b]; if(/^[EWSN]\d{8}$/.test(b)) return "Outside London"; return b; }
 
 /* ===========================================================================
    DATA ACCESS SEAM — the ONLY place that talks to a backend.
@@ -931,6 +951,8 @@ async function loadStore(){
     if(vehicles && vehicles.byReg) store.vehicles = vehicles.byReg;   // { [reg]: { routes, operator, make, year, fuel } }
     const perf = await fetchData("route-performance","route-performance.json");
     if(perf && perf.routes){ store.perf = perf.routes; store.perfPeriod = perf.periodLabel || null; }   // { [routeId]: { serviceClass, ewtMinutes, onTimePercent, ewtMps, … } }
+    const accidents = await fetchData("accidents","accidents.json");
+    if(accidents && Array.isArray(accidents.accidents)) store.accidents = accidents;   // Sentinel: { accidents:[{lat,lng,severity,date,borough}], sample, period }
     store.manifest = manifest;
     if(overview && Array.isArray(overview.features)){
       overview.features.forEach(f => {
@@ -972,8 +994,8 @@ let networkToken=0;              // guards against overlapping network draws on 
 
 /* Leaflet */
 const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London view (init + Clear all reset)
-let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer;
-let showRoutes=true, showGarages=false, showStops=true, showLive=true, colorMode="operator";   // hydrated from settings in init
+let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer;
+let showRoutes=true, showGarages=false, showStops=true, showLive=true, showAccidents=false, colorMode="operator";   // hydrated from settings in init
 
 /* ===========================================================================
    THEME / FORMAT
@@ -1079,6 +1101,7 @@ function initMap(){
   setBasemap();
   routeLayer=L.layerGroup().addTo(map); stopLayer=L.layerGroup().addTo(map); catchLayer=L.layerGroup().addTo(map);
   garageLayer=L.layerGroup().addTo(map);
+  accidentLayer=L.layerGroup().addTo(map);   // Sentinel — bus collision points (STATS19), severity-graded
   divLayer=L.layerGroup().addTo(map);    // diversion overlays (affected segment + not-served stops)
   liveLayer=L.layerGroup().addTo(map);   // live vehicle GPS markers (BODS), on top
   map.on("click",e=>{
@@ -1235,6 +1258,7 @@ function refreshMap(fit=true){
   if(selected.length){ setMapNote(""); drawRoutes(fit); }
   else drawNetwork();
   drawGarages();
+  drawAccidents();
 }
 
 function mkNetworkLine(r, coords){
@@ -1253,6 +1277,45 @@ function garageIcon(col,code,operator,hl){
 function opGaragesFor(r){
   if(!r || !store.garages) return [];
   return store.garages.filter(g=>g.lat && g.lng && (g.routes||[]).includes(r.name));
+}
+/* SENTINEL — bus collision points. Real data via store.accidents (STATS19 pipeline);
+   falls back to the labelled offline sample. Route-scoped to nearby collisions when a
+   route is selected, else the whole-network set. */
+function accidentsData(){ return (store.accidents && Array.isArray(store.accidents.accidents)) ? store.accidents : SAMPLE_ACCIDENTS; }
+function accidentsForView(){
+  const data=accidentsData(); let list=data.accidents||[];
+  if(selected.length){
+    const lines=selected.map(r=>(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id)).filter(Boolean);
+    if(lines.length) list=list.filter(a=>lines.some(cs=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; }));
+  }
+  return { data, list };
+}
+function drawAccidents(){
+  if(!mapOK || !accidentLayer) return;
+  accidentLayer.clearLayers();
+  if(!showAccidents) return;
+  const { list }=accidentsForView();
+  list.forEach(a=>{ const sv=sevOf(a), s=SEV[sv];
+    L.circleMarker([a.lat,a.lng],{ radius:sv==="fatal"?6:sv==="serious"?5:4, color:effectiveTheme()==="light"?"#ffffff":"#0a0e16", weight:1, fillColor:s.color, fillOpacity:.85 })
+      .bindPopup(`<div class="rh-pop"><div class="rh-h" style="color:${s.color}">${s.label} collision</div><div class="rh-sub">${esc(fmtDate(a.date))} · ${esc(boroughName(a.borough))}${a.vehicles?` · ${a.vehicles} vehicles`:""}</div></div>`)
+      .addTo(accidentLayer); });
+}
+// Sentinel context block — severity breakdown + KSI + most-recent, for the network or a route.
+function sentinelHtml(list, data, scopeNote){
+  if(!data) return "";
+  const head = `Safety <span class="mono" style="color:var(--paper-4)">${data.sample?"sample":esc(data.period||"")}</span>`;
+  if(!list || !list.length) return metricBlock(head, `<div class="empty" style="padding:7px 0">No bus collisions recorded ${esc(scopeNote||"")}.</div>`);
+  const by={fatal:0,serious:0,slight:0}; list.forEach(a=>by[sevOf(a)]++);
+  const tot=list.length, ksi=by.fatal+by.serious;
+  const recent=[...list].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
+  const seg=ks=>ks.filter(k=>by[k]);
+  return metricBlock(head,
+    metrics([ mcard("Collisions",tot.toLocaleString("en-GB"),scopeNote||"bus-involved"), mcard("KSI",ksi.toLocaleString("en-GB"),tot?`${Math.round(ksi/tot*100)}% killed / serious`:"","color:var(--alert)") ])+
+    `<div class="pbar" style="margin-top:12px">${seg(["fatal","serious","slight"]).map(k=>`<i style="width:${(by[k]/tot*100).toFixed(1)}%;background:${SEV[k].color}" title="${SEV[k].label}: ${by[k]}"></i>`).join("")}</div>`+
+    `<div class="plegend">${seg(["fatal","serious","slight"]).map(k=>`<span><span class="d" style="background:${SEV[k].color}"></span>${SEV[k].label} ${by[k]}</span>`).join("")}</div>`+
+    `<div class="mnote" style="margin-top:8px">Most recent</div>`+
+    recent.map(a=>kv(`<span class="kc"><span style="color:${SEV[sevOf(a)].color}">●</span> ${esc(boroughName(a.borough))}</span>`,esc(fmtDate(a.date)))).join("")+
+    crossLink(`source · ${esc(data.source||"DfT STATS19")}${data.sample?" · sample data":""}`));
 }
 function drawGarages(){
   if(!mapOK || !garageLayer) return;
@@ -1493,7 +1556,7 @@ function renderFilters(){
 function syncMapCtl(){
   const c=document.getElementById("mapCtl"); if(!c) return;
   const set=(k,on)=>{ const el=c.querySelector(`[data-k="${k}"]`); el.classList.toggle("on",on); el.setAttribute("aria-pressed",String(on)); };
-  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("ctype",colorMode==="type"); set("coper",colorMode==="operator");
+  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator");
 }
 /* ⟳ — refresh ALL data Atlas uses (every store dataset + the selected route's live
    status), not just the filtered view. Clears all caches first so nothing is stale. */
@@ -1710,7 +1773,7 @@ function setMode(m){
     : (pin?radius+" m":"drop a pin");
   document.getElementById("mapHint").classList.toggle("show", m==="catch" && !pin);
   if(mapOK){ routeLayer.clearLayers(); stopLayer.clearLayers(); divLayer.clearLayers(); catchLayer.clearLayers();
-    if(m==="route"){ refreshMap(); } else { paintCatch(true); } }   // keep the user's current map view when entering Magnify — don't yank them back to all-London
+    if(m==="route"){ refreshMap(); } else { paintCatch(true); drawAccidents(); } }   // keep the user's current map view when entering Magnify — don't yank them back to all-London
   applyDataMode();   // re-sync live tracking to the new mode: trackingOn() is false outside route mode,
                      // so this clears stale live markers + the countdown ring + the liveTick interval
   renderContext();
@@ -2024,6 +2087,7 @@ function renderContext(){
       (topOps?metricBlock(`Operators <span class="mono">${operators}</span>`,
         `<div class="oprow ophead"><span class="dl">Operator</span><span class="opnums"><span>routes</span><span class="evc">fleet</span><span class="chev"></span></span></div>`+
         topOps+crossLink(`click an operator to drill into its league &amp; financials`)):"")+
+      sentinelHtml(accidentsData().accidents, accidentsData(), "Greater London, bus-involved")+
       `<div class="insight"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Network view</div>
          Pick a route for its full dossier — reliability, tenders, fleet and live operations.</div>`;
     return;
@@ -2177,6 +2241,14 @@ function renderContext(){
        ${opName?`<span class="pill">${esc(shortOp(opName))}</span>`:""}
        ${prop?`<span class="pill" title="sample tag">${prop}</span>`:""}
      </div></div>`;
+  // Sentinel — bus collisions within ~150 m of this route's line
+  const sentinelRouteBlock = (()=>{
+    const data=accidentsData(); if(!data) return "";
+    const cs=(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id);
+    if(!cs||!cs.length) return "";
+    const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; });
+    return sentinelHtml(near, data, "within 150 m of this route");
+  })();
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
       (stops.length?`<div class="journey" title="${esc(termA+" → "+termB)}"><span class="jt">${esc(termA)}</span><span class="jarr">→</span><span class="jt">${esc(termB)}</span></div>`:""));
@@ -2227,7 +2299,7 @@ function renderContext(){
   // ── grouped readout: a handful of collapsible top-level groups ──
   el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
-    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+sentinelRouteBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
     group("fleet","Fleet","var(--violet)", fleetProfileBlock+fleetBlock, fdata&&fdata.avgAgeYears!=null?`${fdata.avgAgeYears}y avg`:"")+
     group("commercial","Commercial","var(--amber)", commercialBlock+opBlock+tenderAnalysisBlock+tenderBlock, tenders.length?`${tenders.length} tenders`:"");
 }
@@ -2324,7 +2396,7 @@ function init(){
 
   document.getElementById("refresh").addEventListener("click",refreshAll);
   // hydrate map display prefs + wire the control bar
-  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = settings.showLive!==false; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = settings.showLive!==false; showAccidents = !!settings.showAccidents; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k;
     // display toggles are global overrides — they re-paint in place and must NOT
@@ -2333,6 +2405,7 @@ function init(){
     else if(k==="garages"){ showGarages=!showGarages; settings.showGarages=showGarages; saveSettings(); }
     else if(k==="stops"){ showStops=!showStops; settings.showStops=showStops; saveSettings(); }
     else if(k==="live"){ showLive=!showLive; settings.showLive=showLive; saveSettings(); syncMapCtl(); applyDataMode(); return; }   // start/stop live tracking
+    else if(k==="accidents"){ showAccidents=!showAccidents; settings.showAccidents=showAccidents; saveSettings(); syncMapCtl(); drawAccidents(); renderContext(); return; }   // Sentinel
     else if(k==="ctype"){ colorMode="type"; settings.colorMode="type"; saveSettings(); renderFilters(); renderRouteList(); }
     else if(k==="coper"){ colorMode="operator"; settings.colorMode="operator"; saveSettings(); renderFilters(); renderRouteList(); }
     syncMapCtl(); if(mode==="catch") paintCatch(false); else refreshMap(false);
