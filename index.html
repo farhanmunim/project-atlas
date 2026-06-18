@@ -586,9 +586,9 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
         <span class="rc" id="ringCount">15</span>
       </button>
       <button id="clearAll" class="clearall" type="button" hidden aria-label="Clear everything — reset filters, search and selection" data-tip="Clear all — reset filters, search, selection &amp; drill-downs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>Clear all</button>
-      <button id="refresh" class="iconbtn" type="button" aria-label="Refresh all data" data-tip="Refresh all data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
-      <button id="themeBtn" class="iconbtn" type="button" aria-label="Toggle theme" aria-pressed="false" data-tip="Toggle light / dark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
-      <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings" data-tip="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button id="refresh" class="iconbtn" type="button" aria-label="Refresh all data" data-tip="Refresh all data"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></button>
+      <button id="themeBtn" class="iconbtn" type="button" aria-label="Toggle theme" aria-pressed="false" data-tip="Toggle light / dark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
+      <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings" data-tip="Settings"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
       <span class="clock" data-tip="Local time"><time id="clock">--:--:--</time></span>
     </div>
   </header>
@@ -650,7 +650,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
   <!-- ============================ CANVAS ============================ -->
   <main class="canvas" id="canvas" tabindex="-1">
     <div class="map-wrap">
-      <div id="map" role="application" aria-label="Map of the London bus network"></div>
+      <div id="map" role="region" aria-label="Map of the London bus network"></div>
       <div id="tableView" class="tableview" hidden aria-label="Route table"></div>
       <div class="maphint" id="mapHint">Click the map to drop a catchment pin — then drag it to move</div>
       <div class="mapnote" id="mapNote" aria-hidden="true"></div>
@@ -714,7 +714,7 @@ const CONFIG = {
    SHARED SETTINGS (same key as the hub)
    =========================================================================== */
 const SETTINGS_KEY = "transit-instruments:settings";
-const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showGarages:true, showStops:true, showLive:true };
+const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:true, showLive:true };
 /* Operator colours (distinct hues; used for colour-by-operator + garage markers). */
 // operator primary brand colours (approx) — also used for colour-by-operator + garage badges
 const OP_COLORS = {
@@ -942,6 +942,7 @@ function storeStopsFor(id, dir){ return store.stops && store.stops[id] && store.
    =========================================================================== */
 let routes=[], routesState="loading", lastFetched=0;   // start empty → show a loading state, not a flash of sample data
 let liveStatusAt=0;   // when the selected route's live status last refreshed (drives the badge in Live mode)
+let liveFailed=false; // last live pull errored → badge shows stale, doesn't fake "just now"
 let storeGeneratedAt=0;   // when the store data itself was generated by the pipeline (shown in the tooltip)
 let mode="route", direction="inbound", selectMode="single";
 let selected=[];                 // array of route objects (1 in single, many in multi)
@@ -986,8 +987,15 @@ function ingest(entityType, items){
 function fmtDist(km){ if(settings.units==="mi"){ const mi=km*0.621371; return mi.toFixed(mi<10?2:1)+" mi"; } return km.toFixed(km<10?2:1)+" km"; }
 // distance as a KPI value with the unit set small/subordinate (e.g. 14.9 km → 14.9 ᵏᵐ)
 function distVU(km){ const s=fmtDist(km); const i=s.lastIndexOf(" "); return i<0?s:`${s.slice(0,i)}<span class="u">${s.slice(i+1)}</span>`; }
-// All user-facing dates render DD/MM/YYYY (en-GB). Parses ISO or "05 December 2022".
-function fmtDate(v){ if(!v) return ""; const t=Date.parse(v); return Number.isNaN(t)?String(v):new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(t)); }
+// All user-facing dates render DD/MM/YYYY (en-GB). Handles en-GB DD/MM/YY(YY) EXPLICITLY
+// (Date.parse would misread it as US MM/DD), plus ISO and "05 December 2022".
+function fmtDate(v){
+  if(!v) return "";
+  const s=String(v).trim();
+  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);   // already day/month/year — never round-trip through Date.parse
+  if(m){ let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2000; if(d>31||mo>12) return s; return `${String(d).padStart(2,"0")}/${String(mo).padStart(2,"0")}/${y}`; }
+  const t=Date.parse(s); return Number.isNaN(t)?s:new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(t));
+}
 // Month-precision dates (contract start/end are YYYY-MM, no day) → MM/YYYY.
 function fmtMonth(ym){ const m=/^(\d{4})-(\d{2})/.exec(String(ym||"")); return m?`${m[2]}/${m[1]}`:String(ym||""); }
 // Joint bid (mirrors london-buses): the scraped Joint Bids cell is populated, or the
@@ -1012,7 +1020,7 @@ function ptSeg(px,py,ax,ay,bx,by){ const dx=bx-ax,dy=by-ay; if(!dx&&!dy) return 
 function routesNear(latlng){
   if(!mapOK) return [];
   const pt=map.latLngToContainerPoint(latlng), R=9, found=new Set();
-  const cand = selected.length ? selected : applyFilters(routes);
+  const cand = applyFilters(routes);   // always probe the whole (filtered) network — click-to-identify must work even with a route selected
   for(const r of cand){ if(found.has(r.name)) continue;
     const coords=(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id, direction==="inbound"?"2":"1");
     if(!coords||coords.length<2) continue;
@@ -1032,7 +1040,10 @@ function renderBadge(){
   const liveActive = settings.dataMode==="live" && selectMode==="single" && selected.length && liveStatusAt;
   const ago = (liveActive ? fmtAgo(liveStatusAt) : (lastFetched ? fmtAgo(lastFetched) : "just now"));
   let label = "Updated "+ago, tip;
-  if(liveActive){ txt.textContent=label; el.setAttribute("data-tip",`Live · route ${selected[0].name} status refreshed ${ago} (every ${settings.liveSec}s)`); return; }
+  if(liveActive){
+    if(liveFailed){ el.classList.add("stale"); txt.textContent="Live feed unreachable"; el.setAttribute("data-tip",`Live feed unreachable — showing last positions (last good ${ago})`); return; }
+    txt.textContent=label; el.setAttribute("data-tip",`Live · route ${selected[0].name} status refreshed ${ago} (every ${settings.liveSec}s)`); return;
+  }
   switch(routesState){
     case "loading":  label="Loading…"; tip="Loading network data…"; break;
     case "database": tip = `All network data from our database · pulled ${ago}`; break;
@@ -1349,7 +1360,7 @@ async function loadRoutes(){
     else { routes=await dataSource.fetchRoutes(); routesState="live"; storeGeneratedAt=0; }   // …else live TfL
     lastFetched = Date.now();   // when we (re)fetched — drives "Updated X ago" so a refresh visibly resets it
   }
-  catch(err){ if(routes&&routes.length&&routesState!=="sample") routesState="cached"; else { routes=[...SAMPLE_ROUTES]; routesState="offline"; } console.warn("[atlas] route list failed:",err.message); }
+  catch(err){ if(routes&&routes.length&&routesState!=="offline") routesState="cached"; else { routes=[...SAMPLE_ROUTES]; routesState="offline"; } console.warn("[atlas] route list failed:",err.message); }
   finally{ refreshing=false; btn.disabled=false; btn.classList.remove("spin"); renderBadge(); renderFilters(); renderRouteList(); }
 }
 async function ensureSeq(r){
@@ -1440,13 +1451,13 @@ function renderFilters(){
   const opsPresent=[...opSet].sort();
   const opChips=opsPresent.map(o=>{ const on=filters.operator.has(o);
     const short=o.replace(" London","").replace("Transport UK London Bus (RATP)","RATP").replace(" Bus","");
-    return `<button type="button" class="chip" data-g="operator" data-v="${o}" aria-pressed="${on}">${dotOp?`<span class="cdot" style="background:${operatorColor(o)}"></span>`:""}${esc(short)}</button>`; }).join("");
+    return `<button type="button" class="chip" data-g="operator" data-v="${esc(o)}" aria-pressed="${on}">${dotOp?`<span class="cdot" style="background:${operatorColor(o)}"></span>`:""}${esc(short)}</button>`; }).join("");
   const propChips=Object.keys(PROP_DEFS).map(p=>{ const on=filters.propulsion.has(p);
     return `<button type="button" class="chip" data-g="propulsion" data-v="${p}" aria-pressed="${on}">${PROP_DEFS[p]}</button>`; }).join("");
   // garage-operator chips (filter which garage MARKERS show, not routes)
   const garageOps = store.garages ? [...new Set(store.garages.map(g=>g.operator).filter(Boolean))].sort() : [];
   const gopChips = garageOps.map(o=>{ const on=filters.garageOperator.has(o);
-    return `<button type="button" class="chip" data-g="garageOperator" data-v="${o}" aria-pressed="${on}"><span class="cdot" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</button>`; }).join("");
+    return `<button type="button" class="chip" data-g="garageOperator" data-v="${esc(o)}" aria-pressed="${on}"><span class="cdot" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</button>`; }).join("");
   const active = filters.type.size+filters.operator.size+filters.propulsion.size;          // route-affecting filters
   const totalActive = active + filters.garageOperator.size;
   wrap.innerHTML=
@@ -1479,7 +1490,7 @@ async function refreshAll(){
   try{
     store.via=null; store.overviewByRoute=new Map();
     store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.manifest=null;
-    seqCache.clear(); secCache.clear(); statusCache.clear();   // drop all in-memory caches → genuinely re-pull
+    seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear();   // drop ALL in-memory caches → genuinely re-pull
     await loadStore();              // routes, geometry, stops, route-meta, tenders, garages
     await loadRoutes();             // sets lastFetched = now → badge confirms the refresh
     for(const r of selected){ delete r._seq; await ensureSeq(r); await ensureDetail(r); }   // selected route geometry + live status
@@ -1630,7 +1641,7 @@ async function selectFromSearch(raw){
     document.getElementById("canvasTitle").textContent=`${selected.length} route${selected.length>1?"s":""}`;
     document.getElementById("canvasSub").textContent="comparing";
     renderRouteList(); renderContext(); applyDataMode();
-    Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); });
+    Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); if(trackingOn()) refreshLive(); });
   } else {
     await toggleRoute(matched[0]);   // single → full single-select flow
   }
@@ -1688,6 +1699,8 @@ function setMode(m){
   document.getElementById("mapHint").classList.toggle("show", m==="catch" && !pin);
   if(mapOK){ routeLayer.clearLayers(); stopLayer.clearLayers(); divLayer.clearLayers(); catchLayer.clearLayers();
     if(m==="route"){ refreshMap(); } else { paintCatch(true); } }   // keep the user's current map view when entering Magnify — don't yank them back to all-London
+  applyDataMode();   // re-sync live tracking to the new mode: trackingOn() is false outside route mode,
+                     // so this clears stale live markers + the countdown ring + the liveTick interval
   renderContext();
 }
 function setPin(lat,lng){
@@ -1780,7 +1793,7 @@ function viewAllRoutes(names){
   renderFilters(); renderRouteList(); renderContext();
   applyDataMode();   // re-sync live tracking to the NEW selection — without this, the
                      // previous route's live markers leak into the new view (stale liveLayer)
-  Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); });
+  Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); if(trackingOn()) refreshLive(); });
 }
 function garagesOf(op){ return (store.garages||[]).filter(g=>g.operator===op).sort((a,b)=>(b.routes?.length||0)-(a.routes?.length||0)); }
 function garageByCode(code){ return (store.garages||[]).find(g=>g.code===code); }
@@ -2261,7 +2274,7 @@ function init(){
   rng.addEventListener("input",e=>{ radius=+e.target.value; document.getElementById("radiusVal").textContent=radius+" m"; document.getElementById("canvasSub").textContent=radius+" m"; });
   rng.addEventListener("change",()=>{ if(pin) loadNear(); });
   document.getElementById("recentreBtn").addEventListener("click",()=>{ if(pin&&mapOK) map.setView([pin.lat,pin.lng],radiusToZoom(radius)); else toast("Drop a pin on the map first."); });
-  document.getElementById("clearPinBtn").addEventListener("click",()=>{ pin=null; currentNear=null; if(mapOK)catchLayer.clearLayers(); document.getElementById("pinCoords").textContent="— not set —"; document.getElementById("mapHint").classList.add("show"); renderContext(); });
+  document.getElementById("clearPinBtn").addEventListener("click",()=>{ pin=null; currentNear=null; if(mapOK)catchLayer.clearLayers(); document.getElementById("pinCoords").textContent="— not set —"; document.getElementById("canvasSub").textContent="drop a pin"; document.getElementById("mapHint").classList.add("show"); renderContext(); });
 
   // clearFilters is wired inside renderFilters (it is re-rendered); clearSel here:
   document.getElementById("clearSel").addEventListener("click",()=>{ selected=[]; ctxView={type:"auto"}; renderRouteList(); refreshMap(); renderContext(); applyDataMode();
@@ -2269,12 +2282,12 @@ function init(){
 
   document.getElementById("refresh").addEventListener("click",refreshAll);
   // hydrate map display prefs + wire the control bar
-  showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = settings.showLive!==false; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = settings.showLive!==false; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k;
     // display toggles are global overrides — they re-paint in place and must NOT
     // refit/zoom the map (refreshMap(false)).
-    if(k==="routes") showRoutes=!showRoutes;
+    if(k==="routes"){ showRoutes=!showRoutes; settings.showRoutes=showRoutes; saveSettings(); }
     else if(k==="garages"){ showGarages=!showGarages; settings.showGarages=showGarages; saveSettings(); }
     else if(k==="stops"){ showStops=!showStops; settings.showStops=showStops; saveSettings(); }
     else if(k==="live"){ showLive=!showLive; settings.showLive=showLive; saveSettings(); syncMapCtl(); applyDataMode(); return; }   // start/stop live tracking
@@ -2301,7 +2314,7 @@ function init(){
   const dlg=document.getElementById("settings");
   document.getElementById("settingsBtn").addEventListener("click",()=>{ syncSettingsUI(); dlg.showModal(); });
   document.getElementById("setTheme").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.theme=b.dataset.v; saveSettings(); applyTheme(); });
-  document.getElementById("setUnits").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.units=b.dataset.v; saveSettings(); syncSettingsUI(); renderContext(); });
+  document.getElementById("setUnits").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.units=b.dataset.v; saveSettings(); syncSettingsUI(); renderContext(); if(canvasView==="table") renderTable(); });
   document.getElementById("setClock").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.clock=b.dataset.v; saveSettings(); syncSettingsUI(); tickClock(); });
   document.getElementById("setData").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.dataMode=b.dataset.v; saveSettings(); syncSettingsUI(); applyDataMode(); });
   document.getElementById("setLive").addEventListener("change",e=>{ settings.liveSec=+e.target.value; saveSettings(); applyDataMode(); });
@@ -2350,13 +2363,18 @@ function init(){
 let liveTick=null, nextRefreshAt=0;
 const RING_C=2*Math.PI*15;
 const LIVE_SEC=()=>Math.max(10, settings.liveSec||15);   // BODS refreshes ~10s — floor the interval there
-// Live tracking is active when the Live layer is on AND a single route is selected.
+// Live markers show when the Live layer is on AND a route is selected in route mode.
 function trackingOn(){ return showLive && mode==="route" && selected.length>0; }   // single or multi
+// Auto-polling (the countdown ring) additionally requires the Cached/Live setting = Live.
+function autoPolling(){ return trackingOn() && settings.dataMode==="live"; }
 function applyDataMode(){
   if(liveTick){ clearInterval(liveTick); liveTick=null; }
   const ring=document.getElementById("liveRing");
-  if(trackingOn()){ ring.hidden=false; nextRefreshAt=Date.now()+LIVE_SEC()*1000; updateRing(); liveTick=setInterval(updateRing, reduceMotion()?1000:250); refreshLive(); }
-  else { ring.hidden=true; liveLayer&&liveLayer.clearLayers(); liveVehicles=[]; }
+  if(trackingOn()){
+    refreshLive();   // fetch + draw markers once (both Cached and Live modes)
+    if(autoPolling()){ ring.hidden=false; nextRefreshAt=Date.now()+LIVE_SEC()*1000; updateRing(); liveTick=setInterval(updateRing, reduceMotion()?1000:250); }
+    else { ring.hidden=true; }   // Cached: one-shot snapshot, no auto-refresh ring
+  } else { ring.hidden=true; liveLayer&&liveLayer.clearLayers(); liveVehicles=[]; }
 }
 function updateRing(){
   if(!trackingOn()) return;
@@ -2371,7 +2389,7 @@ function liveRefresh(){
   ring.classList.add("refreshing");
   statusCache.delete(selected[0].id);                 // bypass the 60s status TTL — force fresh
   ensureDetail(selected[0]).then(()=>refreshLive())   // refresh status then positions, one repaint
-    .finally(()=>{ ring.classList.remove("refreshing"); liveStatusAt=Date.now(); renderBadge(); });
+    .finally(()=>{ ring.classList.remove("refreshing"); renderBadge(); });   // liveStatusAt is stamped only on success (in refreshLive), so a failed pull doesn't fake freshness
 }
 
 /* ── LIVE VEHICLE TRACKING (BODS SIRI-VM via our cached /api/live/vehicles proxy) ── */
@@ -2419,7 +2437,7 @@ async function refreshLive(){
     const res=await dataSource.fetchLivePositions(names.join(","));   // server filters by PublishedLineName(s)
     if(token!==liveToken) return;                            // a newer selection superseded this fetch
     liveVehicles=(res.vehicles||[]).filter(v=>nameSet.has(String(v.publishedLine)));
-    liveAt=res.capturedAt||Date.now(); liveStatusAt=liveAt;
+    liveAt=res.capturedAt||Date.now(); liveStatusAt=liveAt; liveFailed=false;
     const now=Date.now(), isNew = liveAt && liveAt!==lastCap;
     liveVehicles.forEach(v=>{
       v._routeColor = multi ? (colorByRoute[v.publishedLine]||"var(--cyan)") : dirColor(v.direction);   // multi → per route; single → per direction
@@ -2430,7 +2448,7 @@ async function refreshLive(){
       if(isNew) vehHistory[v.reg]={lat:v.lat,lng:v.lng,t:now,speed:v._speed!=null?v._speed:(h&&h.speed)}; });
     if(isNew){ lastCap=liveAt; const present=new Set(liveVehicles.map(v=>v.reg)); for(const k in vehHistory) if(!present.has(k)) delete vehHistory[k]; }
     drawLiveVehicles(); renderContext(); renderBadge();
-  }catch(e){ console.warn("[atlas] live positions failed:",e.message); }
+  }catch(e){ if(token===liveToken){ liveFailed=true; renderBadge(); } console.warn("[atlas] live positions failed:",e.message); }
 }
 /* live-ops context blocks (only when tracking a single route) — service health,
    live performance (speed/held/off-route), headway & bunching, running-now fleet,
