@@ -1,0 +1,65 @@
+name: Ingest — Weekly Supabase Refresh
+
+# Standalone warehouse ingestion (moved in from the london-buses repo). Runs the
+# full 18-step pipeline under ingest/ and upserts history + analytics into our
+# Supabase project. DECOUPLED from Atlas: writes only to Supabase, never to the
+# repo or the data/*.json the Cloudflare site reads — a slow/failed ingest can
+# never block the site.
+#
+# Monday 09:23 UTC — off the hour (GitHub delays on-the-hour crons), timed for AM
+# peak so TfL /Arrivals returns a representative active fleet.
+on:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+
+# Writes to Supabase, NOT git — no commit-back. Sticky caches persist via
+# actions/cache (below), so the repo stays lean (no committed warm caches).
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest-weekly
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: ingest
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # Cold-start week may spend ~20 min on the iBus → DVLA fleet build; steady
+    # state (warm cache) is ~10 min.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ingest/package-lock.json
+
+      # Persist the sticky source caches (DVLA fleet, tenders, MPS, geocode,
+      # performance) between runs. Rolling key + restore-keys prefix: each run
+      # saves a fresh cache and restores the latest match — so without a git
+      # commit-back we still avoid re-pulling ~9000 DVLA lookups every Monday.
+      - name: Restore sticky source caches
+        uses: actions/cache@v4
+        with:
+          path: ingest/data/source
+          key: ingest-source-${{ github.run_id }}
+          restore-keys: ingest-source-
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Run full data refresh → Supabase
+        env:
+          # london-buses scripts read BUS_API_KEY; this repo's TfL secret is
+          # TFL_APP_KEY — bridge it here (single subscription key, compatible).
+          BUS_API_KEY:               ${{ secrets.TFL_APP_KEY }}
+          DVLA_API_KEY:              ${{ secrets.DVLA_API_KEY }}
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run refresh

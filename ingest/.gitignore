@@ -1,0 +1,27 @@
+# ingest/ — standalone Supabase warehouse pipeline (moved from london-buses).
+# Output target is Supabase; this repo commits only the scripts + the seed warm
+# caches. Everything the pipeline REGENERATES each run is ignored so it can't be
+# accidentally committed and doesn't bloat the repo.
+
+node_modules/
+.env
+
+# Regenerated every run (geometry ZIP, TfL/scrape fetches, build outputs) —
+# Supabase is the durable store, the frontend (Atlas) doesn't read these.
+data/routes/
+data/stops.json
+data/route_stops.json
+data/route_destinations.json
+data/route_classifications.json
+data/routes-overview.geojson
+data/garages.geojson
+data/garage-locations.json
+data/frequencies.json
+data/geometry-source.json
+data/build-meta.json
+data/audit/
+
+# Sticky source caches: a one-time seed is committed (warm first run); runtime
+# updates persist via actions/cache, not git. Ignore the volatile/large members
+# so re-runs don't try to commit refreshed copies.
+data/source/route-performance-raw.txt

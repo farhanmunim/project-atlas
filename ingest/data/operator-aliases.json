@@ -1,0 +1,26 @@
+{
+  "description": "Curated lookup for operator-name aliases. The tender form, iBus open data and other upstream sources carry historical subsidiary names that roll up into a smaller set of parent brands. This is the single source of truth for those mappings — UPDATE HERE whenever an operator is acquired (e.g. FirstGroup acquired RATP Dev Transit London Feb 2025), a subsidiary is renamed, or a new operator enters the network. Mirrors the manual-data-cleanse pattern of `data/vehicle-lookup.json` (deck/propulsion/make) and `capacity/licences.json` (per-garage capacity).\n\nThe `brand` is the canonical name surfaced to users. Every string in `aliases` is treated as the same entity as `brand` — both for parent-brand normalisation in build-classifications.js (`tenderOpParent`) and for the route card's Next-contract operator-change flag in route-detail.js (`sameOperator`).",
+  "brands": [
+    { "brand": "Arriva",
+      "aliases": ["Arriva London", "Arriva London North", "Arriva London South", "Arriva The Shires"] },
+    { "brand": "First",
+      "aliases": ["First London", "First London East", "First London Centrewest", "First London West", "CentreWest",
+                  "RATP", "RATP Dev", "London United", "London Sovereign", "Sovereign", "Quality Line", "NSL"],
+      "note": "RATP Dev sold its London bus operations to FirstGroup in February 2025 (~83 routes, ~1,000 buses, 10 depots), now operating as First Bus London. Legacy RATP-era names alias to First going forward." },
+    { "brand": "Go-Ahead",
+      "aliases": ["Go-Ahead London", "London General", "London Central", "Blue Triangle", "Docklands Buses",
+                  "Metrobus", "East Thames Buses", "East Thames"] },
+    { "brand": "Metroline",
+      "aliases": ["Metroline Travel", "Metroline West"] },
+    { "brand": "Stagecoach",
+      "aliases": ["Stagecoach London", "Selkent", "East London", "East London Bus", "Tower Transit"],
+      "note": "Stagecoach London acquired Tower Transit's East London operations (Lea Interchange garage, route 339 + others) in 2024. The wider Tower Transit business continues at Westbourne Park, but as no current TfL routes route_classifications.json carry Tower Transit as the current operator, a blanket alias is safe. Historic `previousOperator` records on routes that genuinely changed hands via re-tender are unaffected — the alias only folds at the awarded-operator-display level." },
+    { "brand": "Abellio",
+      "aliases": ["Travel London", "Abellio London"] },
+    { "brand": "Transport UK",
+      "aliases": ["Transport UK London", "Transport UK West London"] },
+    { "brand": "Uno",
+      "aliases": ["Uno Buses"] }
+  ],
+  "_todo": "Wire this into scripts/build-classifications.js so `tenderOpParent` reads from here instead of the hardcoded TENDER_OP_GROUP / TENDER_OP_PREFIXES tables, and into js/route-detail.js so `sameOperator` reads from here too. Currently both still carry their own inline copies; this file is the canonical record to maintain."
+}

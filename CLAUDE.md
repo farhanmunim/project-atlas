@@ -227,6 +227,40 @@ prod as follows — keep both in sync:
 - Pages build config: **no build command**, output directory **repo root** (`/`);
   the `functions/` dir at root is auto-detected.
 
+## Supabase warehouse pipeline (`ingest/`)
+
+A **standalone, isolated** ingestion subtree (moved in from the old london-buses
+repo) that builds a historical/analytics warehouse in **Supabase** (free tier).
+It is **fully decoupled** from Atlas — its own `package.json`, `data/`, and
+workflows; it shares **no code path** with `pipeline/` or the site. It writes
+**only to Supabase**, never to `data/*.json` or the repo, so a slow/failed ingest
+can never block the Cloudflare site.
+
+- **Scripts self-locate** via `__dirname/..` → always read/write `ingest/data`
+  regardless of cwd. Orchestrator: `ingest/scripts/refresh.js` (18 steps).
+  Supabase upsert: `ingest/scripts/push-to-supabase.js` → tables `vehicles`,
+  `route_snapshots`, `garage_snapshots`, `route_performance`, `tenders`,
+  `tender_programme`, `route_vehicle_observations` (+ `route_vehicle_sightings`).
+- **Reuses the existing Supabase schema** (`ingest/db/migrations/`). Don't
+  reshape tables; map onto them.
+- **Three workflows** (all `permissions: contents: read` — Supabase-only, no
+  commit-back):
+  - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.
+  - `ingest-supabase-sampler.yml` — daily fleet sample, 08:37 UTC.
+  - `ingest-supabase-heartbeat.yml` — daily 12:37 UTC, INSERTs into `keep_alive`.
+    **Load-bearing:** the free tier auto-pauses after 7 days with no DB **write**
+    activity → eventual deletion. A SELECT does *not* count; only the INSERT does.
+    Never disable this, and keep at least one daily writer (heartbeat + sampler
+    are two independent ones) alive.
+- **Secrets (GitHub Actions):** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+  `DVLA_API_KEY`, and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in
+  the workflow env. Service-role key is server-only; never in code or the browser.
+- **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode)
+  persist between runs via `actions/cache` (rolling key), so the repo stays lean
+  (no committed cache churn) and runs don't cold-pull ~9000 DVLA lookups. A
+  one-time seed of these is committed for the first warm run; everything else the
+  pipeline regenerates is gitignored (`ingest/.gitignore`).
+
 ## Golden rule
 
 One coherent app: every layer and panel section shares the same tokens, components and
