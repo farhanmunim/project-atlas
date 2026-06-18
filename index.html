@@ -311,6 +311,8 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .gstats{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-bottom:9px;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .gstats span{display:flex;flex-direction:column;gap:1px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--paper-4)}
 .gstats b{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--paper);letter-spacing:-.02em}
+.rh-pop .rh-also{font-size:10px;font-family:var(--mono);color:var(--paper-3)}
+.rh-pop .rh-also b{font-family:var(--sans);font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--paper-4);font-weight:600;margin-right:5px}
 .rpills{display:flex;flex-wrap:wrap;gap:6px;max-width:280px}
 .rpill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-weight:700;font-size:11px;line-height:1.3;cursor:pointer;
   color:var(--paper);background:color-mix(in srgb,var(--pc) 14%,var(--panel-2));border:1px solid color-mix(in srgb,var(--pc) 38%,var(--line));border-radius:var(--rp);padding:3px 9px}
@@ -945,6 +947,7 @@ const MAX_DRAW=50;               // cap network geometries drawn at once (free-A
 let networkToken=0;              // guards against overlapping network draws on rapid filtering
 
 /* Leaflet */
+const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London view (init + Clear all reset)
 let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer;
 let showRoutes=true, showGarages=false, showStops=true, showLive=true, colorMode="operator";   // hydrated from settings in init
 
@@ -1037,7 +1040,7 @@ function initMap(){
   if(window.__leafletJsFailed||typeof L==="undefined"){ mapOK=false;
     showOverlay("Map library unavailable","The Leaflet map library could not be loaded from the CDN. Route geometry and stop lists on the right still work — reconnect to see the map."); return; }
   mapOK=true;
-  map=L.map("map",{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([51.5074,-0.1278],11);
+  map=L.map("map",{zoomControl:false,attributionControl:false,preferCanvas:true}).setView(DEFAULT_CENTER,DEFAULT_ZOOM);
   L.control.zoom({position:"bottomright"}).addTo(map);
   setBasemap();
   routeLayer=L.layerGroup().addTo(map); stopLayer=L.layerGroup().addTo(map); catchLayer=L.layerGroup().addTo(map);
@@ -1521,6 +1524,7 @@ function clearAll(){
   setMode("route");          // back to the network view (repaints map + context)
   setSelectMode("single");   // sync the select toggle
   applyDataMode();           // stop live tracking (nothing selected)
+  if(mapOK) map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);   // reset pan/zoom to the default London view
 }
 
 /* ===========================================================================
@@ -2321,9 +2325,21 @@ function bearingArrow(b){ if(b==null) return `<span class="lv-dot"></span>`;
   return `<span class="lv-arrow" style="transform:rotate(${b}deg)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L19 21 L12 16 L5 21 Z"/></svg></span>`; }
 function dirColor(dir){ return String(dir)==="1"?"var(--cyan)":String(dir)==="2"?"var(--amber)":"var(--paper-3)"; }
 function vehicleIcon(v){ return L.divIcon({ className:"veh-pin", iconSize:[26,26], iconAnchor:[13,13], html:`<span class="lv" style="--vc:${v._routeColor||dirColor(v.direction)}">${bearingArrow(v.bearing)}</span>` }); }
-function vehiclePopup(v){ const fd=store.vehicles?store.vehicles[v.reg]:null; const age=fd&&fd.year?(new Date().getUTCFullYear()-fd.year)+"y":null;
-  return `<div class="rh-pop"><div class="rh-h">${esc(v.reg||"vehicle")}</div><div class="rh-sub">Route ${esc(v.publishedLine||v.line||"—")} → ${esc(v.destination||"—")}</div>
-    <div class="gstats"><span><b>${v.bearing!=null?Math.round(v.bearing)+"°":"—"}</b>heading</span><span><b>${fd&&fd.make?esc(fd.make.split(" ")[0]):"—"}</b>make</span><span><b>${age||"—"}</b>age</span><span><b>${esc(v.journeyRef||"—")}</b>run</span></div></div>`; }
+function vehiclePopup(v){ const fd=store.vehicles?store.vehicles[v.reg]:null; const yr=new Date().getUTCFullYear();
+  const age=fd&&fd.year?(yr-fd.year)+"y":null;
+  const prop=fd&&fd.fuel?fuelBucket(fd.fuel):null;
+  const rt=routes.find(r=>r.name===v.publishedLine); const rtype=rt?TYPE_DEFS[typeOf(rt)].label:null;
+  const others=(fd&&Array.isArray(fd.routes)?fd.routes:[]).filter(x=>x!==v.publishedLine);
+  return `<div class="rh-pop"><div class="rh-h">${esc(v.reg||"vehicle")}</div>
+    <div class="rh-sub">Route ${esc(v.publishedLine||v.line||"—")} → ${esc(v.destination||"—")}</div>
+    <div class="gstats">
+      <span><b>${v.bearing!=null?Math.round(v.bearing)+"°":"—"}</b>heading</span>
+      <span><b>${prop?PROP_DEFS[prop]:"—"}</b>propulsion</span>
+      <span><b>${rtype?esc(rtype):"—"}</b>route type</span>
+      <span><b>${fd&&fd.make?esc(fd.make.split(" ")[0]):"—"}</b>make</span>
+      <span><b>${age||"—"}</b>age</span>
+      <span><b>${esc(v.journeyRef||"—")}</b>run</span></div>
+    ${others.length?`<div class="rh-also"><b>Also runs</b> ${esc(others.slice(0,6).join(", "))}${others.length>6?` +${others.length-6}`:""}</div>`:""}</div>`; }
 function drawLiveVehicles(){ if(!mapOK||!liveLayer) return; liveLayer.clearLayers();
   liveVehicles.forEach(v=>{ if(Number.isFinite(v.lat)&&Number.isFinite(v.lng)) L.marker([v.lat,v.lng],{icon:vehicleIcon(v),zIndexOffset:2000}).bindPopup(vehiclePopup(v)).addTo(liveLayer); }); }
 let liveToken=0;
@@ -2385,8 +2401,8 @@ function liveOpsHtml(r){
       metrics([ mcard("Avg age",runAvgAge!=null?`${runAvgAge.toFixed(1)}<span class="u">yrs</span>`:"—","on the road now"), mcard("Zero-emission",runTot?`${Math.round(((runProp.electric+runProp.hydrogen)/runTot)*100)}<span class="u">%</span>`:"—","of running fleet") ])+
       (runTot?`<div class="pbar" style="margin-top:12px">${Object.entries(runProp).filter(([,n])=>n).map(([k,n])=>`<i style="width:${(n/runTot*100).toFixed(1)}%;background:${PCOLR[k]}" title="${PROP_DEFS[k]}: ${n}"></i>`).join("")}</div>`:"")):"")+
     metricBlock(`On the road now <span class="mono" style="color:var(--cyan)">${lv.length} live</span>`,
-      (lv.length?`<div class="vehlist">`+lv.slice(0,30).map(v=>{ const fd=store.vehicles?store.vehicles[v.reg]:null; const age=fd&&fd.year?(yr-fd.year)+"y":"";
-          return `<button type="button" class="vehrow" data-lat="${v.lat}" data-lng="${v.lng}" title="${esc(v.reg||"")} → ${esc(v.destination||"")}"><span class="vdir" style="background:${dirColor(v.direction)}"></span><span class="vreg">${esc(v.reg||"—")}</span><span class="vdest">${esc(v.destination||"—")}</span><span class="vmeta">${v.bearing!=null?Math.round(v.bearing)+"°":""}${age?" · "+age:""}</span></button>`; }).join("")+(lv.length>30?`<div class="xlink">+${lv.length-30} more on the map</div>`:"")+`</div>`:`<div class="empty" style="padding:7px 0">No live vehicles reported right now.</div>`)+
+      (lv.length?`<div class="vehlist">`+lv.slice(0,30).map(v=>{ const fd=store.vehicles?store.vehicles[v.reg]:null; const age=fd&&fd.year?(yr-fd.year)+"y":""; const pb=fd&&fd.fuel?fuelBucket(fd.fuel):null; const pL=pb?PROP_DEFS[pb]:"";
+          return `<button type="button" class="vehrow" data-lat="${v.lat}" data-lng="${v.lng}" title="${esc(v.reg||"")} → ${esc(v.destination||"")}${pL?" · "+esc(pL):""}"><span class="vdir" style="background:${pb?PCOLR[pb]:dirColor(v.direction)}" title="${pL?esc(pL):"direction "+esc(String(v.direction||""))}"></span><span class="vreg">${esc(v.reg||"—")}</span><span class="vdest">${esc(v.destination||"—")}</span><span class="vmeta">${v.bearing!=null?Math.round(v.bearing)+"°":""}${age?" · "+age:""}${pL?" · "+esc(pL):""}</span></button>`; }).join("")+(lv.length>30?`<div class="xlink">+${lv.length-30} more on the map</div>`:"")+`</div>`:`<div class="empty" style="padding:7px 0">No live vehicles reported right now.</div>`)+
       crossLink(`live GPS · BODS SIRI-VM${liveAt?` · refreshed ${fmtAgo(liveAt)}`:""}`))+
     (moves.length?metricBlock(`Fleet movements <span class="mono" style="color:var(--paper-4)">intraday</span>`,
       moves.map(m=>kv(`<span class="vreg">${esc(m.reg)}</span>`,`<span class="vc">also runs ${esc(m.others.slice(0,4).join(", "))}</span>`,m.others.join(", "))).join("")+
