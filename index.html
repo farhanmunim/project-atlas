@@ -972,6 +972,15 @@ function ingest(entityType, items){
 function fmtDist(km){ if(settings.units==="mi"){ const mi=km*0.621371; return mi.toFixed(mi<10?2:1)+" mi"; } return km.toFixed(km<10?2:1)+" km"; }
 // distance as a KPI value with the unit set small/subordinate (e.g. 14.9 km → 14.9 ᵏᵐ)
 function distVU(km){ const s=fmtDist(km); const i=s.lastIndexOf(" "); return i<0?s:`${s.slice(0,i)}<span class="u">${s.slice(i+1)}</span>`; }
+// All user-facing dates render DD/MM/YYYY (en-GB). Parses ISO or "05 December 2022".
+function fmtDate(v){ if(!v) return ""; const t=Date.parse(v); return Number.isNaN(t)?String(v):new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(t)); }
+// Month-precision dates (contract start/end are YYYY-MM, no day) → MM/YYYY.
+function fmtMonth(ym){ const m=/^(\d{4})-(\d{2})/.exec(String(ym||"")); return m?`${m[2]}/${m[1]}`:String(ym||""); }
+// Joint bid (mirrors london-buses): the scraped Joint Bids cell is populated, or the
+// notes mention a joint bid / JBD (joint bid discount).
+function isJointBid(a){ const jb=String(a.jointBid||"").trim(); if(jb && !/^n\/?a$/i.test(jb)) return true; return /\b(joint\s*bids?|jbd?)\b/i.test(a.notes||""); }
+// Contracted annual mileage, derived from accepted bid ÷ cost per live mile.
+function contractedMiles(a){ return (a.acceptedBid>0 && a.costPerMile>0) ? Math.round(a.acceptedBid/a.costPerMile) : null; }
 function haversine(a,b){ const R=6371,toR=x=>x*Math.PI/180; const dLat=toR(b[0]-a[0]),dLng=toR(b[1]-a[1]);
   const s=Math.sin(dLat/2)**2+Math.cos(toR(a[0]))*Math.cos(toR(b[0]))*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(s)); }
 function polylineKm(c){ let d=0; for(let i=1;i<c.length;i++) d+=haversine(c[i-1],c[i]); return d; }
@@ -1136,7 +1145,7 @@ function diversionPanelHtml(r){
   const ds=((r&&r._disrupt)||[]).filter(d=>d.isDiversion||d.notServing||d.skippedStops.length);
   if(!ds.length) return "";
   const stops=(r._seq&&r._seq.stops)||[];
-  const fmtD=iso=>{ if(!iso) return ""; const t=Date.parse(iso); return Number.isNaN(t)?"":new Date(t).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}); };
+  const fmtD=fmtDate;   // DD/MM/YYYY app-wide
   const body=ds.map(d=>
     `<div class="dvn">
       <p class="dvn-desc">${esc(d.description)}</p>
@@ -1994,10 +2003,10 @@ function renderContext(){
   const tenders = (store.tenders && store.tenders[r.name]) || [];
   const tenderBlock = tenders.length ? `
     <div class="metric"><div class="metric-h">Tender history <span class="mono">${tenders.length}</span></div>
-      ${tenders.slice(0,8).map(a=>`<div class="cmp" style="border-bottom:1px solid var(--line)">
+      ${tenders.slice(0,8).map(a=>{ const jb=isJointBid(a), mi=contractedMiles(a); return `<div class="cmp" style="border-bottom:1px solid var(--line)">
         <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(a.operator)||"—"}</div>
-          <div style="font-size:10px;color:var(--paper-3);font-family:var(--mono)">${esc(a.awardDate)||"—"} · ${a.numberOfTenderers??"?"} bid${a.numberOfTenderers===1?"":"s"}${a.jointBid?" · joint":""}</div></div>
-        <div class="stat" title="accepted bid / cost per live mile">${a.costPerMile?"£"+a.costPerMile+"/mi":"—"}<br><span style="color:var(--paper-3);font-size:10px">${a.acceptedBid?fmtMoney(a.acceptedBid)+" pa":""}</span></div></div>`).join("")}
+          <div style="font-size:10px;color:var(--paper-3);font-family:var(--mono)">${a.awardDate?esc(fmtDate(a.awardDate)):"—"} · ${a.numberOfTenderers??"?"} bid${a.numberOfTenderers===1?"":"s"} · ${jb?"joint bid":"sole bid"}</div></div>
+        <div class="stat" title="cost per live mile · accepted bid · contracted miles">${a.costPerMile?"£"+a.costPerMile+"/mi":"—"}<br><span style="color:var(--paper-3);font-size:10px">${a.acceptedBid?fmtMoney(a.acceptedBid)+" pa":""}</span>${mi?`<br><span style="color:var(--paper-4);font-size:10px">${mi.toLocaleString("en-GB")} mi/yr</span>`:""}</div></div>`; }).join("")}
       <div class="xlink">source · TfL tender results</div>
     </div>` : "";
 
@@ -2080,7 +2089,7 @@ function renderContext(){
       (stops.length?`<div class="journey" title="${esc(termA+" → "+termB)}"><span class="jt">${esc(termA)}</span><span class="jarr">→</span><span class="jt">${esc(termB)}</span></div>`:""));
   const servicePatternsBlock = sections.length?metricBlock(`Service patterns <span class="mono">${sections.length}</span>`,
        sections.map(s=>kv(`<span style="text-transform:capitalize">${esc(s.direction)}</span>`,`<span class="vc">${esc(trunc(s.origin+" → "+s.destination,30))}</span>`,s.origin+" → "+s.destination)).join("")+
-       (sections[0]&&sections[0].validFrom?kv("Valid from",String(sections[0].validFrom).slice(0,10)):"")):"";
+       (sections[0]&&sections[0].validFrom?kv("Valid from",esc(fmtDate(sections[0].validFrom))):"")):"";
   const connectionsBlock = interchange.length?metricBlock(`Connections <span class="mono">${interchange.length}</span>`,
        `<div style="font-size:11px;color:var(--paper-3);margin-bottom:8px">Routes you can interchange to along this line</div>`+routePillsHtml(interchange.map(c=>c.l))):"";
   const stopsBlock = `<div class="metric"><div class="metric-h">Stops <span class="mono">${stops.length}</span></div>
@@ -2089,9 +2098,9 @@ function renderContext(){
        (hasCommercial?
          kv("Operator",opName?`<button type="button" class="vlink" data-operator="${esc(opName)}">${esc(shortOp(opName))} ›</button>`:"—")+
          kv("Garage",meta.garage?(garageByCode(meta.garage)?`<button type="button" class="vlink" data-garage="${esc(meta.garage)}">${esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))} ›</button>`:esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))):"—")+
-         kv("PVR (peak vehicles)",meta.pvr||"—")+
+         kv("PVR",meta.pvr||"—")+
          (meta.lengthKm?kv("Route length",distVU(meta.lengthKm)):"")+
-         kv("Contract",meta.contractStart?`${meta.contractStart} → ${meta.contractEnd||"?"}`:(meta.contractDate||"—"))+
+         kv("Contract",meta.contractStart?`${fmtMonth(meta.contractStart)} → ${meta.contractEnd?fmtMonth(meta.contractEnd):"?"}`:(meta.contractDate?esc(fmtDate(meta.contractDate)):"—"))+
          kv("Propulsion",prop||"—")+
          kv("Fleet",`<span class="vc">${esc(meta.fleet)||"—"}</span>`,meta.fleet||"")
         : `<div class="empty" style="padding:var(--s3) 0">No operator/fleet record for this route yet.</div>`)+
