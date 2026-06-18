@@ -217,7 +217,9 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .rail-group .rg-name{flex:1;min-width:0;font-size:10.5px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--paper-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rail-group .rg-ct{font-family:var(--mono);font-size:10px;color:var(--paper-3);flex:none}
 .stoplist .sdist{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--paper-3);flex:none}
-.rail-foot{padding:var(--s3) var(--s4);border-top:1px solid var(--line);font-size:9.5px;color:var(--paper-4);font-family:var(--mono);line-height:1.7}
+.rail-foot{padding:var(--s3) var(--s4);border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:5px}
+.srcpill{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;color:var(--paper-3);font-family:var(--mono);background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.srcpill .srcdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px color-mix(in srgb,var(--green) 22%,transparent);flex:none}
 
 /* catchment controls */
 .ctrl{padding:var(--s4);gap:var(--s4);overflow-y:auto}
@@ -385,7 +387,6 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .mcard .msub{font-size:9.5px;color:var(--paper-4);margin-top:2px}
 .xlink{margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)}
 .xlink a{color:var(--cyan)}
-.xref{color:var(--cyan);font-weight:600}   /* in-tool section reference (was a cross-tool link) */
 /* thin meter bar (concept .meter) — one bar style across the panel */
 .pbar{display:flex;height:6px;border-radius:6px;overflow:hidden;background:var(--panel-3)}
 .pbar>i{display:block;height:100%}
@@ -608,7 +609,12 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
       <div class="lpanel" id="lpanel-filters" role="tabpanel" aria-labelledby="ltab-filters">
         <div class="filters" id="filters" aria-label="Route filters"></div>
       </div>
-      <div class="rail-foot" id="routeFoot">Basemap · CARTO / OpenStreetMap<br>Geometry &amp; stops · TfL Line API<br>Operator / garage / fleet · londonbusroutes.net</div>
+      <div class="rail-foot" id="routeFoot" aria-label="Connected data sources">
+        <span class="srcpill"><span class="srcdot"></span>TfL API</span>
+        <span class="srcpill"><span class="srcdot"></span>CARTO / OSM</span>
+        <span class="srcpill"><span class="srcdot"></span>londonbusroutes.net</span>
+        <span class="srcpill"><span class="srcdot"></span>DVLA</span>
+      </div>
     </div>
     <!-- CATCHMENT controls -->
     <div id="catchControls" class="ctrl" hidden>
@@ -1021,7 +1027,7 @@ function initMap(){
   if(window.__leafletJsFailed||typeof L==="undefined"){ mapOK=false;
     showOverlay("Map library unavailable","The Leaflet map library could not be loaded from the CDN. Route geometry and stop lists on the right still work — reconnect to see the map."); return; }
   mapOK=true;
-  map=L.map("map",{zoomControl:false,attributionControl:true,preferCanvas:true}).setView([51.5074,-0.1278],11);
+  map=L.map("map",{zoomControl:false,attributionControl:false,preferCanvas:true}).setView([51.5074,-0.1278],11);
   L.control.zoom({position:"bottomright"}).addTo(map);
   setBasemap();
   routeLayer=L.layerGroup().addTo(map); stopLayer=L.layerGroup().addTo(map); catchLayer=L.layerGroup().addTo(map);
@@ -1658,9 +1664,6 @@ function group(key, title, accent, body, summary=""){
 }
 // the small monospace "→ Tool" cross-link footer used across the dossier.
 const crossLink=(html)=>`<div class="xlink">${html}</div>`;
-// the suite is now one tool — "→ X" references are sections within Atlas, not separate
-// pages, so they render as emphasis text, never dead links.
-const toolLink=(file,label)=>`<span class="xref">${label}</span>`;
 function statusTone(sev){ return sev>=10?{c:"var(--green)",h:"#3fb87a"}:sev>=8?{c:"var(--amber)",h:"#f5a524"}:{c:"var(--alert)",h:"#ff5470"}; }
 function shortOp(o){ return o.replace(" London","").replace("Transport UK London Bus (RATP)","RATP"); }
 function fmtMoney(n){ return n==null ? "—" : "£"+Number(n).toLocaleString("en-GB"); }
@@ -1753,7 +1756,7 @@ function operatorDetailHtml(op){
     `<div class="metric"><div class="metric-h">Garages <span class="mono">${gs.length}</span></div>
        ${gs.map(g=>`<button type="button" class="drill" data-garage="${esc(g.code)}"><span class="dl">${esc(g.name||g.code)}</span><span class="dv">${(g.routes?.length||0)} routes ›</span></button>`).join("")||'<div class="empty" style="padding:6px 0">No garage records.</div>'}</div>
      <div class="insight"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="5" rx="1"/><rect x="3" y="13" width="18" height="5" rx="1"/></svg>Operator intelligence</div>
-       League position, financials &amp; fleet age live in <span class="xref">Cohort</span>.</div>`;
+       League position, financials &amp; fleet age — drill into this operator.</div>`;
 }
 function garageDetailHtml(code){
   const g=garageByCode(code);
@@ -1873,7 +1876,7 @@ function renderContext(){
           metricBlock(`Award £/mile (${zoneLbl})`,
             metrics([ mcard("Highest",money(costs[costs.length-1])), mcard("Lowest",money(costs[0])) ])+
             `<div style="margin-top:var(--s3)">`+kv("Median",money(med))+kv("Routes priced",`${costs.length} of ${lines.length}`)+`</div>`+
-            crossLink(`latest award per route · full tender market → ${toolLink("mandate.html","Mandate")}`))
+            crossLink(`latest award per route · full tender market history`))
           : metricBlock(`Award £/mile (${zoneLbl})`,`<div class="empty" style="padding:6px 0">No tender award data for these routes.</div>`)),
         costs.length?money(med).replace(/<[^>]+>/g,""):"")+
       group("zonesafety","Safety","var(--alert)",
@@ -1911,13 +1914,13 @@ function renderContext(){
       metricBlock("Overview",
         metrics([ mcard("Routes",filtered.length), mcard("Operators",operators||"—"), mcard("Total PVR",pvr||"—"), mcard("Network length",lenKm?fmtDist(lenKm):"—") ])+
         `<div style="margin-top:8px;font-size:11px;color:var(--paper-3)">${drawn} drawn on map${anyFilter?" · filtered set":""}</div>`)+
-      (propTotal?`<div class="metric">${fleetMixHtml(byProp)}${crossLink(`fleet detail → ${toolLink("cohort.html","Cohort")}`)}</div>`:"")+
+      (propTotal?`<div class="metric">${fleetMixHtml(byProp)}</div>`:"")+
       metricBlock("By route type", typeRows||'<div class="empty" style="padding:var(--s3) 0">No routes match.</div>')+
       (topOps?metricBlock(`Operators <span class="mono">${operators}</span>`,
         `<div class="oprow ophead"><span class="dl">Operator</span><span class="opnums"><span>routes</span><span class="evc">fleet</span><span class="chev"></span></span></div>`+
-        topOps+crossLink(`click an operator to drill in · league &amp; financials → ${toolLink("cohort.html","Cohort")}`)):"")+
-      `<div class="insight"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Across the suite</div>
-         This is the network view. Pick a route for its full dossier, or go deeper: reliability → <span class="xref">Headway</span> · tenders → <span class="xref">Mandate</span> · operators &amp; fleet → <span class="xref">Cohort</span>.</div>`;
+        topOps+crossLink(`click an operator to drill into its league &amp; financials`)):"")+
+      `<div class="insight"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Network view</div>
+         Pick a route for its full dossier — reliability, tenders, fleet and live operations.</div>`;
     return;
   }
 
@@ -1974,11 +1977,11 @@ function renderContext(){
             <span class="chip2">${esc(p.l)}</span>
             <span class="simbar"><i style="width:${Math.round(p.share*100)}%"></i></span>
             <span class="simpct">${Math.round(p.share*100)}%</span></button>`).join("")}
-         <div style="margin-top:5px;font-size:10px;color:var(--paper-3)">overlapping corridors — competition &amp; duplication → <span class="xref">Mandate</span></div></div>`
+         <div style="margin-top:5px;font-size:10px;color:var(--paper-3)">overlapping corridors — competition &amp; duplication</div></div>`
          :`<div style="margin-top:12px"><div class="metric-h" style="margin-bottom:3px">Similar routes</div>
          <div class="empty" style="padding:7px 0">No route shares ≥30% of this path — a largely unique alignment.</div></div>`}
        ${A.longestAt?`<div style="margin-top:12px">`+kv("Longest hop",distVU(A.longest),A.longestAt[0]+" → "+A.longestAt[1])+`</div>`:""}
-       ${crossLink(`derived from route geometry + interchange data · feeds run-speed → ${toolLink("headway.html","Headway")}`)}</div>` : "";
+       ${crossLink(`derived from route geometry + interchange data`)}</div>` : "";
   const hasCommercial = meta.op||meta.garage||meta.pvr||meta.contractStart||meta.fleet||prop;
   const tenders = (store.tenders && store.tenders[r.name]) || [];
   const tenderBlock = tenders.length ? `
@@ -1987,7 +1990,7 @@ function renderContext(){
         <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(a.operator)||"—"}</div>
           <div style="font-size:10px;color:var(--paper-3);font-family:var(--mono)">${esc(a.awardDate)||"—"} · ${a.numberOfTenderers??"?"} bid${a.numberOfTenderers===1?"":"s"}${a.jointBid?" · joint":""}</div></div>
         <div class="stat" title="accepted bid / cost per live mile">${a.costPerMile?"£"+a.costPerMile+"/mi":"—"}<br><span style="color:var(--paper-3);font-size:10px">${a.acceptedBid?fmtMoney(a.acceptedBid)+" pa":""}</span></div></div>`).join("")}
-      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">source · TfL tender results · full history → <span class="xref">Mandate</span></div>
+      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">source · TfL tender results</div>
     </div>` : "";
 
   // ── advanced: TENDER ANALYSIS (preview of Mandate) — derived from the award history ──
@@ -2011,7 +2014,7 @@ function renderContext(){
         ${expiry?`<div class="kv"><span class="k">Contract</span><span class="v">${expiry}</span></div>`:""}
         <div class="kv"><span class="k">Awards on record</span><span class="v">${tenders.length}</span></div>
       </div>
-      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">£/mile trend, win/loss &amp; pipeline → <span class="xref">Mandate</span></div></div>`;
+      <div style="margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)">£/mile trend, win/loss &amp; pipeline</div></div>`;
   }
 
   // ── advanced: OPERATOR FOOTPRINT (preview of Cohort) — this operator across the network ──
@@ -2044,7 +2047,7 @@ function renderContext(){
       ])+
       (tot?`<div style="margin-top:12px">`+fleetMixHtml(prop,{heading:false})+`</div>`:"")+
       ((fdata.makes&&fdata.makes.length)?`<div style="margin-top:12px"><div class="metric-h" style="margin-bottom:4px">Make breakdown</div>`+fdata.makes.map(m=>kv(`<span class="kc">${esc(m.make)}</span>`,m.n)).join("")+`</div>`:"")+
-      crossLink(`from live regs (TfL) enriched via DVLA · full fleet &amp; age → ${toolLink("cohort.html","Cohort")}`));
+      crossLink(`from live regs (TfL) enriched via DVLA · full fleet &amp; age`));
   }
 
   // live status block: only flag when not a plain good service
@@ -2055,14 +2058,14 @@ function renderContext(){
          <div class="insight" style="margin:0;border-left-color:${tone.c}">
            <div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="${tone.h}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span style="color:${tone.c}">${esc(st.description)}</span></div>
            ${st.reason?`<div style="margin-top:4px;line-height:1.45">${esc(st.reason)}</div>`:""}
-           <div style="margin-top:6px;font-size:10px;color:var(--paper-4);font-family:var(--mono)">live · refreshed on selection · see <span class="xref">Headway</span></div>
+           <div style="margin-top:6px;font-size:10px;color:var(--paper-4);font-family:var(--mono)">live · refreshed on selection</div>
          </div></div>`) : "";
 
   const identityPills = `<div class="metric"><div style="display:flex;flex-wrap:wrap;gap:6px">
        <span class="pill"><span class="pdot" style="background:${d.color}"></span>${d.label}</span>
        ${t==="night"?`<span class="pill">Night service</span>`:""}
        ${opName?`<span class="pill">${esc(shortOp(opName))}</span>`:""}
-       ${prop?`<span class="pill" title="sample tag — pending Cohort data">${prop}</span>`:""}
+       ${prop?`<span class="pill" title="sample tag">${prop}</span>`:""}
      </div></div>`;
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
