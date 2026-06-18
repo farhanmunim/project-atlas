@@ -327,7 +327,9 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .veh-pin{display:flex;align-items:center;justify-content:center}
 .veh-pin .lv{display:grid;place-items:center;width:26px;height:26px;cursor:pointer}
 .veh-pin .lv-arrow{display:grid;place-items:center;transition:transform .4s var(--ease)}
-.veh-pin .lv-arrow svg{width:22px;height:22px;fill:var(--vc,var(--cyan));stroke:var(--ink);stroke-width:1.4;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+/* contrasting halo so markers pop on either basemap: light map → dark halo, dark map → white halo */
+.veh-pin .lv-arrow svg{width:27px;height:27px;fill:var(--vc,var(--cyan));stroke:#0a0e16;stroke-width:2.4;paint-order:stroke;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}
+[data-theme="dark"] .veh-pin .lv-arrow svg{stroke:#fff}
 .veh-pin .lv-dot{width:13px;height:13px;border-radius:50%;background:var(--vc,var(--cyan));border:2px solid var(--ink);box-shadow:0 2px 5px rgba(0,0,0,.45)}
 @media (prefers-reduced-motion:reduce){ .veh-pin .lv-arrow{transition:none} }
 /* live-vehicle list rows (right rail) */
@@ -2402,7 +2404,7 @@ function liveOpsHtml(r){
       (runTot?`<div class="pbar" style="margin-top:12px">${Object.entries(runProp).filter(([,n])=>n).map(([k,n])=>`<i style="width:${(n/runTot*100).toFixed(1)}%;background:${PCOLR[k]}" title="${PROP_DEFS[k]}: ${n}"></i>`).join("")}</div>`:"")):"")+
     metricBlock(`On the road now <span class="mono" style="color:var(--cyan)">${lv.length} live</span>`,
       (lv.length?`<div class="vehlist">`+lv.slice(0,30).map(v=>{ const fd=store.vehicles?store.vehicles[v.reg]:null; const age=fd&&fd.year?(yr-fd.year)+"y":""; const pb=fd&&fd.fuel?fuelBucket(fd.fuel):null; const pL=pb?PROP_DEFS[pb]:"";
-          return `<button type="button" class="vehrow" data-lat="${v.lat}" data-lng="${v.lng}" title="${esc(v.reg||"")} → ${esc(v.destination||"")}${pL?" · "+esc(pL):""}"><span class="vdir" style="background:${pb?PCOLR[pb]:dirColor(v.direction)}" title="${pL?esc(pL):"direction "+esc(String(v.direction||""))}"></span><span class="vreg">${esc(v.reg||"—")}</span><span class="vdest">${esc(v.destination||"—")}</span><span class="vmeta">${v.bearing!=null?Math.round(v.bearing)+"°":""}${age?" · "+age:""}${pL?" · "+esc(pL):""}</span></button>`; }).join("")+(lv.length>30?`<div class="xlink">+${lv.length-30} more on the map</div>`:"")+`</div>`:`<div class="empty" style="padding:7px 0">No live vehicles reported right now.</div>`)+
+          return `<button type="button" class="vehrow" data-lat="${v.lat}" data-lng="${v.lng}" title="${esc(v.reg||"")} → ${esc(v.destination||"")}${pL?" · "+esc(pL):""}"><span class="vdir" style="background:${dirColor(v.direction)}" title="direction ${esc(String(v.direction||""))}"></span><span class="vreg">${esc(v.reg||"—")}</span><span class="vdest">${esc(v.destination||"—")}</span><span class="vmeta">${v.bearing!=null?Math.round(v.bearing)+"°":""}${age?" · "+age:""}${pL?" · "+esc(pL):""}</span></button>`; }).join("")+(lv.length>30?`<div class="xlink">+${lv.length-30} more on the map</div>`:"")+`</div>`:`<div class="empty" style="padding:7px 0">No live vehicles reported right now.</div>`)+
       crossLink(`live GPS · BODS SIRI-VM${liveAt?` · refreshed ${fmtAgo(liveAt)}`:""}`))+
     (moves.length?metricBlock(`Fleet movements <span class="mono" style="color:var(--paper-4)">intraday</span>`,
       moves.map(m=>kv(`<span class="vreg">${esc(m.reg)}</span>`,`<span class="vc">also runs ${esc(m.others.slice(0,4).join(", "))}</span>`,m.others.join(", "))).join("")+
