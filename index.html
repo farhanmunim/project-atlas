@@ -162,6 +162,12 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .selrow .clearbtn{margin-left:auto}
 .selstat{margin:0 var(--s4) var(--s3);font-family:var(--mono);font-size:var(--fz-xs);color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .selstat b{color:var(--acc);font-weight:600}
+.selchips{display:flex;flex-wrap:wrap;gap:5px;margin:0 var(--s4) var(--s3)}
+.selchips[hidden]{display:none}
+.selchip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--paper);background:var(--panel-2);border:1px solid var(--line-2);border-radius:999px;padding:2px 4px 2px 9px}
+.selchip .scdot{width:8px;height:8px;border-radius:50%;background:var(--c,var(--acc));flex:none}
+.selchip .scx{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;color:var(--paper-3);background:transparent;font-size:14px;line-height:1;cursor:pointer}
+.selchip .scx:hover{background:var(--panel-3);color:var(--paper)}
 .seg{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r1);padding:3px;gap:2px}
 .seg button{padding:5px var(--s3);border-radius:6px;font-size:var(--fz-sm);color:var(--paper-2);font-weight:550}
 .seg button[aria-pressed="true"]{background:color-mix(in srgb,var(--amber) 16%,var(--panel-3));color:var(--paper);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 50%,transparent)}
@@ -608,6 +614,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
           <button class="clearbtn" type="button" id="clearSel" hidden aria-label="Clear selected routes" data-tip="Clear selected routes — map returns to the filtered network"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <div class="selstat" id="resultCount">—</div>
+        <div class="selchips" id="selChips" hidden aria-label="Selected routes"></div>
         <ul class="routelist" id="routelist"></ul>
       </div>
       <!-- FILTERS tab -->
@@ -1580,6 +1587,52 @@ function renderRouteList(){
   document.getElementById("resultCount").innerHTML=`<b>${shown.length}</b> route${shown.length===1?"":"s"} shown`+(selected.length?` · <b>${selected.length}</b> selected`:"");
   if(canvasView==="table") renderTable();   // keep the table in sync with filters/search
   document.getElementById("clearSel").hidden = !selected.length;
+  renderSelChips();
+}
+
+/* Selected-route chips on the left rail — quick view of what's selected + one-click remove.
+   Colour matches the map: multi → per-route legend colour; single → operator/type colour. */
+function renderSelChips(){
+  const el=document.getElementById("selChips"); if(!el) return;
+  if(!selected.length){ el.hidden=true; el.innerHTML=""; return; }
+  el.hidden=false;
+  el.innerHTML=selected.map((s,i)=>{
+    const col = selectMode==="multi" ? colorFor(i) : (colorMode==="operator"?operatorColor(metaOf(s).op):TYPE_DEFS[typeOf(s)].color);
+    return `<span class="selchip" style="--c:${col}"><span class="scdot"></span>${esc(s.name)}<button type="button" class="scx" data-id="${esc(s.id)}" aria-label="Remove route ${esc(s.name)}" title="Remove route ${esc(s.name)}">×</button></span>`;
+  }).join("");
+}
+function removeSelected(id){
+  selected=selected.filter(s=>s.id!==id);
+  renderRouteList();
+  document.getElementById("canvasTitle").textContent = selected.length ? (selectMode==="single"?("Route "+selected[0].name):`${selected.length} route${selected.length>1?"s":""}`) : "Network map";
+  document.getElementById("canvasSub").textContent = selected.length ? (selectMode==="single"?direction:"comparing") : "select routes";
+  if(!selected.length && mapOK) map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+  refreshMap(); renderContext(); applyDataMode();
+}
+// Resolve a typed token to a route: exact name first (case-insensitive), then unique startsWith.
+function resolveRoute(tok){
+  const q=tok.trim().toLowerCase(); if(!q) return null;
+  return routes.find(r=>r.name.toLowerCase()===q) || routes.find(r=>r.name.toLowerCase().startsWith(q)) || null;
+}
+// Select a set of routes from the search box (Enter = single; comma-separated = multi).
+async function selectFromSearch(raw){
+  const tokens=raw.split(",").map(t=>t.trim()).filter(Boolean); if(!tokens.length) return;
+  const matched=[]; const misses=[];
+  for(const tok of tokens){ const r=resolveRoute(tok); if(r){ if(!matched.some(m=>m.id===r.id)) matched.push(r); } else misses.push(tok); }
+  if(!matched.length){ toast(`No route matches “${esc(raw.trim())}”`); return; }
+  const sb=document.getElementById("routeSearch"); if(sb) sb.value="";
+  if(tokens.length>1 || matched.length>1){
+    if(selectMode!=="multi") setSelectMode("multi");
+    ctxView={type:"auto"}; clearRouteFilters(); renderFilters();
+    selected = matched.map(r=>({...r}));
+    document.getElementById("canvasTitle").textContent=`${selected.length} route${selected.length>1?"s":""}`;
+    document.getElementById("canvasSub").textContent="comparing";
+    renderRouteList(); renderContext(); applyDataMode();
+    Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); });
+  } else {
+    await toggleRoute(matched[0]);   // single → full single-select flow
+  }
+  if(misses.length) toast(`No match: ${esc(misses.join(", "))}`);
 }
 
 /* ===========================================================================
@@ -2233,6 +2286,15 @@ function init(){
   document.getElementById("routeSearch").addEventListener("input",()=>{ ctxView={type:"auto"};
     if(document.getElementById("routeSearch").value.trim()){ clearRouteFilters(); renderFilters(); }   // searching clears filters
     renderRouteList(); if(!selected.length){ refreshMap(); renderContext(); } });
+  // Enter → auto-select the matching route(s). Comma-separated → multi-select.
+  document.getElementById("routeSearch").addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return; e.preventDefault();
+    const raw=e.target.value; if(raw.trim()) selectFromSearch(raw);
+  });
+  // remove a selected route via its left-rail chip
+  document.getElementById("selChips").addEventListener("click",e=>{
+    const x=e.target.closest(".scx"); if(x && x.dataset.id) removeSelected(x.dataset.id);
+  });
 
   const dlg=document.getElementById("settings");
   document.getElementById("settingsBtn").addEventListener("click",()=>{ syncSettingsUI(); dlg.showModal(); });
