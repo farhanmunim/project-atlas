@@ -9,6 +9,9 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 
+# Design/scratch concepts — not needed in production
+Concepts/
+
 # puppeteer verification artifacts
 theme-*.png
 popup-*.png

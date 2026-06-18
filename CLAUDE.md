@@ -17,6 +17,40 @@ analytics**, robust, with all data flowing through our own warehouse.
 
 ---
 
+## Working agreement (commits & deploys)
+
+- **Never commit or push to GitHub unless Farhan explicitly says so** in that
+  message. Stage/edit freely, but `git commit`/`git push` only on an explicit
+  instruction.
+- **When told to push, commit AS Farhan** — author **Farhan Munim
+  `<auth@farhan.app>`**. No `claude`/bot author, no `Co-Authored-By`, no
+  sub-author or "Generated with" trailer. Just Farhan.
+
+## Deployment (Cloudflare Pages)
+
+Atlas deploys as a **static site on Cloudflare Pages** (no Node server in prod).
+The local `pipeline/serve.js` is **dev-only**; its dynamic routes are replaced in
+prod as follows — keep both in sync:
+
+- **Static data** — the committed `data/*.json` + `routes-overview.geojson` (the
+  warehouse output) ship as static assets. The store reader tries `/api/*` first,
+  404s in prod, and falls back to `./data/*.json`. The `data/*.db` warehouse is
+  gitignored and **not** deployed (JSON is the prod read layer).
+- **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
+  It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
+  push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
+  (`transit-instruments-bot`) — the "commit as Farhan" rule above is for *our*
+  manual commits, not this automated data commit.
+- **Live data** — volatile feeds go **browser → TfL directly** via the `tfl`
+  seam (CORS-open): line status, arrivals/vehicles, disruptions. No server needed.
+- **Live bus GPS (BODS SIRI-VM)** — needs a server-side key, so it's a
+  **Cloudflare Pages Function** at [`functions/api/live/vehicles.js`], reproducing
+  serve.js's `/api/live/vehicles` on the same URL (10s edge-cached). `BODS_API_KEY`
+  is a Cloudflare project **secret**, never shipped to the browser. If the parse
+  logic in `pipeline/sources/bods.js` changes, change the Function too.
+- Pages build config: **no build command**, output directory **repo root** (`/`);
+  the `functions/` dir at root is auto-detected.
+
 ## Golden rule
 
 One coherent app: every layer and panel section shares the same tokens, components and
