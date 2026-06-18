@@ -2106,6 +2106,8 @@ function renderContext(){
     const cpm=latest.costPerMile, pcpm=prev&&prev.costPerMile;
     const cpmDelta=(cpm&&pcpm)?((cpm-pcpm)/pcpm*100):null;
     let incumbency=0; for(const a of tenders){ if(a.operator && a.operator===latest.operator) incumbency++; else break; }
+    const handover = prev && prev.operator && prev.operator!==latest.operator;   // the most recent award changed operator (a "win")
+    const previousOperator = (tenders.find(a=>a.operator && a.operator!==latest.operator)||{}).operator || null;
     const premium=(latest.acceptedBid&&latest.lowestBid&&latest.acceptedBid>=latest.lowestBid)?((latest.acceptedBid-latest.lowestBid)/latest.lowestBid*100):null;
     const moEnd=monthsUntil(meta.contractEnd);
     const expiry= moEnd!=null ? (moEnd<=0?"expired":`${Math.floor(moEnd/12)}y ${moEnd%12}m left`) : null;
@@ -2116,7 +2118,9 @@ function renderContext(){
       </div>
       <div style="margin-top:var(--s3)">
         <div class="kv"><span class="k">Incumbent</span><span class="v">${incumbency}× ${esc(shortOp(latest.operator||"—"))}</span></div>
-        ${premium!=null?`<div class="kv"><span class="k">Bid vs lowest</span><span class="v">${pct(premium)}</span></div>`:""}
+        <div class="kv"><span class="k">Latest award</span><span class="v" style="color:${handover?'var(--amber)':'var(--green)'}">${handover?'operator changed':'retained'}</span></div>
+        ${previousOperator?`<div class="kv"><span class="k">Previous operator</span><span class="v">${esc(shortOp(previousOperator))}</span></div>`:""}
+        ${premium!=null&&!isJointBid(latest)?`<div class="kv"><span class="k">Bid vs lowest</span><span class="v">${pct(premium)}</span></div>`:""}
         ${expiry?`<div class="kv"><span class="k">Contract</span><span class="v">${expiry}</span></div>`:""}
         <div class="kv"><span class="k">Awards on record</span><span class="v">${tenders.length}</span></div>
       </div>
