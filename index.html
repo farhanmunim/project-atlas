@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>Atlas — London Bus Network · live, fleet, tenders</title>
+<meta name="description" content="Atlas — an interactive map and analytics deep-dive for the London bus network: toggleable layers (route lines, garages, stops, live buses, accidents) with a unified context panel for route info, network analysis, live operations, fleet, tenders and accidents.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- Open Graph / Twitter card -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Atlas">
+<meta property="og:title" content="Atlas — London Bus Network">
+<meta property="og:description" content="Interactive map + analytics for the London bus network — live buses, routes, garages, fleet, tenders and accidents in one tool.">
+<meta property="og:url" content="https://atlas.farhan.app/">
+<meta property="og:image" content="https://atlas.farhan.app/favicon.svg">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Atlas — London Bus Network">
+<meta name="twitter:description" content="Interactive map + analytics for the London bus network — live buses, routes, garages, fleet, tenders and accidents in one tool.">
+<meta name="twitter:image" content="https://atlas.farhan.app/favicon.svg">
 <!--
   ============================================================================
   ATLAS (index.html) — THE single tool. The London bus network on one map, with
@@ -458,7 +471,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .dvn-meta .kv{padding:3px 0}
 
 /* ============================ DIALOG / TOOLTIP ============================ */
-dialog{border:1px solid var(--line-2);background:var(--panel);color:var(--paper);border-radius:var(--r3);padding:0;width:min(440px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.5)}
+dialog{border:1px solid var(--line-2);background:var(--panel);color:var(--paper);border-radius:var(--r3);padding:0;width:min(440px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.5);margin:auto}
 dialog::backdrop{background:rgba(4,7,12,.6)}
 .dlg-head{display:flex;align-items:center;justify-content:space-between;padding:var(--s4) var(--s4) var(--s3);border-bottom:1px solid var(--line)}
 .dlg-head h2{font-size:var(--fz-lg);font-weight:680}
@@ -544,8 +557,8 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button>
         </div>
         <div class="seg" aria-label="Colour routes by">
-          <button type="button" data-k="ctype" class="on" data-tip="Colour routes by type">Type</button>
-          <button type="button" data-k="coper" data-tip="Colour routes by operator">Operator</button>
+          <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
+          <button type="button" data-k="ctype" data-tip="Colour routes by type">Type</button>
         </div>
       </div>
       <button class="iconbtn" id="exportBtn" type="button" aria-label="Export current view as CSV" data-tip="Export current view as CSV">
@@ -643,7 +656,6 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
       <button class="iconbtn" type="submit" aria-label="Close settings" value="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="dlg-body">
-      <div class="field"><label for="setOperator">Preferred operator</label><select id="setOperator"></select></div>
       <div class="field"><label>Theme</label><div class="seg" id="setTheme" role="group" aria-label="Theme">
         <button type="button" data-v="dark" aria-pressed="true">Dark</button><button type="button" data-v="light" aria-pressed="false">Light</button></div></div>
       <div class="field"><label>Distance units</label><div class="seg" id="setUnits" role="group" aria-label="Distance units">
@@ -682,7 +694,7 @@ const CONFIG = {
    SHARED SETTINGS (same key as the hub)
    =========================================================================== */
 const SETTINGS_KEY = "transit-instruments:settings";
-const DEFAULT_SETTINGS = { operator:"Go-Ahead London", theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showGarages:true, showStops:true, showLive:true };
+const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showGarages:true, showStops:true, showLive:true };
 /* Operator colours (distinct hues; used for colour-by-operator + garage markers). */
 // operator primary brand colours (approx) — also used for colour-by-operator + garage badges
 const OP_COLORS = {
@@ -750,7 +762,6 @@ const ROUTE_META = {
   "148":{op:"Transport UK London Bus (RATP)",prop:"diesel"},"452":{op:"Transport UK London Bus (RATP)",prop:"electric"},
   "7":{op:"Metroline",prop:"hydrogen"},       "245":{op:"Metroline",prop:"hydrogen"},
 };
-const OPERATORS=["Abellio London","Arriva London","Go-Ahead London","Metroline","Stagecoach London","Transport UK London Bus (RATP)","Uno","Sullivan Buses"];
 const PROP_DEFS = { electric:"Electric", hydrogen:"Hydrogen", hybrid:"Hybrid", diesel:"Diesel" };
 /* COMMERCIAL_SAMPLE — illustrative tender/fleet detail for flagship routes.
    SAMPLE ONLY → swaps to Mandate (Find-a-Tender OCDS) + Cohort (fleet) data. */
@@ -2119,8 +2130,7 @@ function exportCurrent(){
 /* ===========================================================================
    SETTINGS UI
    =========================================================================== */
-function populateSettings(){ document.getElementById("setOperator").innerHTML=OPERATORS.map(o=>`<option value="${o}">${o}</option>`).join(""); }
-function syncSettingsUI(){ const op=document.getElementById("setOperator"); if(op) op.value=settings.operator;
+function syncSettingsUI(){
   document.querySelectorAll('#setTheme button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===effectiveTheme())));
   document.querySelectorAll('#setUnits button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===settings.units)));
   document.querySelectorAll('#setClock button').forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.v===settings.clock)));
@@ -2146,7 +2156,7 @@ function tickClock(){ document.getElementById("clock").textContent=fmtClock(new 
    INIT
    =========================================================================== */
 function init(){
-  loadSettings(); applyTheme(); populateSettings(); syncSettingsUI();
+  loadSettings(); applyTheme(); syncSettingsUI();
   if(window.__leafletCssFailed) console.warn("[atlas] Leaflet CSS failed to load");
   initMap();
   renderBadge(); renderFilters(); renderRouteList(); renderContext();
@@ -2198,7 +2208,6 @@ function init(){
 
   const dlg=document.getElementById("settings");
   document.getElementById("settingsBtn").addEventListener("click",()=>{ syncSettingsUI(); dlg.showModal(); });
-  document.getElementById("setOperator").addEventListener("change",e=>{ settings.operator=e.target.value; saveSettings(); renderContext(); });
   document.getElementById("setTheme").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.theme=b.dataset.v; saveSettings(); applyTheme(); });
   document.getElementById("setUnits").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.units=b.dataset.v; saveSettings(); syncSettingsUI(); renderContext(); });
   document.getElementById("setClock").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b)return; settings.clock=b.dataset.v; saveSettings(); syncSettingsUI(); tickClock(); });

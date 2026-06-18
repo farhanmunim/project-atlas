@@ -17,6 +17,182 @@ analytics**, robust, with all data flowing through our own warehouse.
 
 ---
 
+## General Project Standards
+
+These are baseline standards Farhan applies across all projects. They apply here
+unless a rule in **Project-Specific Standards & Overrides** (below) explicitly
+supersedes it. Where Atlas's existing sections already cover a topic in more
+detail (the three-pane shell, design tokens, the data seam, pipelines), those
+sections are authoritative — these generic rules fill the gaps.
+
+### Git & Identity
+
+- **Never commit or push unless Farhan explicitly says so** in that message.
+  Stage/edit freely, but `git commit` / `git push` only on an explicit instruction
+  for that specific commit or push. Do not batch or auto-commit at the end of a
+  session without asking.
+- When ready to commit, state exactly what will be committed and wait for approval.
+- **When told to push, commit AS Farhan** — author **Farhan Munim
+  `<auth@farhan.app>`**. No `claude` / bot author, no `Co-Authored-By`, no
+  sub-author or "Generated with" trailer. Never mention AI tooling in commit
+  messages or metadata.
+- Verify `git config user.name` (`Farhan`) and `git config user.email`
+  (`auth@farhan.app`) match before the first commit on any session.
+- Write clear, descriptive commit messages in the imperative mood
+  (e.g. "Add caching layer for API responses").
+
+### Site identity & meta (keep consistent)
+
+Every user-facing HTML page ships a consistent identity block — don't leave
+default or placeholder `<title>`/meta on any page.
+
+- `<html lang="en-GB">` with `<meta name="color-scheme" content="dark">`.
+- `<meta charset="utf-8">` and `<meta name="viewport" content="width=device-width, initial-scale=1">`.
+- **Title:** `Atlas — London Bus Network` (or `<section> · Atlas` when a deep-link
+  view warrants it). Keep the brand suffix consistent across pages.
+- **Description meta** describing the tool (interactive map + analytics for the
+  London bus network).
+- **Favicon** — the Atlas mark, matching the topbar logo (an SVG favicon as in the
+  predecessor project).
+- **Open Graph / Twitter card** tags (`og:title`, `og:description`, `og:type`,
+  `og:url`, `og:image`) so shared links render properly.
+- The same identity/meta snippet appears on **every** user-facing page (e.g.
+  `index.html`, any changelog page) — treat it as shared chrome, not per-page copy.
+
+### Analytics
+
+- Before the first push on a new project, ask whether to include tracking — do not
+  add analytics without explicit confirmation.
+- If confirmed, the same snippet must appear on every user-facing HTML page.
+- Analytics is **anonymous aggregate only** — no user accounts, no fingerprinting.
+
+### Environment & Secrets
+
+- Store all API keys and secrets in a `.env` file — **never hardcoded**.
+- Add `.env` to `.gitignore` on project initialisation.
+- Include a `.env.example` listing all required keys with **no values**.
+- In Atlas specifically: `BODS_API_KEY` is a Cloudflare project **secret** (and a
+  local `.env` value for dev) — it powers the `functions/api/live/vehicles.js`
+  Pages Function server-side and **never reaches the browser**. Pipeline keys
+  (TfL etc.) live the same way: secrets in CI / local `.env`, never shipped.
+
+### .gitignore — keep it lean
+
+- Ignore anything not required in the repo: build artefacts, local config and
+  editor files, OS files (`.DS_Store`, `Thumbs.db`), logs, temp folders
+  (e.g. `/screenshots`), and `CHANGELOG.md`.
+- The `data/*.db` warehouse is gitignored (the committed `data/*.json` is the prod
+  read layer — see Deployment). Verify no junk or secret files are tracked before
+  committing.
+
+### Changelog
+
+- If `CHANGELOG.md` does not exist, create it at project root.
+- Internal use only — add it to `.gitignore`.
+- Log every meaningful change with a date and short description.
+
+### Local development
+
+- Always run a local server so the project previews in-browser; in Atlas that's the
+  **dev-only** `pipeline/serve.js` (its dynamic routes are reproduced in prod by
+  static JSON + the Pages Function — keep both in sync).
+- Confirm the URL and port at the start of each session, and use a **fixed port**
+  per project — don't let it change between sessions.
+
+### Puppeteer checks (pre-commit)
+
+Before committing any visual or functional change:
+
+- Capture screenshots at desktop (`1280×800`) and mobile (`390×844`).
+- Check for JS console errors on page load and resolve them before committing.
+- Store screenshots in `/screenshots` (gitignored). Puppeteer is already installed
+  — use it directly, no install needed.
+
+This complements the **Validation** section below (headless cross-check of
+rendered ↔ source); screenshots alone are never sufficient proof.
+
+### API data & security
+
+> **Atlas override:** Atlas does **not** use a Cloudflare Worker proxy. Runtime
+> browser calls go directly to CORS-open TfL feeds via the `tfl` seam; the one
+> keyed feed (BODS SIRI-VM live GPS) is served by a **Cloudflare Pages Function**
+> (`functions/api/live/vehicles.js`), edge-cached, with the key as a project
+> secret. The security _principles_ below still apply to that Function and the
+> pipeline.
+
+- Never expose a key to the browser. Server-side key use lives only in the Pages
+  Function and build scripts.
+- **Input validation:** never trust query params or client input. Validate and
+  sanitise everything reaching the Pages Function; reject malformed or unexpected
+  inputs early.
+- **Rate limiting:** apply Cloudflare rate limiting on the Function route before
+  going live (baseline ~100 req/min/IP, adjust per use case). Prefer caching
+  before rate limiting. Remind Farhan to configure this before go-live.
+
+### Caching strategy
+
+- Define explicit TTL rules for fetched data — default 60–300 s unless the data is
+  genuinely real-time. The live vehicles Function is 10 s edge-cached; match each
+  feed's cadence (see _Data sources_ — don't re-pull a 30 s-cached feed every
+  second).
+- Use stale-while-revalidate where possible.
+- Never cache sensitive or user-specific data.
+
+### Error handling & resilience
+
+- Handle all API/network failures gracefully (timeouts, 4xx, 5xx).
+- Never allow a silent UI failure — always show a fallback state or message.
+- Retry transient failures (1–2 attempts with delay).
+- On failure, keep the previous data on screen and use cached data if available;
+  surface the state honestly in the last-refreshed badge (see _Topbar layout_).
+- Never leave empty or broken UI states. (This is the same graceful-degrade tiering
+  the _Data sources_ section already mandates: live → cached → labelled sample.)
+
+### Performance
+
+- Avoid unnecessary DOM updates / re-renders; re-render only the affected pane.
+- Lazy-load or defer non-critical assets (e.g. SheetJS-style libs loaded `defer`).
+- Keep JS lightweight; remove unused code.
+- Set appropriate cache headers for static assets.
+
+### Security headers (baseline)
+
+Apply standard headers on all responses where possible (via Pages config /
+`_headers`): `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`,
+`Referrer-Policy`.
+
+### Logging & debugging
+
+- Log meaningful errors only — avoid console spam.
+- Minimise logs in production.
+- For the Pages Function: log failures and cache hits/misses where useful.
+
+### Versioning
+
+- Version any API-like endpoint (the Pages Function route) — e.g. `/api/v1/...`.
+- Don't introduce breaking changes without a version increment.
+
+### README
+
+- Keep `README.md` current with: project purpose, local setup, required env
+  variables (keys only, no values), and Cloudflare Pages / Function setup notes.
+- Treat it as the source of truth for picking the project up cold.
+
+### Network inspection (pre-ship)
+
+Before shipping, verify in DevTools → Network: no keys exposed, no duplicate or
+wasteful requests, caching behaves as expected.
+
+### Code consistency
+
+- Keep naming conventions consistent per layer.
+- Don't mix async patterns (`async/await` vs `.then`) within a layer.
+- Prefer simple, native solutions over added dependencies; don't install an npm
+  package for something a native browser API solves (consistent with the
+  no-framework / no-bundler rule below).
+
+---
+
 ## Working agreement (commits & deploys)
 
 - **Never commit or push to GitHub unless Farhan explicitly says so** in that
@@ -39,7 +215,7 @@ prod as follows — keep both in sync:
 - **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
   It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
   push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
-  (`transit-instruments-bot`) — the "commit as Farhan" rule above is for *our*
+  (`transit-instruments-bot`) — the "commit as Farhan" rule above is for _our_
   manual commits, not this automated data commit.
 - **Live data** — volatile feeds go **browser → TfL directly** via the `tfl`
   seam (CORS-open): line status, arrivals/vehicles, disruptions. No server needed.
@@ -120,20 +296,39 @@ update the badge.
 Copy the `:root` block from any existing tool. Canonical values:
 
 ```css
-/* surfaces */     --ink:#0a0e16; --ink-2:#0c111b;
-                   --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
-                   --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
-/* ink on dark */  --paper:#e7edf6; --paper-2:#9fb0c8; --paper-3:#647691; --paper-4:#3f4d63;
-/* data accents */ --amber:#f5a524; --cyan:#37c5c5; --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
-/* motion */       --ease:cubic-bezier(.4,0,.2,1);
-/* type */         --mono:"SF Mono",…,monospace;  --sans:"Inter",system-ui,…,sans-serif;
+/* surfaces */
+--ink: #0a0e16;
+--ink-2: #0c111b;
+--panel: #111725;
+--panel-2: #151c2c;
+--panel-3: #1a2233;
+--line: #1f2a3d;
+--line-2: #2a384f;
+--line-3: #3a4a66;
+/* ink on dark */
+--paper: #e7edf6;
+--paper-2: #9fb0c8;
+--paper-3: #647691;
+--paper-4: #3f4d63;
+/* data accents */
+--amber: #f5a524;
+--cyan: #37c5c5;
+--violet: #8b7bf0;
+--green: #3fb87a;
+--alert: #ff5470;
+/* motion */
+--ease: cubic-bezier(0.4, 0, 0.2, 1);
+/* type */
+--mono: "SF Mono", …, monospace;
+--sans: "Inter", system-ui, …, sans-serif;
 ```
 
 **Colour meaning (keep it consistent):**
+
 - **Amber** = primary data / the selected thing. **Cyan** = secondary data.
 - **Violet / green** = additional categorical accents.
 - **Red (`--alert`) is reserved for genuine alerts** — breaches, disruptions,
-  danger. Never use it as decoration. (Exception: a tool whose *subject* is the
+  danger. Never use it as decoration. (Exception: a tool whose _subject_ is the
   alert, e.g. Sentinel's KSI, may use red as the analytical signal.)
 
 **Type rule:** all quantitative values (times, counts, distances, %) are set in
@@ -154,7 +349,7 @@ theme selector and let every component keep referencing the same variable names:
 Components never branch on theme — they only use `--ink`, `--panel`, `--paper`,
 etc., so they restyle automatically. The **data-accent hues (amber/cyan/violet/
 green/alert) stay constant** across themes (re-tune only if contrast demands it);
-their *meaning* never changes. See *Theming, settings & preferences*.
+their _meaning_ never changes. See _Theming, settings & preferences_.
 
 ---
 
@@ -177,6 +372,8 @@ their *meaning* never changes. See *Theming, settings & preferences*.
 - Respect `@media (prefers-reduced-motion: reduce)` — kill transforms/animation.
 - Don't rely on colour alone — pair status dots with text/labels.
 - Sufficient contrast for text on `--ink`/`--panel`.
+- All meaningful images carry descriptive `alt`; resolve all JS console errors
+  before committing.
 
 ---
 
@@ -202,19 +399,21 @@ User-facing chrome that every tool inherits — build it once, consistently.
   explicit choice override. Animate nothing jarring; respect reduced-motion.
 - **Settings.** A small settings affordance (gear in the topbar, or a panel) for
   cross-tool preferences. Keep it light — only genuinely useful options:
-  - **Preferred operator** — the "you" highlighted across tools (Mandate's held
-    routes, Cohort's "your fleet"). One place to set it; every tool reads it.
   - **Units & formats** — distance (km/mi), time (24h/12h, minutes vs `mm:ss`),
     currency display, date format (default en-GB). Tools format via these, never
     hardcode a unit.
+  - **Data refresh mode** — cached (read our static store) vs live (re-pull from
+    TfL + the live-positions Pages Function), with the live-interval countdown.
   - **Default view / home tool**, density (comfortable/compact) if useful, and
     the theme.
+  > **Dropped:** "Preferred operator" was removed — not worth its weight in
+  > Atlas. Don't reintroduce it without a concrete cross-tool use.
 - **Persistence.** Preferences persist across sessions and are **shared across
   all tools** (one settings object, one storage key) so the suite feels unified —
-  set your operator once, every instrument respects it. Read settings at startup
+  set your units/theme once, every instrument respects it. Read settings at startup
   before first render; re-render on change.
 - **Apply, don't decorate.** A preference must actually change behaviour: units
-  reformat every value, preferred-operator re-highlights, theme restyles via
+  reformat every value, clock format re-renders the time, theme restyles via
   tokens. A setting that does nothing is worse than no setting.
 - **Accessibility & tokens.** Toggle/controls are real `<button>`s with state
   (`aria-pressed`), keyboard-operable, focus-visible; both themes must meet
@@ -230,7 +429,7 @@ User-facing chrome that every tool inherits — build it once, consistently.
   no build step, no external CSS/JS frameworks.
 - Vanilla JS. Keep state in plain variables; re-render the affected pane on change.
 - A small `#tip` tooltip is standard (copy from a tool). The topbar clock,
-  refresh button and last-refreshed badge are standard too — see *Topbar layout*.
+  refresh button and last-refreshed badge are standard too — see _Topbar layout_.
 - SVG gotcha: a global `svg:not([width]){width:1em;height:1em}` keeps inline icons
   sane, **but large data SVGs (viewBox-only) must override it** — give them a
   class with `width:100%!important` (and explicit height) or they collapse to 1em.
@@ -249,7 +448,7 @@ User-facing chrome that every tool inherits — build it once, consistently.
   when TfL doesn't cover the need. `data_sources.xlsx` lists what's available and
   ranks the official options; prefer the ones flagged official/open.
 - **Document the source per tool.** At the top of each tool's data layer, note
-  which endpoint(s) feed it and at what cadence (see the *Output* column in
+  which endpoint(s) feed it and at what cadence (see the _Output_ column in
   `data_sources.xlsx`) so polling matches the source — don't hammer a 30s-cached
   feed every second.
 - **Handle fallbacks gracefully.** A source can be down, rate-limited, key-less,
@@ -261,6 +460,228 @@ User-facing chrome that every tool inherits — build it once, consistently.
   - the map-tile offline fallback (Atlas/Radius) is the reference pattern;
   - a failed refresh keeps the previous data on screen and surfaces the error
     quietly, rather than blanking the panes.
+
+### Approved source catalogue (from `data_sources.xlsx`)
+
+The full set of sources approved for Atlas, mirrored from `data_sources.xlsx`
+(that spreadsheet stays the master; keep this in sync when it changes). Prefer
+sources **top-down within each category** — official/open before commercial/
+community. **TfL Unified API is always first** where it covers the need.
+
+**Access legend:** 🔵 TfL/official (key optional) · 🟢 open/free · 🟠 commercial
+(vendor-defined) · ⚪ community. **Output legend:** 🔴 live · 🟡 periodic ·
+🔵 scheduled release · ⚫ static/reference. ⚠️ = an access gotcha (JS-rendered,
+gated, PDF-only) — see the note.
+
+#### Standards & feed formats (the backbone)
+- **SIRI-VM** 🟢 ⚫ — EU real-time vehicle-position standard (all England AVL is SIRI-VM v2.0; 10–30s). The wire format our live GPS speaks. https://www.gov.uk/government/publications/technical-guidance-publish-bus-open-data
+- **SIRI-SX / SIRI-ET** 🟢 ⚫ — Situation Exchange (disruptions) + Estimated Timetable (predicted arrivals). https://www.siri-cen.eu/
+- **GTFS / GTFS-RT** 🟢 ⚫ — global schedule (static) + real-time format. https://gtfs.org/
+- **TransXChange (TXC)** 🟢 ⚫ — UK-native XML timetable format; what BODS timetables ship in. https://www.gov.uk/government/collections/transxchange
+- **NeTEx** 🟢 ⚫ — EU timetable/fare/topology standard. https://netex-cen.eu/
+- **BODS Operator Requirements** 🟢 ⚫ — the legal publishing spec. https://publish.bus-data.dft.gov.uk/guidance/operator-requirements/
+
+#### Real-time bus operations (core TfL) — **primary**
+- **TfL Unified API** 🔵 🔴 — buses/Tube/rail status, disruptions, timetables, journey planning. The central layer. https://api.tfl.gov.uk/ · register https://api-portal.tfl.gov.uk/
+- **TfL Vehicle Location (via Unified API)** 🔵 🔴~30s — approximate live bus GPS. `/Vehicle/{ids}/Arrivals`
+- **TfL Live Bus Arrivals** 🔵 🔴 30s-cached — stop-level predictions (no gain polling faster). `/StopPoint/{id}/Arrivals`
+- **TfL Countdown** 🔵 🔴 — low-latency stop arrivals (now via Unified API). `/StopPoint/{id}/Arrivals`
+- **TfL StopPoint** 🔵 ⚫ — stop metadata (location, routes, platforms). `/StopPoint/`
+- **TfL Line & Route** 🔵 ⚫ — route geometry + service patterns. `/Line/{id}/Route`
+- **TfL Road API / JamCams** 🔵 🔴 — congestion/closures/incidents + 900+ traffic cams (still + 5s video). `/Road/` · `/Place/Type/JamCam`
+- **TfL iBus data portal** 🔵 🟡 — bulk iBus file drops. ⚠️ directory index is JS-rendered; individual files fetch directly. https://ibus.data.tfl.gov.uk/
+
+#### Train / Tube / rail live
+- **TfL Unified API (Rail module)** 🔵 🔴 — Tube/DLR/Overground status + arrivals. `/Line/Mode/tube,dlr,overground/Status`
+- **TfL Line Status** 🔵 🔴 — service status per line. `/Line/{id}/Status`
+- **National Rail Darwin** 🔵 🔴 — live train arrivals/delays. ⚠️ gated behind Rail Data Marketplace registration. https://raildata.org.uk/
+- **Network Rail Open Data** 🔵 🔴/🟡 — movements/TD/SCHEDULE. ⚠️ STOMP/HTTP, not browser-fetchable; free registration. https://datafeeds.networkrail.co.uk/
+- **TrackerNet** 🔵 🔴 — detailed rail movement (limited exposure).
+
+#### Live disruption & delay alerts (buses + rail)
+- **TfL Line Status — all modes incl. bus** 🔵 🔴~30s — statusSeverity 0–14 + reason. The core delays feed. `/Line/Mode/bus/Status` · `/Line/{ids}/Status`
+- **TfL Line Disruptions** 🔵 🔴 — active disruptions w/ affected stops + description. `/Line/Mode/bus/Disruption`
+- **TfL StopPoint Disruptions (bus)** 🔵 🔴 — closed/blocked bus stops. `/StopPoint/Mode/bus/Disruption`
+- **TfL Line Status by date (planned)** 🔵 🔴 — forward-dated closures/engineering. `/Line/{ids}/Status/{start}/to/{end}`
+- **National Rail Darwin / Knowledgebase** 🔵 🔴 — rail disruption context. ⚠️ RDM/NRDP registration.
+- **BODS / SIRI-SX (national bus disruption)** 🟢 🔴 — cross-operator disruption where published. https://data.bus-data.dft.gov.uk/
+
+#### National bus data (outside TfL)
+- **Bus Open Data Service (BODS)** 🟢 mixed 🔴/🟡 — UK-wide timetables, live location (~10s) & fares. We're a publisher too. https://data.bus-data.dft.gov.uk/
+- **NaPTAN** 🟢 🟡 — national stop database (IDs, coords). https://naptan.api.dft.gov.uk/swagger/index.html
+- **NPTG** 🟢 🟡 — national locality hierarchy. https://www.gov.uk/government/publications/national-public-transport-gazetteer
+- **TransportAPI** 🟠 🔴 — managed UK transport JSON (turnkey). https://www.transportapi.com/
+- **bustimes.org** ⚪ 🔴+⚫ — live tracking + community fleet/route/operator history. https://bustimes.org/
+
+#### Route-type classification (night / school / 24h / express)
+- **Night service** — TfL Line API `serviceTypes` (the only explicit machine-readable type field). `/Line/Route/Sequence/{dir}?serviceTypes=night`
+- **24-hour route** — derived (both Regular + Night with continuous coverage); not a flag.
+- **School / term-time** — TXC (via BODS) restricted operating profiles; TfL school routes ~6xx/9xx.
+- **Day-of-week / special-day variants** — TXC `OperatingProfile` + `SpecialDaysOperation`.
+- **High- vs low-frequency** — derived from headway (≥5 buses/h = high-freq, EWT-measured).
+- **Express / limited-stop / Superloop** — branding/naming convention; tag yourself from route number.
+
+#### Tendering, contracts & operator intelligence
+- **TfL "Who runs your bus"** 🟢 ⚫ — contracting model + current operators. https://tfl.gov.uk/modes/buses/who-runs-your-bus
+- **TfL Bus Tender Results** 🟢 🟡 — per-route tender winners. ⚠️ JS-rendered .aspx — use FTS/Contracts Finder OCDS for structured data. https://tfl.gov.uk/forms/13923.aspx
+- **TfL Annual LBSL Tendering Programme** 🟢 🔵 annual (Sept) — forward schedule, issue/return/award dates, PVR. ⚠️ PDF-only. https://tfl.gov.uk/cdn/static/cms/documents/uploads/forms/2026-2027-lbsl-tendering-programme.pdf
+- **TfL Bus Operator League Tables** 🟢 🔵 quarterly — operator reliability ranking. https://tfl.gov.uk/corporate/publications-and-reports/bus-operator-league-tables
+- **Find a Tender (FTS)** 🟢 🔴+🟡 — OCDS JSON API + bulk; TfL notices carry CPV 60112000. https://www.find-tender.service.gov.uk/
+- **Contracts Finder** 🟢 🔴+🟡 — lower-value + early-engagement notices; OCDS API. https://www.contractsfinder.service.gov.uk/
+- **OCDS bulk (data.gov.uk)** 🟢 🟡 daily — full-history contract analysis. https://www.data.gov.uk/search?q=contracts+finder
+- **Bidstats** ⚪ 🟡 — procurement-notice aggregator. https://bidstats.uk/tenders/?q=tfl
+- **Bus Routes in London Wiki — tender history** ⚪ ⚫ — crowd-sourced cross-check. https://bus-routes-in-london.fandom.com/wiki/Tender_history_results_for_TFL
+
+#### Competitor financials & corporate intelligence
+- **Companies House API** 🔵 🟡 — filings, accounts, officers, PSC. ⚠️ accounts are iXBRL/PDF (~40% structured). https://developer.company-information.service.gov.uk/
+- **Companies House bulk product** 🟢 🟡 — full register + iXBRL accounts. https://www.gov.uk/government/publications/companies-house-accounts-data
+- **TfL Expenditure over £250** 🟢 🔵 4-weekly — payments to operators (QIC context). https://tfl.gov.uk/corporate/publications-and-reports/expenditure-over-250
+- **Operator group annual reports / RNS** 🟢 🔵 — listed parents' segment results. https://www.londonstockexchange.com/news
+- **GLA Group / TfL transparency** 🟢 🟡 — board papers, business plan, budget. https://tfl.gov.uk/corporate/publications-and-reports/
+
+#### Regulatory & licensing
+- **VOL Operator Licence Records (DVSA, data.gov.uk)** 🟢 🟡 weekly — operator/licence/operating-centre/authorised-fleet ceiling. CKAN API. https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/
+- **Find lorry or bus operators** 🟢 🔴 — human VOL search front-end. https://www.gov.uk/find-vehicle-operators
+- **Find registered local bus services** 🟢 🔴 — service-registration records. https://www.gov.uk/find-local-bus-services
+- **DVSA VOL statistical dataset** 🟢 🔵 — licence application stats. https://open.data.dvsa.gov.uk/vehicle-operator-licensing/index.html
+
+#### Vehicle telematics, EV & depot (all 🟠 vendor-defined, 🔴 live)
+- **Geotab** — engine/EV diagnostics, SoC, driver behaviour; open API. https://developers.geotab.com/
+- **ChargePoint** — charging-station mgmt, battery, fault codes. https://www.chargepoint.com/fleet/telematics
+- **Volteum** — hardware-free fleet view (mileage, battery, charging cost). https://www.volteum.io/
+- **INIT** — next-gen AVL/CAD; TfL's iBus successor. https://www.initse.com/
+
+#### Scheduling, crew & rostering (🟠 vendor software)
+- **HASTUS (GIRO)** — scheduling/run-cutting/rostering (industry standard). https://www.giro.ca/en/our-solutions/hastus-software/
+- **Optibus** — AI blocking/runcutting/rostering; GTFS/TXC import. https://optibus.com/product/scheduling/
+- **Trapeze** — end-to-end planning → dispatch → control. https://www.trapezegroup.co.uk/
+- **Academic optimisation literature** 🟢 ⚫ — open solver formulations. https://arxiv.org/pdf/2310.13425
+
+#### Traffic, roadworks & incidents
+- **Street Manager (DfT)** 🔵 🔴+🟡 hourly — every planned/active street work in England; Open Data API + GeoJSON. The key roadworks source. https://www.gov.uk/guidance/find-and-use-roadworks-data
+- **TfL Live Traffic Disruptions** 🔵 🔴 — London control-centre incident feed. `/Road/all/Disruption` · https://data.london.gov.uk/dataset/tfl-live-traffic-disruptions-248xn/
+- **TfL Road Disruptions API** 🔵 🔴 — events + planned works up to 12 months out. `/Road/all/Disruption`
+- **TfL Live Roadside Message Signs** 🔵 🔴 — VMS location + live message.
+- **National Highways API** 🔵 🔴 — motorway/SRN incidents. https://api.data.nationalhighways.co.uk/
+- **UK Power Networks Live Faults** 🟢 🔴 — London DNO power-cut feed (signal outages, charger loss). https://ukpowernetworks.opendatasoft.com/explore/dataset/ukpn-live-faults/
+- **National Grid / DNO power-cut feeds** 🟢/🟠 🔴 — outside UKPN footprint. https://powercuts.nationalgrid.co.uk/
+- **INRIX / TomTom / HERE Traffic** 🟠 🔴 — vendor traffic speed + routing. (docs.inrix.com · developer.tomtom.com · here.com)
+- **DfT Road Traffic Counts** 🟢 🔵 annual — AADF volumes by count point. https://roadtraffic.dft.gov.uk/
+- **TfL roads open-data host** 🔵 🟡 — bulk road/network files. ⚠️ JS-rendered index; files fetch directly. https://roads.data.tfl.gov.uk/
+
+#### Bridge clearances & strike avoidance
+- **TfL/OS London Bridge Height Restrictions** 🟢 🔵 annual — 877 low bridges (CSV). Primary London source. ⚠️ Datastore landing JS-rendered; CSV downloads directly. https://data.london.gov.uk/dataset/bridges-tunnels-road-barriers-height-restrictions-epowr/
+- **Network Rail Bridge Strike Data** 🟢 🟡 — 5,000+ rail bridges + strike frequency. https://www.networkrail.co.uk/.../prevention-of-bridge-strikes/
+- **OpenStreetMap maxheight** 🟢 🟡 — crowd-sourced clearance tags (incomplete). https://wiki.openstreetmap.org/wiki/Bridge_heights_in_the_United_Kingdom
+- **Low Clearance Map** 🟠 🟡 — commercial clearance dataset + routing API. https://lowclearancemap.com/
+
+#### PCN enforcement & camera locations
+- **London Councils — Enforcement & Appeals stats** 🟢 🔵 annual — authoritative London-wide PCN volumes per borough by contravention. https://www.londoncouncils.gov.uk/services/parking-services/enforcement-and-appeals-statistics
+- **Barnet Parking PCN Dashboard (exemplar)** 🟢 🟡 — per-PCN street-level open data; FOI template for other boroughs. https://open.barnet.gov.uk/dataset/24r8e/parking-pcn-dashboard
+- **Borough open-data portals** 🟢 mixed — per-borough extracts. ⚠️ patchy; some need FOI.
+- **London Tribunals** 🟢 🔵 — PCN appeals/adjudication outcomes. https://www.londontribunals.gov.uk/
+- **London Datastore — Safety Camera Data** 🟢 ⚫ — fixed/avg-speed/red-light sites + KSI. ⚠️ free Datastore login required. https://data.london.gov.uk/dataset/safety-camera-data-london
+- **London Datastore — CC ANPR captures** 🟢 🔵 monthly — ANPR activity (not locations). ⚠️ Datastore portal.
+- **PhotoEnforced — London** ⚪ 🟡 — crowd camera locations (verify). https://www.photoenforced.com/London.html
+- **Commercial UK speed-camera datasets** 🟠 🟡 — national coverage (sat-nav providers).
+- **TfL JamCams** 🔵 🔴 — 900+ traffic cams (still + video), monitoring only. `/Place/Type/JamCam`
+- **TfL Live Traffic Cameras (Datastore)** 🟢 🔴 ≥3min — curated 177-site set. ⚠️ Datastore portal. https://data.london.gov.uk/dataset/tfl-live-traffic-cameras-2kmnd
+
+#### Bus positioning / ETA prediction (concept layers — build, not feeds)
+Vehicle GPS feed · arrival prediction (Countdown) · interpolation engine · map
+snapping (OSM) · confidence scoring · diversion detection. These are pipeline/
+render concepts layered on the live feeds above, not external sources.
+
+#### Weather & environmental
+- **Met Office Weather DataHub** 🔵 🔴 — UK forecasts/obs/alerts. https://datahub.metoffice.gov.uk/
+- **OpenWeather** 🔵 🔴 — hyperlocal current + forecast. https://openweathermap.org/api
+- **Environment Agency Flood-Monitoring** 🟢 🔴 ~15min — flood warnings/levels; OGL, no registration. https://environment.data.gov.uk/flood-monitoring/doc/reference
+- **London Air Quality (Imperial / LAQN)** 🟢 🔴 hourly — pollution levels. https://www.londonair.org.uk/LondonAir/API/
+
+#### Mapping & geospatial
+- **postcodes.io** 🟢 🔴 — open UK postcode geocoder (lat/lng + BNG); self-hostable, no rate limit. The open Google-Geocoding substitute (already used). https://postcodes.io/
+- **OS Places API** 🔵 🔴 — authoritative building-level addresses (PAF/AddressBase). https://osdatahub.os.uk/docs/places/overview
+- **getthedata** 🟢 🔴 — fallback postcode geocoder. https://www.getthedata.com/postcode
+- **Doogal** 🟢 🟡 — UK postcode/geo data + bulk. https://www.doogal.co.uk/Postcodes
+- **OpenStreetMap** 🟢 🟡 — road network + POIs; Geofabrik GB extract. The allowed map-tile CDN dep. https://download.geofabrik.de/europe/great-britain.html
+- **Ordnance Survey APIs** 🔵 🟡 — high-precision UK mapping (OS Data Hub). https://osdatahub.os.uk/
+- **Google Maps Platform** 🔵 🔴 — geocoding + routing (vendor). https://developers.google.com/maps/documentation
+- **Mapbox** 🔵 🔴 — map rendering engine (vendor). https://docs.mapbox.com/
+
+#### Demand, passenger flow & analytics
+- **TfL Station Crowding API** 🔵 🔴 ~5min — Tube busyness as % of historical peak. ⚠️ relative %, not absolute counts. `/Crowding/{naptan}/Live`
+- **Oyster / Contactless aggregated** 🔵 🔵 — boarding patterns. https://tfl.gov.uk/info-for/open-data-users/our-open-data
+- **TfL RODS** 🟢 🔵 annual — Underground origin-destination flows.
+- **DfT daily bus passenger stats** 🟢 🟡 — faster-indicator patronage. https://www.gov.uk/government/statistics/transport-use-during-the-coronavirus-covid-19-pandemic
+- **DfT Annual Bus Statistics** 🟢 🔵 annual — patronage/mileage/fares/fleet by operator. https://www.gov.uk/government/collections/bus-statistics
+- **Analyse Bus Open Data (DfT)** 🟢 🟡 — BODS feed-quality dashboards. https://analyse.bus-data.dft.gov.uk/
+- **ONS commuting / O-D datasets** 🟢 ⚫ — travel-to-work patterns. https://www.ons.gov.uk/census
+- **Mobile mobility data (O2 Motion)** 🟠 🟡 — anonymised movement trends. https://www.o2.co.uk/business/solutions/o2-motion
+- **Google Places — Popular Times** 🔵 🔴 — footfall/busyness (vendor).
+
+#### Network, accessibility & wider context (TfL & GLA)
+- **TfL Journey Planner API** 🔵 🔴 — multi-modal routing + PAYG fares. `/Journey/JourneyResults/{from}/to/{to}`
+- **TfL Step-Free / Accessibility (Pathfinder, GTFS)** 🟢 🟡 — station topology + step-free.
+- **TfL Walking Routes** 🟢 ⚫ — station-to-station walk times.
+- **TfL Santander Cycles** 🔵 🔴 — live docking availability. `/BikePoint`
+- **TfL Car Park occupancy** 🔵 🔴 — LU car-park spaces. `/Occupancy/CarPark`
+- **TfL Licensed Private Hire / Findaride** 🔵 🟡 — PHV/taxi operator data.
+- **GLA Road Network boundary (TLRN)** 🟢 ⚫ — TfL-vs-borough road control. ⚠️ Datastore; files download directly.
+- **London Datastore** 🟢 mixed — GLA central open-data portal; CKAN API + direct resource URLs. ⚠️ portal pages JS-rendered. https://data.london.gov.uk/
+- **LAEI (emissions inventory)** 🟢 ⚫ — pollutant concentration per 20m. https://data.london.gov.uk/dataset/london-atmospheric-emissions-inventory--laei--2019
+
+#### Compliance, safety & statutory reporting
+- **TfL Surface Transport performance metrics** 🔵 🔵 — EWT/OTP + QIC measures. https://tfl.gov.uk/corporate/publications-and-reports/buses-performance-data
+- **TfL Bus Safety Data / collisions** 🟢 🔵 quarterly — Vision Zero + STATS19 dashboard. https://tfl.gov.uk/corporate/publications-and-reports/bus-safety-data
+- **DfT STATS19 road casualty data** 🟢 🔵 annual — national collision records + factors; bulk via data.gov.uk. https://www.gov.uk/government/collections/road-accidents-and-safety-statistics
+- **HSE RIDDOR statistics** 🟢 🔵 annual — workforce injury benchmarking. https://www.hse.gov.uk/statistics/
+- **HSE enforcement / prosecutions** 🟢 🟡 — safety-compliance register. https://resources.hse.gov.uk/convictions/
+- **BODS publishing obligations** 🟢 🔴 — statutory publish duty. https://publish.bus-data.dft.gov.uk/
+- **Bus dwell-time analytics** 🟢 ⚫ — dwell from AVL/iBus (method reference).
+
+#### Bus performance & reliability (EWT / OTP / QSI)
+- **TfL Buses Performance Data (hub)** 🟢 🔵 — methodology + headline trends. https://tfl.gov.uk/corporate/publications-and-reports/buses-performance-data
+- **TfL Route-level Results (current + archive)** 🟢 🔵 — per-route EWT/SWT/AWT + long-gaps. ⚠️ search form JS-rendered; PDF host fetches directly (table extraction needed). https://tfl.gov.uk/forms/14144.aspx · https://bus.data.tfl.gov.uk/boroughreports/current-quarter.pdf
+- **TfL Bus Operator League Tables** 🟢 🔵 quarterly — operator ranking.
+- **TfL Quality of Service Indicators (QSI)** 🟢 🔵 quarterly — passenger-scored quality.
+- **TfL Bus Speeds data** 🟢 🔵 — average bus speeds (diagnoses EWT cause).
+- **London Datastore — Public Transport Journeys by Mode** 🟢 🔵 — bus journeys per period. ⚠️ file downloads directly.
+- **London Datastore — Bus Use & Supply Data** 🟢 ⚫ — annual journeys/km/subsidy per route. ⚠️ gated; free login required.
+- **London Datastore — bus tag** 🟢 mixed — faceted search of all bus datasets. ⚠️ JS-rendered search.
+- **Mayor's Questions / London Assembly answers** 🟢 🟡 — deep-dive perf answers; directly fetchable. https://www.london.gov.uk/who-we-are/what-london-assembly-does/questions-mayor/find-an-answer
+- **FOI archive (WhatDoTheyKnow)** ⚪ ⚫ — granular EWT FOI responses + FOI template. https://www.whatdotheyknow.com/body/tfl
+
+#### Formal calculations & definitions (TfL methodology — reference, not feeds)
+SWT = Σ(hₛ²)/(2·Σhₛ) · AWT = Σ(hₐ²)/(2·Σhₐ) · **EWT = AWT − SWT** (each route
+has an MPS benchmark) · AWT:SWT ratio · P(wait > x) · Long Gaps = P(wait > 4×SWT).
+OTP/OTD · early/non-arrival. Contract model: TfL keeps fares, pays operator a fee
+(from 2000–01); bonus/deduction vs benchmark (EWT high-freq, OTP low-freq);
+lost-mileage deductions (in-control only); 5yr + up-to-2yr extension. PVR (Peak
+Vehicle Requirement), scheduled/operated km, dead mileage, MDBF, MPS. **PVR
+sources:** tender award notices (authoritative, frozen at award) · LBSL programme
+(forward) · own/published TXC schedule (block-count — operationally true now) ·
+londonbusroutes.net/bustimes.org (community cross-check) · GLA/Mayor's Questions
+(network total only).
+
+#### Open-source toolkit (build, not buy — software, 🟢)
+awesome-transit (catalogue) · GTFS-RT↔SIRI-Lite converters · TransitClock (ETA
+prediction) · particle/Kalman models · gtfs-realtime-validator · gtfs-mcp (LLM
+query layer) · OpenTripPlanner · Apache Kafka · MQTT (Mosquitto) · PostgreSQL +
+PostGIS · Grafana · Prometheus. (See `data_sources.xlsx` for links.)
+
+#### London-specific community & reference (⚪, last-resort cross-checks)
+- **londonbusroutes.net (Ian Armstrong)** ⚫ — route histories, operators & **garage allocations** (already a pipeline source). http://www.londonbusroutes.net/index.htm
+- **London Omnibus Traction Society (LOTS)** 🟡 — fleet/vehicle movements. https://www.lots.org.uk/
+- **TfL Bus Consultations** 🟡 — open service consultations. https://haveyoursay.tfl.gov.uk/
+- **Bus Routes in London Wiki (Fandom)** ⚫ — crowd-sourced route info.
+- **londonbuses.co.uk** ⚫ — general reference.
+
+> **Atlas wiring today** (where these feed the live app): TfL Unified API (Line/
+> Route/StopPoint/Status/Disruption/Arrivals) · BODS SIRI-VM (live GPS, via the
+> Pages Function) · postcodes.io + OSM tiles · DVLA VES (fleet enrichment) ·
+> londonbusroutes.net (garages) · TfL tender pages + LBSL programme (Mandate). The
+> rest of the catalogue is approved for future layers — add via the seam + a
+> `pipeline/build/<name>.js`, documenting the endpoint + cadence as above.
 
 ### Data access layer (future-proof for a database)
 
@@ -286,7 +707,7 @@ store). Write the data layer now so that switch is a swap, not a rewrite:
   backs it today, the normalised shape it returns, and the cadence — that doc
   becomes the spec for the DB ingest + read layer later.
 
-> Net: components depend on *our* data shape via the seam, never on TfL's wire
+> Net: components depend on _our_ data shape via the seam, never on TfL's wire
 > format or on where the bytes come from. API-direct now, DB-backed later, with
 > the tools unchanged.
 
@@ -296,28 +717,48 @@ When we gather data — API pulls, file downloads, or **scraping** the JS-render
 PDF / gated sources flagged in `data_sources.xlsx` — the pipeline must be
 **robust, optimized, and gracefully degrading**. These run unattended in future
 (GitHub Actions, cron, or a scheduled job), so they fail safely on their own.
+The pipeline shape is explicit and isolated per step: **Fetch → Clean → Validate
+→ Store → Serve.**
 
 - **Prefer the cleanest source.** Official API → bulk open dataset / CKAN → file
   download → scrape. Scraping is the **last resort**, only for sources with no
   machine-readable feed; check terms/robots and keep within them.
 - **Robust by default:** timeouts on every request; retries with exponential
-  backoff + jitter; treat any single source as fallible. One source failing must
-  not abort the whole run or corrupt the store.
+  backoff + jitter (1–2 attempts for transient failures); treat any single source
+  as fallible. One source failing must not abort the whole run or corrupt the
+  store. Prevent overlapping/concurrent executions.
 - **Graceful fallback / degrade:** on fetch failure keep the **last good data**
   (don't overwrite a good record with an error or empty); mark records with
   `fetched_at` + status so staleness is visible downstream (feeds the tools'
-  "stale/cached" badge). Partial success is success — persist what you got.
+  "stale/cached" badge). Partial success is success — persist what you got, but
+  never store a _partial dataset_ where a whole-dataset swap is expected.
 - **Optimized & polite:** match poll cadence to the source's real refresh (the
-  *Output* column — don't re-pull a quarterly PDF hourly); use conditional
-  requests (ETag / If-Modified-Since) and incremental/delta fetches; cache;
-  dedupe; respect rate limits and back off on 429/5xx.
-- **Validate before it lands** (ties to *Validation*): schema/row-count/sanity
-  checks on ingested data; quarantine or reject bad batches rather than poisoning
-  the store; alert on anomalies (row count cratered, all-nulls, totals don't
-  reconcile).
+  _Output_ column — don't re-pull a quarterly PDF hourly); use conditional
+  requests (ETag / If-Modified-Since) and incremental/delta fetches — skip
+  processing entirely if the source hasn't changed; cache; dedupe; respect rate
+  limits and back off on 429/5xx.
+- **Clean before it lands.** Treat all scraped/fetched data as untrusted input:
+  strip HTML by default (allow specific tags only if required); decode and
+  standardise to UTF-8; trim whitespace and remove invisible/control characters;
+  coerce to strict types (number, boolean, ISO date) and validate formats
+  (dates, URLs, numeric ranges). Never pass raw scraped content into the DOM, and
+  never execute scripts from scraped content. Validate outbound links before
+  exposing them.
+- **Shape into a stable schema.** Transform into a consistent internal schema with
+  stable field names; apply defaults for missing values; reject malformed or
+  incomplete records early. Don't rely on upstream HTML structure — if selectors
+  fail or return empty, return a safe fallback state and **log the structural
+  mismatch**, don't break the UI.
+- **Validate before it lands (hard gate)** (ties to _Validation_): schema /
+  row-count / sanity checks on ingested data; quarantine or reject bad batches
+  rather than poisoning the store; alert on anomalies (row count cratered,
+  all-nulls, totals don't reconcile). **If new data fails validation, retain the
+  last known good dataset and log the failure** — treat validation as a hard gate,
+  not a warning.
 - **Idempotent & re-runnable:** a re-run produces the same end state (upsert on a
   stable key, no dupes); safe to retry after a crash. Checkpoint long runs so a
-  failure resumes rather than restarts.
+  failure resumes rather than restarts. Keep execution time predictable and within
+  platform limits (e.g. GitHub Actions job timeouts).
 - **Automation-ready & observable:** parameterised (no hardcoded secrets — keys
   via env/secrets), structured logging, a clear exit code and run summary
   (fetched / updated / skipped / failed) so a scheduled job surfaces health.
@@ -325,7 +766,13 @@ PDF / gated sources flagged in `data_sources.xlsx` — the pipeline must be
   keep them isolated from the light API pulls.
 - **Decoupled from the app.** Pipelines write to the store; tools read via the
   seam. The two never share a code path — a slow/failed scrape never blocks a
-  tool render (the tool just shows its last-good/cached state).
+  tool render (the tool just shows its last-good/cached state). **Never rely on
+  live scraping for a user-facing request** — always serve pre-processed,
+  validated data.
+- **Scraping security & observability:** scraping (where unavoidable) runs only in
+  pipeline scripts, never at runtime or from the browser; never expose scraping
+  targets, selectors, or parsing logic in frontend code. Log failed requests,
+  empty selector results, and validation failures — minimal but actionable.
 
 ## Validation (always)
 
@@ -353,7 +800,7 @@ data** — not just "it renders". Don't trust a screenshot alone.
 ## Export & import
 
 - **CSV export of the current view** — every tool offers it. Export reflects the
-  *current* state (selected entity, active filters, mode) — what the user sees is
+  _current_ state (selected entity, active filters, mode) — what the user sees is
   what they get. UTF-8, quoted fields, sensible headers/filename
   (`headway_route-73_2026-06-17.csv`). Plain client-side Blob download, no deps.
 - **Import / user input where it makes sense** — an import button to bring in a
@@ -374,23 +821,65 @@ data** — not just "it renders". Don't trust a screenshot alone.
 - Archived suite + old hub: `archive/`. If a layer ever needs to spin out into its own
   page again, keep the render helpers/`dataSource` seam modular so it lifts out cleanly.
 
+---
+
+## Project-Specific Standards & Overrides
+
+These take precedence over the **General Project Standards** above where they differ.
+
+### No Cloudflare Worker proxy
+
+The general standard of routing API calls through a Cloudflare Worker does **not**
+apply. Atlas's runtime browser calls go directly to CORS-open TfL feeds via the
+`tfl` seam; the one keyed feed (BODS SIRI-VM live GPS) is served by a Cloudflare
+**Pages Function** (`functions/api/live/vehicles.js`) with the key as a project
+secret. See _Deployment_.
+
+### No framework or bundler — ever
+
+Never introduce a bundler, framework, or build step at deploy time. The
+no-build-at-deploy contract is load-bearing for the Cloudflare Pages setup
+(output directory is the repo root; `functions/` is auto-detected).
+
+### Scraping is pipeline-only
+
+All scraping runs exclusively in the pipeline scripts during CI — never at
+runtime, never from the browser. The general scraping standards apply fully there.
+
+### TfL API first — scrape only to fill gaps
+
+Third-party / community fallbacks run only for what the TfL API didn't return.
+TfL-sourced values are never overwritten by scraped ones.
+
+### Automated data commits are exempt
+
+The weekly CI workflow (`refresh-data.yml`) commits and pushes refreshed `data/*.json`
+automatically as the bot (`transit-instruments-bot`) — this is expected and exempt
+from the "never commit/push unless explicitly told" rule. That rule applies only to
+manual/agent-driven changes during development sessions, which commit **as Farhan**.
+
 ## Checklist (each change/phase)
 
 - [ ] Three-pane shell, 52px topbar, matches the existing app
 - [ ] Topbar right: last-refreshed badge + manual refresh `⟳` + clock; refresh repaints panes & resets the badge
 - [ ] Dark/light theme toggle via `data-theme`; defaults to OS pref, choice persists; both themes meet contrast
-- [ ] Reads shared user settings (preferred operator, units/formats) at startup; preferences actually change behaviour & persist across tools
+- [ ] Reads shared user settings (units/formats, data-refresh mode) at startup; preferences actually change behaviour & persist across tools
 - [ ] `:root` tokens copied; no hardcoded colours; quantitative values in mono
 - [ ] Red only for alerts
+- [ ] Consistent `<title>` + meta + favicon + OG/Twitter tags on every user-facing page
 - [ ] Left rail drives canvas + right rail; mode toggle switches canvas views
 - [ ] Semantic landmarks, single h1, tablist for modes, lists as `<ul>`
-- [ ] Skip link, focus-visible, reduced-motion, aria-hidden on decorative SVG
+- [ ] Skip link, focus-visible, reduced-motion, aria-hidden on decorative SVG; meaningful images have alt
 - [ ] No horizontal overflow 320–1440px; panes collapse sensibly
 - [ ] Large data SVGs have width override
 - [ ] Official TfL API used as primary source where available; source + cadence documented
 - [ ] Data access behind a swappable seam (normalised shapes, async); no inline `fetch` in components; backend selectable by config (tfl → db later)
 - [ ] Fallbacks degrade gracefully (live → cached → labelled sample); badge shows the state
+- [ ] Pipeline: Fetch → Clean → Validate → Store → Serve; validation is a hard gate (bad/empty data never overwrites last-good)
+- [ ] Secrets in `.env` / CI secrets only; `.env.example` lists keys with no values; nothing keyed reaches the browser
+- [ ] Pre-commit: desktop (1280×800) + mobile (390×844) screenshots; zero JS console errors
 - [ ] Validated: rendered values cross-checked against the source via headless browser + Node/Python; reproducible script
 - [ ] CSV export of the current view (respects selection/filters/mode)
 - [ ] Import &/or inline editing wired where it makes sense (imported/edited data is first-class; bad input reported)
 - [ ] New layer/section wired into Atlas's display toggles + context groups (modular helpers)
+- [ ] README current; analytics confirmed (added or explicitly skipped); pre-ship Network-tab check passed
