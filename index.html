@@ -68,6 +68,10 @@
   --panel:#ffffff; --panel-2:#f4f7fb; --panel-3:#eaeff6;
   --line:#d9e1ec; --line-2:#c6d2e2; --line-3:#aab9ce;
   --paper:#1f2733; --paper-2:#46566e; --paper-3:#6a7990; --paper-4:#9aa8bd;
+  /* Re-tuned accents for the light theme: the bright dark-theme hues fail WCAG AA as
+     text on white (cyan 2.1:1, green 2.5:1, amber 2.0:1). These darker variants clear
+     ~4.5:1 on white for text/links while keeping the same meaning. */
+  --amber:#b45309; --cyan:#0e7490; --violet:#6d4ad8; --green:#15803d;
 }
 :root{
   --amber:#f5a524; --cyan:#37c5c5; --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
@@ -2000,7 +2004,7 @@ function renderContext(){
     const typeRows=Object.keys(TYPE_DEFS).filter(t=>byType[t]).map(t=>
       kv(`<span class="pill" style="padding:1px 7px"><span class="pdot" style="background:${TYPE_DEFS[t].color}"></span>${TYPE_DEFS[t].label}</span>`, byType[t])).join("");
     const topOps=Object.entries(opStats).sort((a,b)=>b[1].routes-a[1].routes).slice(0,8).map(([o,s])=>{
-      const ev=s.fleetKnown?Math.round(s.ev/s.fleetKnown*100):null;
+      const ev=propMixOfRoutes(operatorRouteNames(o)).zev;   // PVR-weighted ZEV — same method as the operator drill-down, so the figures agree
       return `<button type="button" class="drill oprow" data-operator="${esc(o)}" title="Open ${esc(shortOp(o))}">
         <span class="dl"><span class="opdot" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</span>
         <span class="opnums"><span title="routes">${s.routes}</span><span class="evc" title="zero-emission share">${ev==null?"—":ev+"% ZEV"}</span><span class="chev">›</span></span></button>`;
