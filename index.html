@@ -299,6 +299,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .mt-spin{width:12px;height:12px;border-radius:50%;border:2px solid var(--line-3);border-top-color:var(--cyan);
   animation:spin .7s linear infinite;flex:none}
 @media (prefers-reduced-motion:reduce){.mt-spin{animation:none;border-top-color:var(--cyan)}}
+.radctl input[type=range]{width:100%;accent-color:var(--amber);margin-top:6px;cursor:pointer}
 /* garage markers + operating-garage tooltip */
 /* garage markers — solid operator-coloured badges "OP (CODE)" (benchmarked to london-buses) */
 .garage-pin{display:flex;align-items:center;justify-content:center}
@@ -1058,6 +1059,8 @@ const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London vie
 let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer, bridgeLayer, incidentLayer;
 let showRoutes=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
 let roadIncidents=null;   // cached live road-incident list (fetched on demand when the layer is enabled)
+let riskRadius=250;       // metres — user-set alert proximity for the Risk & accidents panel (collisions + low bridges), hydrated from settings
+let riskRadiusTimer=null;
 
 /* ===========================================================================
    THEME / FORMAT
@@ -1369,7 +1372,7 @@ function accidentsForView(){
   const data=accidentsData(); let list=data.accidents||[];
   if(selected.length){
     const lines=selected.map(r=>(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id)).filter(Boolean);
-    if(lines.length) list=list.filter(a=>lines.some(cs=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; }));
+    if(lines.length) list=list.filter(a=>lines.some(cs=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<riskRadius/1000; }));
   }
   return { data, list };
 }
@@ -1403,7 +1406,7 @@ function bridgesForView(){
   const data=bridgesData(); let list=data.bridges||[];
   if(selected.length){
     const lines=selected.map(r=>(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id)).filter(Boolean);
-    if(lines.length) list=list.filter(b=>lines.some(cs=>{ const p=routeProximity(cs,b.lat,b.lng); return p.offKm!=null && p.offKm<0.12; }));
+    if(lines.length) list=list.filter(b=>lines.some(cs=>{ const p=routeProximity(cs,b.lat,b.lng); return p.offKm!=null && p.offKm<riskRadius/1000; }));
   }
   return { data, list };
 }
@@ -2435,28 +2438,33 @@ function renderContext(){
     const data=accidentsData(); if(!data) return "";
     const cs=(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id);
     if(!cs||!cs.length) return "";
-    const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; });
+    const RR=riskRadius/1000;   // user-set alert proximity (km)
+    const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<RR; });
     const ksi=near.filter(a=>sevOf(a)!=="slight").length;
-    // Low bridges in two tiers: ALONG the line (~120 m) and a wider DIVERSION CORRIDOR
-    // (~350 m). A diversion needn't follow the booked line — a low bridge a few streets
-    // off-route is still a strike risk if a (mostly double-deck) bus gets sent that way.
+    // Low bridges within the user-set alert proximity — a DIVERSION corridor: a diversion
+    // needn't follow the booked line, so a low bridge a few streets off-route is still a
+    // strike risk if a (mostly double-deck) bus gets sent that way. (Inner 120 m = on the line.)
     const bd=bridgesData();
     const withOff=((bd&&bd.bridges)||[]).map(b=>{ const p=routeProximity(cs,b.lat,b.lng); return { b, off:p.offKm }; }).filter(x=>x.off!=null);
-    const corridor=withOff.filter(x=>x.off<0.35).map(x=>x.b);
+    const corridor=withOff.filter(x=>x.off<RR).map(x=>x.b);
     const onLine=withOff.filter(x=>x.off<0.12).length;
     const subDD=corridor.filter(b=>Number.isFinite(b.height_m)&&b.height_m<DD_HEIGHT_M);
     const heights=corridor.map(b=>b.height_m).filter(Number.isFinite); const minH=heights.length?Math.min(...heights):null;
+    // proximity control (shared by collisions + bridges below); re-renders on change
+    const radCtl=`<div class="metric radctl"><div class="mnote">Alert proximity <b class="mono" style="color:var(--paper)">${riskRadius} m</b></div>
+       <input type="range" id="riskRadius" min="50" max="800" step="50" value="${riskRadius}" aria-label="Alert proximity in metres"></div>`;
     // prominent flag: any sub-double-deck bridge in the corridor = diversion strike risk
     const bridgeFlag = subDD.length
-      ? `<div class="insight" style="border-left-color:var(--alert);margin:0 0 var(--s3)"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Diversion strike risk</div>${subDD.length} low bridge${subDD.length>1?"s":""} under the 4.4 m double-deck height within 350 m of this route (lowest ${fmtHeight({height_m:minH})}). A diverted double-decker could strike — check before diverting.</div>`
+      ? `<div class="insight" style="border-left-color:var(--alert);margin:0 0 var(--s3)"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Diversion strike risk</div>${subDD.length} low bridge${subDD.length>1?"s":""} under the 4.4 m double-deck height within ${riskRadius} m of this route (lowest ${fmtHeight({height_m:minH})}). A diverted double-decker could strike — check before diverting.</div>`
       : "";
     const bridgeBody = corridor.length
-      ? `<div class="metric"><div class="mnote">Low bridges · diversion risk</div>${bridgeFlag}${metrics([ mcard("Near route",corridor.length,"within 350 m"), mcard("On the line",onLine,"within 120 m"), mcard("Sub-4.4 m",subDD.length,"strike risk") ])}
+      ? `<div class="metric"><div class="mnote">Low bridges · diversion risk</div>${bridgeFlag}${metrics([ mcard("Near route",corridor.length,`within ${riskRadius} m`), mcard("On the line",onLine,"within 120 m"), mcard("Sub-4.4 m",subDD.length,"strike risk") ])}
            <div class="mnote" style="margin-top:10px">Lowest clearances nearby</div>${corridor.slice().sort((a,b)=>(a.height_m||99)-(b.height_m||99)).slice(0,6).map(b=>{ const c=bridgeColor(b.height_m); return `<div class="kv"><span class="k kc">${esc(b.name||b.road||"Low bridge")}</span><span class="v" style="color:${c}">${fmtHeight(b)}</span></div>`; }).join("")}
            ${bd.sample?`<div class="mnote" style="margin-top:6px;color:var(--paper-4)">sample bridge data</div>`:""}</div>`
-      : `<div class="metric"><div class="mnote">Low bridges · diversion risk</div><div class="empty" style="padding:7px 0">No low bridges within 350 m of this route.</div></div>`;
+      : `<div class="metric"><div class="mnote">Low bridges · diversion risk</div><div class="empty" style="padding:7px 0">No low bridges within ${riskRadius} m of this route.</div></div>`;
     return group("risk","Risk & accidents","var(--alert)",
-      `<div class="metric">${sentinelBody(near,data,"within 150 m of this route",{km})}</div>`
+      radCtl
+      + `<div class="metric">${sentinelBody(near,data,`within ${riskRadius} m of this route`,{km})}</div>`
       + bridgeBody,
       near.length?`${near.length} · ${ksi} KSI${subDD.length?` · ⚠ ${subDD.length} br`:""}`:(subDD.length?`⚠ ${subDD.length} low br`:(corridor.length?`${corridor.length} br nearby`:"none nearby")));
   })();
@@ -2610,7 +2618,7 @@ function init(){
   // hydrate map display prefs + wire the control bar
   // Live vehicles + collisions are noisy overlays — always start OFF each session; the user
   // turns them on explicitly (not persisted as "on" across reloads). Other layers persist.
-  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; riskRadius = +settings.riskRadius || 250; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k;
     // display toggles are global overrides — they re-paint in place and must NOT
@@ -2683,6 +2691,14 @@ function init(){
     if(e.target.closest(".ctx-back")){ ctxBack(); return; }
     const dop=e.target.closest("[data-operator]"); if(dop && dop.dataset.operator){ showOperator(dop.dataset.operator); return; }
     const dg=e.target.closest("[data-garage]"); if(dg && dg.dataset.garage){ showGarage(dg.dataset.garage); return; }
+  });
+  // Alert-proximity slider (Risk & accidents) — drives collision + low-bridge alerts and
+  // the route-scoped map layers. Label updates live; panes re-render shortly after.
+  document.getElementById("ctx").addEventListener("input", e=>{
+    const rr=e.target.closest("#riskRadius"); if(!rr) return;
+    riskRadius=+rr.value||250; settings.riskRadius=riskRadius; saveSettings();
+    const lbl=rr.parentElement.querySelector("b"); if(lbl) lbl.textContent=riskRadius+" m";
+    clearTimeout(riskRadiusTimer); riskRadiusTimer=setTimeout(()=>{ if(selected.length){ drawAccidents(); drawBridges(); } renderContext(); }, 200);
   });
 
   bindTips(); tickClock(); setInterval(tickClock,1000);
