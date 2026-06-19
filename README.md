@@ -150,20 +150,26 @@ The `/api/v1/history/*` endpoints read our Supabase warehouse. The key is held
    row-level security; never put the `service_role` key in a public-facing Function.)*
 
 **2 — Allow public read on the historical tables (one-time SQL)**
-In Supabase → **SQL Editor**, run this so the `anon` key can read (only) the history
-tables — it grants read, nothing else:
+In Supabase → **SQL Editor**, run this. It's idempotent and **skips any table that
+doesn't exist in your project**, so it won't fail if your warehouse is missing one:
 ```sql
-alter table public.route_reliability_daily   enable row level security;
-alter table public.route_performance          enable row level security;
-alter table public.route_schedule            enable row level security;
-alter table public.tender_programme          enable row level security;
-alter table public.route_vehicle_sightings   enable row level security;
-
-create policy "public read" on public.route_reliability_daily for select using (true);
-create policy "public read" on public.route_performance        for select using (true);
-create policy "public read" on public.route_schedule           for select using (true);
-create policy "public read" on public.tender_programme         for select using (true);
-create policy "public read" on public.route_vehicle_sightings  for select using (true);
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'route_reliability_daily','route_performance','route_schedule',
+    'tender_programme','route_vehicle_observations'
+  ] loop
+    if exists (select 1 from information_schema.tables
+               where table_schema='public' and table_name=t) then
+      execute format('alter table public.%I enable row level security', t);
+      if not exists (select 1 from pg_policies
+                     where schemaname='public' and tablename=t and policyname='public read') then
+        execute format('create policy "public read" on public.%I for select using (true)', t);
+      end if;
+    end if;
+  end loop;
+end $$;
 ```
 *(RLS stays off for the ingest pipeline because it uses the `service_role` key, which
 bypasses RLS — so this does not affect data loading.)*

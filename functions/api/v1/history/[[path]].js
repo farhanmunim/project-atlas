@@ -42,10 +42,10 @@ const ENDPOINTS = {
     desc: "TfL's forward LBSL tendering programme — issue/return/award/start dates, vehicle type, extension flag, per route.",
   },
   "vehicle-sightings": {
-    table: "route_vehicle_sightings",
+    table: "route_vehicle_observations",
     filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] },
     defaultOrder: "observed_at.desc",
-    desc: "Vehicle-on-route sightings over time (reg ↔ route ↔ timestamp) — the basis for intraday/▒historical fleet movement.",
+    desc: "Vehicle-on-route observations over time (reg ↔ route ↔ timestamp) — months of history; the basis for fleet movement analysis.",
   },
 };
 

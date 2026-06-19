@@ -147,7 +147,7 @@ const HIST_EP = {
   "performance-history": { table: "route_performance", filters: { route: ["route_id", "eq"] }, defaultOrder: "period_end.desc", desc: "TfL quarterly performance per route, all periods." },
   "schedule":            { table: "route_schedule", filters: { route: ["route_id", "eq"], from: ["snapshot_date", "gte"], to: ["snapshot_date", "lte"] }, defaultOrder: "snapshot_date.desc", desc: "Scheduled service per route over time." },
   "tender-programme":    { table: "tender_programme", filters: { route: ["route_id", "eq"], year: ["programme_year", "eq"] }, defaultOrder: "contract_start_date.asc", desc: "TfL forward tendering programme per route." },
-  "vehicle-sightings":   { table: "route_vehicle_sightings", filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] }, defaultOrder: "observed_at.desc", desc: "Vehicle-on-route sightings over time." },
+  "vehicle-sightings":   { table: "route_vehicle_observations", filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] }, defaultOrder: "observed_at.desc", desc: "Vehicle-on-route observations over time (months of history)." },
 };
 function liveDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
   return { group: "live", version: "v1", description: "Live bus + road feeds proxied from the TfL Unified API, edge-cached. Read-only, CORS-open.",
