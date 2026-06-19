@@ -14,6 +14,7 @@
  *  10. fetch-route-performance.js   — TfL QSI PDF → data/source/route-performance.json (EWT/OTP)
  *  11. fetch-tenders.js             — TfL tender award form → data/source/tenders.json (sticky cache)
  *  12. fetch-tender-programme.js    — TfL annual programme PDFs → data/source/tender-programme.json
+ *  12b. fetch-accidents.js          — DfT STATS19 CSVs → data/source/accidents.json (bus-involved)
  *  13. build-classifications.js     — data/route_classifications.json (master per-route record)
  *  14. build-overview.js            — simplified network overview layer
  *  15. build-garage-locations.js    — geocode garages → data/garage-locations.json (frontend)
@@ -31,24 +32,25 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const STEPS = [
-  { label: 'Step 1/18 — Route geometry',                            script: 'fetch-data.js' },
-  { label: 'Step 2/18 — Route destinations (TfL API)',              script: 'fetch-route-destinations.js' },
-  { label: 'Step 3/18 — Route stops (TfL API)',                     script: 'fetch-route-stops.js' },
-  { label: 'Step 4/18 — Garages CSV + geocode',                     script: 'fetch-garages.js' },
-  { label: 'Step 5/18 — Frequencies from timetables',               script: 'fetch-frequencies.js' },
-  { label: 'Step 6/18 — Route details (vehicle/op/garage)',         script: 'fetch-route-details.js' },
-  { label: 'Step 7/18 — Vehicle fleet (iBus + DVLA)',               script: 'fetch-vehicle-fleet.js' },
-  { label: 'Step 8/18 — Route → vehicle observations (TfL)',        script: 'fetch-route-vehicles.js' },
-  { label: 'Step 9/18 — Backfill fleet recurrence (Supabase)',      script: 'backfill-route-vehicle-sightings.js' },
-  { label: 'Step 10/18 — Route performance actuals (EWT/OTP)',      script: 'fetch-route-performance.js' },
-  { label: 'Step 11/18 — Per-route MPS (contractual standards)',    script: 'fetch-route-mps.js' },
-  { label: 'Step 12/18 — Tender award results (TfL)',               script: 'fetch-tenders.js' },
-  { label: 'Step 13/18 — Tender programme PDFs (TfL)',              script: 'fetch-tender-programme.js' },
-  { label: 'Step 14/18 — Build classifications',                    script: 'build-classifications.js' },
-  { label: 'Step 15/18 — Build overview + snapshot',                script: 'build-overview.js' },
-  { label: 'Step 16/18 — Garage locations (frontend JSON)',         script: 'build-garage-locations.js' },
-  { label: 'Step 17/18 — Data-quality audit',                       script: 'audit-data.js' },
-  { label: 'Step 18/18 — Push history + fleet to Supabase',         script: 'push-to-supabase.js' },
+  { label: 'Step 1/19 — Route geometry',                            script: 'fetch-data.js' },
+  { label: 'Step 2/19 — Route destinations (TfL API)',              script: 'fetch-route-destinations.js' },
+  { label: 'Step 3/19 — Route stops (TfL API)',                     script: 'fetch-route-stops.js' },
+  { label: 'Step 4/19 — Garages CSV + geocode',                     script: 'fetch-garages.js' },
+  { label: 'Step 5/19 — Frequencies from timetables',               script: 'fetch-frequencies.js' },
+  { label: 'Step 6/19 — Route details (vehicle/op/garage)',         script: 'fetch-route-details.js' },
+  { label: 'Step 7/19 — Vehicle fleet (iBus + DVLA)',               script: 'fetch-vehicle-fleet.js' },
+  { label: 'Step 8/19 — Route → vehicle observations (TfL)',        script: 'fetch-route-vehicles.js' },
+  { label: 'Step 9/19 — Backfill fleet recurrence (Supabase)',      script: 'backfill-route-vehicle-sightings.js' },
+  { label: 'Step 10/19 — Route performance actuals (EWT/OTP)',      script: 'fetch-route-performance.js' },
+  { label: 'Step 11/19 — Per-route MPS (contractual standards)',    script: 'fetch-route-mps.js' },
+  { label: 'Step 12/19 — Tender award results (TfL)',               script: 'fetch-tenders.js' },
+  { label: 'Step 13/19 — Tender programme PDFs (TfL)',              script: 'fetch-tender-programme.js' },
+  { label: 'Step 14/19 — Accidents (DfT STATS19, bus-involved)',    script: 'fetch-accidents.js' },
+  { label: 'Step 15/19 — Build classifications',                    script: 'build-classifications.js' },
+  { label: 'Step 16/19 — Build overview + snapshot',                script: 'build-overview.js' },
+  { label: 'Step 17/19 — Garage locations (frontend JSON)',         script: 'build-garage-locations.js' },
+  { label: 'Step 18/19 — Data-quality audit',                       script: 'audit-data.js' },
+  { label: 'Step 19/19 — Push history + fleet to Supabase',         script: 'push-to-supabase.js' },
 ];
 
 // Fetch steps are allowed to fail without aborting the whole pipeline — the
@@ -69,6 +71,7 @@ const SOFT_FAIL = new Set([
   'fetch-route-mps.js',
   'fetch-tenders.js',
   'fetch-tender-programme.js',
+  'fetch-accidents.js',
   'build-garage-locations.js',
   'push-to-supabase.js',
 ]);

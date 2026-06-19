@@ -19,6 +19,7 @@
     "fetch-route-mps": "node scripts/fetch-route-mps.js",
     "fetch-tenders": "node scripts/fetch-tenders.js",
     "fetch-tender-programme": "node scripts/fetch-tender-programme.js",
+    "fetch-accidents": "node scripts/fetch-accidents.js",
     "build-classifications": "node scripts/build-classifications.js",
     "build-overview": "node scripts/build-overview.js",
     "build-garage-locations": "node scripts/build-garage-locations.js",

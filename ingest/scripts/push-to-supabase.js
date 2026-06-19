@@ -13,6 +13,7 @@
  *   data/source/route-performance.json → public.route_performance    (upsert per (route_id, period_label))
  *   data/source/tenders.json         → public.tenders                (upsert per tfl_tender_id, append-only)
  *   data/source/tender-programme.json → public.tender_programme      (upsert per (programme_year, tranche, route_id))
+ *   data/source/accidents.json       → public.accidents             (upsert per collision_id)
  *
  * The static-JSON read path that powers the public map is unaffected — Supabase
  * is a *write* destination only, used to build the historical record that
@@ -575,6 +576,33 @@ async function pushTenderProgramme() {
   await upsertInBatches('tender_programme', filtered, 'programme_year,tranche,route_id');
 }
 
+// ── 8. accidents ────────────────────────────────────────────────────────────
+// Bus/coach-involved Greater-London collisions from DfT STATS19 (open road-
+// safety data). Idempotent on collision_id — published collisions are
+// immutable, so a re-run upserts unchanged rows and only adds newly-published
+// ids. Feeds Atlas's accidents (KSI) layer.
+async function pushAccidents() {
+  const file = readJsonOrNull(path.join(DATA_DIR, 'source', 'accidents.json'));
+  if (!file?.accidents) {
+    console.log('  accidents: no accidents.json — skipping');
+    return;
+  }
+  const extractedAt = file.generatedAt ?? new Date().toISOString();
+  const rows = file.accidents
+    .filter(a => a && a.id)
+    .map(a => ({
+      collision_id:   String(a.id),
+      lat:            Number.isFinite(a.lat) ? a.lat : null,
+      lng:            Number.isFinite(a.lng) ? a.lng : null,
+      severity:       a.severity ?? null,
+      collision_date: a.date ?? null,
+      borough:        a.borough ?? null,
+      vehicles:       Number.isFinite(a.vehicles) ? a.vehicles : null,
+      extracted_at:   extractedAt,
+    }));
+  await upsertInBatches('accidents', rows, 'collision_id');
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   console.log(`Pushing to Supabase at ${SUPABASE_URL}`);
@@ -582,6 +610,7 @@ async function main() {
   await pushRouteSnapshots();
   await pushObservations();
   await pushGarageSnapshots();
+  await pushAccidents();
   await pushRoutePerformance();
   await pushTenders();
   await pushTenderProgramme();
