@@ -209,9 +209,15 @@ The local `pipeline/serve.js` is **dev-only**; its dynamic routes are replaced i
 prod as follows — keep both in sync:
 
 - **Static data** — the committed `data/*.json` + `routes-overview.geojson` (the
-  warehouse output) ship as static assets. The store reader tries `/api/*` first,
-  404s in prod, and falls back to `./data/*.json`. The `data/*.db` warehouse is
+  warehouse output) ship as static assets. The store reader tries our public API
+  `/api/v1/*` first, then falls back to `./data/*.json`. The `data/*.db` warehouse is
   gitignored and **not** deployed (JSON is the prod read layer).
+- **Public API** — `/api/v1/*` is our own open, versioned, CORS-open read API over the
+  warehouse (no key; GET only; discovery at `/api/v1`). In prod it's the Pages Function
+  [`functions/api/v1/[[path]].js`] (re-serving the static `data/*.json` with CORS + edge
+  cache); in dev `serve.js` mirrors it (DB-backed). Same dataset names + shapes — keep
+  the two in sync. The app consumes this API; it's also documented in `README.md` for
+  external reuse. Real-time GPS stays separate at `/api/live/vehicles` (volatile, keyed).
 - **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
   It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
   push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
