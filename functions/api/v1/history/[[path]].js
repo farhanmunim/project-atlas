@@ -92,12 +92,15 @@ export async function onRequest(context) {
   parts.push(`order=${order}`, `limit=${limit}`);
 
   const url = `${base.replace(/\/$/, "")}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
-  let r;
+  // NB: no `cacheEverything` here — Cloudflare rejects force-caching a subrequest that
+  // carries an Authorization header (throws), so cache via our own Cache-Control instead.
   try {
-    r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` }, cf: { cacheTtl: 120, cacheEverything: true } });
-  } catch (e) { return json({ error: "historical store unreachable" }, { status: 502 }); }
-  if (!r.ok) return json({ error: `historical query failed (${r.status})` }, { status: 502 });
-
-  const rows = await r.json();
-  return json({ dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows });
+    const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    const body = await r.text();
+    if (!r.ok) return json({ error: `historical query failed (${r.status})`, detail: body.slice(0, 300) }, { status: r.status === 404 ? 404 : 502 });
+    let rows; try { rows = JSON.parse(body); } catch { return json({ error: "historical store returned non-JSON", detail: body.slice(0, 200) }, { status: 502 }); }
+    return json({ dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows });
+  } catch (e) {
+    return json({ error: "historical store error", detail: String(e && e.message || e) }, { status: 502 });
+  }
 }
