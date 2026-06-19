@@ -603,6 +603,28 @@ async function pushAccidents() {
   await upsertInBatches('accidents', rows, 'collision_id');
 }
 
+// route_schedule — the scheduled-side baseline (SWT, scheduled km) the live-
+// reliability sampler + builder read. One row per (route_id, snapshot_date).
+async function pushSchedule() {
+  const file = readJsonOrNull(path.join(DATA_DIR, 'source', 'route-schedule.json'));
+  if (!file?.routes) {
+    console.log('  route_schedule: no route-schedule.json — skipping');
+    return;
+  }
+  const snapshotDate = (file.generatedAt ?? new Date().toISOString()).slice(0, 10);
+  const rows = Object.entries(file.routes).map(([id, r]) => ({
+    route_id:        String(id),
+    snapshot_date:   snapshotDate,
+    service_class:   r.service_class ?? null,
+    swt_minutes:     Number.isFinite(r.swt_minutes) ? r.swt_minutes : null,
+    scheduled_trips: Number.isFinite(r.scheduled_trips) ? r.scheduled_trips : null,
+    scheduled_km:    Number.isFinite(r.scheduled_km) ? r.scheduled_km : null,
+    headway_min:     Number.isFinite(r.headway_min) ? r.headway_min : null,
+    source:          'TfL Timetable',
+  })).filter(r => r.route_id);
+  await upsertInBatches('route_schedule', rows, 'route_id,snapshot_date');
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   console.log(`Pushing to Supabase at ${SUPABASE_URL}`);
@@ -611,6 +633,7 @@ async function main() {
   await pushObservations();
   await pushGarageSnapshots();
   await pushAccidents();
+  await pushSchedule();
   await pushRoutePerformance();
   await pushTenders();
   await pushTenderProgramme();
