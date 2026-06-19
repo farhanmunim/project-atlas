@@ -2289,7 +2289,7 @@ function renderContext(){
     if(!cs||!cs.length) return "";
     const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; });
     const ksi=near.filter(a=>sevOf(a)!=="slight").length;
-    return group("risk","Risk & accidents","var(--alert)", sentinelBody(near,data,"within 150 m of this route",{km}), near.length?`${near.length} · ${ksi} KSI`:"none nearby");
+    return group("risk","Risk & accidents","var(--alert)", `<div class="metric">${sentinelBody(near,data,"within 150 m of this route",{km})}</div>`, near.length?`${near.length} · ${ksi} KSI`:"none nearby");
   })();
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
