@@ -62,7 +62,12 @@ export async function onRequest(context) {
         "Derived from open sources — TfL Unified API, DfT/STATS19, London Datastore (EPOWR), DVLA VES, londonbusroutes.net. Respect the upstream licences when reusing.",
       livePositions: {
         path: "/api/live/vehicles?line=<route>",
-        note: "Real-time bus GPS (BODS SIRI-VM) — a separate, volatile endpoint (10s edge cache), not part of v1.",
+        note: "Real-time bus GPS (BODS SIRI-VM) — a separate, volatile endpoint (10s edge cache).",
+      },
+      groups: {
+        current: { path: "/api/v1", note: "Current snapshot of the warehouse (the datasets below)." },
+        history: { path: "/api/v1/history", url: `${origin}/api/v1/history`, note: "Time-series from the Supabase warehouse — daily reliability, performance history, schedule, tender programme, vehicle sightings." },
+        live: { path: "/api/v1/live", url: `${origin}/api/v1/live`, note: "Live bus + road feeds proxied from TfL — status, arrivals, disruptions, road incidents." },
       },
       endpoints: Object.entries(DATASETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
     });

@@ -75,14 +75,45 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/bridges` | Low bridges / height restrictions — lat/lng, clearance, name |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
-### Live positions (separate, real-time)
+The API has three groups, all listed in the `/api/v1` discovery index:
+**current** (the snapshot tables above), **live** (`/api/v1/live`), and **history**
+(`/api/v1/history`).
 
-Real-time bus GPS is **not** part of `v1` (it is volatile and key-backed). It has its own
-endpoint, also same-origin and edge-cached (~10s):
+### Live feeds — `/api/v1/live`
+
+TfL feeds proxied through our API, CORS-open, edge-cached (so a flood of callers
+collapses to a trickle of upstream pulls). No caller key.
+
+| Endpoint | What it returns |
+|---|---|
+| `GET /api/v1/live` | Index of live feeds |
+| `GET /api/v1/live/status?route=25` | Live bus line status (omit `route` for the whole network) |
+| `GET /api/v1/live/disruptions` | Active bus line disruptions |
+| `GET /api/v1/live/arrivals?stop=<naptan>` *(or `?route=<id>`)* | Live arrival predictions |
+| `GET /api/v1/live/road-disruptions` | Live London road incidents/closures (TfL control centre, ~5 min) |
+
+Real-time bus **GPS** stays on its own keyed endpoint, edge-cached ~10s:
 
 ```
 GET /api/live/vehicles?line=<route>      # e.g. ?line=25 or ?line=25,86
 ```
+
+### Historical / time-series — `/api/v1/history`
+
+Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `reg`,
+`year`, `limit` (max 1000), `order` (e.g. `day.desc`).
+
+| Endpoint | What it returns |
+|---|---|
+| `GET /api/v1/history` | Index of historical datasets |
+| `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability (EWT/OTD/lost mileage) |
+| `GET /api/v1/history/performance-history?route=25` | TfL quarterly performance, all periods |
+| `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
+| `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |
+| `GET /api/v1/history/vehicle-sightings?route=25` | Vehicle-on-route sightings over time |
+
+> The history group needs Supabase read credentials configured (see **Historical API
+> setup** below). Without them it returns `503` and the live + current groups still work.
 
 ### Example
 
@@ -102,5 +133,51 @@ const routes = await (await fetch("https://atlas.farhan.app/api/v1/routes")).jso
 > licences when reusing.
 
 The dev server (`pipeline/serve.js`) mirrors `/api/v1/*` exactly, so the API behaves the
-same locally and in production. In production it is served by the Pages Function
-`functions/api/v1/[[path]].js`; keep the two in sync.
+same locally and in production. In production it is served by Pages Functions
+(`functions/api/v1/[[path]].js`, `…/live/[[path]].js`, `…/history/[[path]].js`); keep the
+dev mirror in sync.
+
+### Historical API setup (Supabase read key)
+
+The `/api/v1/history/*` endpoints read our Supabase warehouse. The key is held
+**server-side** in the Pages Function (never sent to the browser). To enable them:
+
+**1 — Get the values from Supabase**
+1. Open your project at <https://supabase.com/dashboard> → **Project Settings** (gear) → **API**.
+2. Copy the **Project URL** (e.g. `https://abcdxyz.supabase.co`) → this is `SUPABASE_URL`.
+3. Under **Project API keys**, copy the **`anon` `public`** key → this is `SUPABASE_KEY`.
+   *(Use the `anon` key, not `service_role`. The `anon` key is designed to be used with
+   row-level security; never put the `service_role` key in a public-facing Function.)*
+
+**2 — Allow public read on the historical tables (one-time SQL)**
+In Supabase → **SQL Editor**, run this so the `anon` key can read (only) the history
+tables — it grants read, nothing else:
+```sql
+alter table public.route_reliability_daily   enable row level security;
+alter table public.route_performance          enable row level security;
+alter table public.route_schedule            enable row level security;
+alter table public.tender_programme          enable row level security;
+alter table public.route_vehicle_sightings   enable row level security;
+
+create policy "public read" on public.route_reliability_daily for select using (true);
+create policy "public read" on public.route_performance        for select using (true);
+create policy "public read" on public.route_schedule           for select using (true);
+create policy "public read" on public.tender_programme         for select using (true);
+create policy "public read" on public.route_vehicle_sightings  for select using (true);
+```
+*(RLS stays off for the ingest pipeline because it uses the `service_role` key, which
+bypasses RLS — so this does not affect data loading.)*
+
+**3 — Add the secrets to Cloudflare Pages**
+1. Cloudflare dashboard → **Workers & Pages** → your **Atlas** Pages project → **Settings** → **Environment variables**.
+2. Under **Production**, **Add variable** twice:
+   - `SUPABASE_URL` = the Project URL from step 1.
+   - `SUPABASE_KEY` = the `anon` key from step 1. *(Click **Encrypt** to store it as a secret.)*
+3. Add the same two to **Preview** if you want history on preview deployments.
+4. **Save**, then trigger a redeploy (**Deployments → Retry deployment**, or push any commit).
+
+After redeploy, `GET /api/v1/history/reliability-daily?route=25` returns rows instead of
+`503`. To test locally, put `SUPABASE_URL` and `SUPABASE_KEY` in your `.env`.
+
+> Optionally also set `TFL_APP_KEY` as a Pages variable to raise the live-feed rate
+> limit (the live endpoints work without it).

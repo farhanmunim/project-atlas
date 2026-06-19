@@ -124,9 +124,60 @@ function v1Discovery(req) {
     service: "Atlas — London Bus Network API", version: "v1",
     description: "Open, read-only API for the London bus network: routes, stops, garages, fleet, tenders, reliability, collisions and low bridges. CORS-open, no key required.",
     attribution: "Derived from open sources — TfL Unified API, DfT/STATS19, London Datastore (EPOWR), DVLA VES, londonbusroutes.net. Respect the upstream licences when reusing.",
-    livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — a separate, volatile endpoint (10s edge cache), not part of v1." },
+    livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — a separate, volatile endpoint (10s edge cache)." },
+    groups: {
+      current: { path: "/api/v1", note: "Current snapshot of the warehouse (the datasets below)." },
+      history: { path: "/api/v1/history", url: `${origin}/api/v1/history`, note: "Time-series from the Supabase warehouse — daily reliability, performance history, schedule, tender programme, vehicle sightings." },
+      live: { path: "/api/v1/live", url: `${origin}/api/v1/live`, note: "Live bus + road feeds proxied from TfL — status, arrivals, disruptions, road incidents." },
+    },
     endpoints: Object.entries(V1_SETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
   };
+}
+// ── Live API (TfL proxy) — mirrors functions/api/v1/live/[[path]].js. Keyless TfL.
+const TFL_BASE = "https://api.tfl.gov.uk";
+const LIVE_EP = {
+  "status":          { ttl: 30, url: (p) => { const r = (p.get("route") || "").trim(); return r ? `/Line/${encodeURIComponent(r)}/Status` : `/Line/Mode/bus/Status`; }, desc: "Live bus line status. ?route=25 or 25,86, else whole network." },
+  "disruptions":     { ttl: 60, url: () => `/Line/Mode/bus/Disruption`, desc: "Active bus line disruptions." },
+  "arrivals":        { ttl: 30, url: (p) => { const r = (p.get("route") || "").trim(), s = (p.get("stop") || "").trim(); return s ? `/StopPoint/${encodeURIComponent(s)}/Arrivals` : r ? `/Line/${encodeURIComponent(r)}/Arrivals` : null; }, desc: "Live arrivals. ?stop=<naptan> or ?route=<id>." },
+  "road-disruptions":{ ttl: 60, url: () => `/Road/all/Disruption`, desc: "Live London road incidents / closures (TfL control centre, ~5 min)." },
+};
+// ── History API (Supabase proxy) — mirrors functions/api/v1/history/[[path]].js.
+const HIST_EP = {
+  "reliability-daily":   { table: "route_reliability_daily", filters: { route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"] }, defaultOrder: "day.desc", desc: "Our daily reliability per route (EWT/OTD/lost mileage)." },
+  "performance-history": { table: "route_performance", filters: { route: ["route_id", "eq"] }, defaultOrder: "period_end.desc", desc: "TfL quarterly performance per route, all periods." },
+  "schedule":            { table: "route_schedule", filters: { route: ["route_id", "eq"], from: ["snapshot_date", "gte"], to: ["snapshot_date", "lte"] }, defaultOrder: "snapshot_date.desc", desc: "Scheduled service per route over time." },
+  "tender-programme":    { table: "tender_programme", filters: { route: ["route_id", "eq"], year: ["programme_year", "eq"] }, defaultOrder: "contract_start_date.asc", desc: "TfL forward tendering programme per route." },
+  "vehicle-sightings":   { table: "route_vehicle_sightings", filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] }, defaultOrder: "observed_at.desc", desc: "Vehicle-on-route sightings over time." },
+};
+function liveDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
+  return { group: "live", version: "v1", description: "Live bus + road feeds proxied from the TfL Unified API, edge-cached. Read-only, CORS-open.",
+    livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — separate keyed endpoint." },
+    endpoints: Object.entries(LIVE_EP).map(([k, v]) => ({ name: k, path: `/api/v1/live/${k}`, url: `${origin}/api/v1/live/${k}`, description: v.desc })) }; }
+function histDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
+  return { group: "history", version: "v1", description: "Historical / time-series data from the Atlas Supabase warehouse. Params: route, from, to, reg, year, limit (max 1000), order.",
+    endpoints: Object.entries(HIST_EP).map(([k, v]) => ({ name: k, path: `/api/v1/history/${k}`, url: `${origin}/api/v1/history/${k}`, description: v.desc })) }; }
+async function serveLive(req, res, name) {
+  const ep = LIVE_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown live feed: " + name, available: Object.keys(LIVE_EP) });
+  const sp = new URL(req.url, "http://x").searchParams; const tflPath = ep.url(sp);
+  if (!tflPath) return jsonCors(res, 400, { error: "missing required param (stop or route)" });
+  let url = `${TFL_BASE}${tflPath}`; if (process.env.TFL_APP_KEY) url += (url.includes("?") ? "&" : "?") + `app_key=${process.env.TFL_APP_KEY}`;
+  try { const r = await fetch(url, { headers: { Accept: "application/json" } }); if (!r.ok) return jsonCors(res, 502, { error: `live feed failed (${r.status})` });
+    return jsonCors(res, 200, { feed: name, capturedAt: new Date().toISOString(), data: await r.json() }); }
+  catch (e) { return jsonCors(res, 502, { error: "live feed unreachable" }); }
+}
+async function serveHistory(req, res, name) {
+  const ep = HIST_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown history dataset: " + name, available: Object.keys(HIST_EP) });
+  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !key) return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
+  const q = new URL(req.url, "http://x").searchParams; const parts = [];
+  for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
+  let limit = parseInt(q.get("limit"), 10); limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
+  const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
+  parts.push(`order=${order}`, `limit=${limit}`);
+  const url = `${base.replace(/\/$/, "")}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
+  try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } }); if (!r.ok) return jsonCors(res, 502, { error: `historical query failed (${r.status})` });
+    const rows = await r.json(); return jsonCors(res, 200, { dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows }); }
+  catch (e) { return jsonCors(res, 502, { error: "historical store unreachable" }); }
 }
 
 http.createServer(async (req, res) => {
@@ -172,9 +223,14 @@ http.createServer(async (req, res) => {
 
   // ── PUBLIC API: /api/v1/* — CORS-open, versioned mirror of the prod Pages Function
   //    (functions/api/v1/[[path]].js). Same dataset names + shapes; keep both in sync. ──
+  if (req.method === "OPTIONS" && urlPath.startsWith("/api/v1")) { res.writeHead(204, { ...V1_CORS, "Access-Control-Max-Age": "86400" }); return res.end(); }
   if (urlPath === "/api/v1" || urlPath === "/api/v1/") return jsonCors(res, 200, v1Discovery(req));
+  // live sub-group (TfL proxy) and history sub-group (Supabase proxy)
+  if (urlPath === "/api/v1/live" || urlPath === "/api/v1/live/") return jsonCors(res, 200, liveDiscovery(req));
+  if (urlPath.startsWith("/api/v1/live/")) return serveLive(req, res, urlPath.slice("/api/v1/live/".length));
+  if (urlPath === "/api/v1/history" || urlPath === "/api/v1/history/") return jsonCors(res, 200, histDiscovery(req));
+  if (urlPath.startsWith("/api/v1/history/")) return serveHistory(req, res, urlPath.slice("/api/v1/history/".length));
   if (urlPath.startsWith("/api/v1/")) {
-    if (req.method === "OPTIONS") { res.writeHead(204, { ...V1_CORS, "Access-Control-Max-Age": "86400" }); return res.end(); }
     const name = urlPath.slice("/api/v1/".length);
     if (!V1_SETS[name]) return jsonCors(res, 404, { error: "unknown dataset: " + name, available: Object.keys(V1_SETS) });
     try { const { code, obj } = v1File(name); return jsonCors(res, code, obj); }
