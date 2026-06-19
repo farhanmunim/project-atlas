@@ -335,6 +335,14 @@ svg:not([width]){width:1em;height:1em;flex:none}
 [data-theme="dark"] .veh-pin .lv-arrow svg{stroke:#fff}
 .veh-pin .lv-dot{width:13px;height:13px;border-radius:50%;background:var(--vc,var(--cyan));border:2px solid var(--ink);box-shadow:0 2px 5px rgba(0,0,0,.45)}
 @media (prefers-reduced-motion:reduce){ .veh-pin .lv-arrow{transition:none} }
+/* low-bridge + road-incident map markers — coloured icon on a dark disc */
+.bridge-pin,.incident-pin{display:flex;align-items:center;justify-content:center}
+.bridge-pin .bp,.incident-pin .ip{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:var(--ink-2);box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:pointer}
+.bridge-pin .bp{color:var(--bc,#3fb87a);border:1.5px solid var(--bc,#3fb87a)}
+.incident-pin .ip{color:var(--ic,#9fb0c8);border:1.5px solid var(--ic,#9fb0c8)}
+.bridge-pin .bp svg,.incident-pin .ip svg{width:14px;height:14px}
+.bridge-pin .bp:hover,.incident-pin .ip:hover{transform:translateY(-1px);box-shadow:0 0 0 2px var(--ink),0 2px 8px rgba(0,0,0,.55)}
 /* live-vehicle list rows (right rail) */
 .vehlist{display:flex;flex-direction:column;gap:1px}
 .vehrow{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding:6px 6px;border:1px solid transparent;border-radius:var(--r1);background:none;cursor:pointer;transition:background .12s var(--ease)}
@@ -602,6 +610,8 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></button>
           <button type="button" data-k="bridges" aria-pressed="false" aria-label="Show or hide low bridges" data-tip="Show / hide low bridges (height restrictions)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V9M21 20V9M3 9h18M3 13c4-3 6-3 9 0s5 3 9 0"/></svg></button>
+          <button type="button" data-k="incidents" aria-pressed="false" aria-label="Show or hide live road incidents" data-tip="Show / hide live road incidents (TfL)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></button>
         </div>
         <div class="seg" aria-label="Colour routes by">
           <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
@@ -953,6 +963,15 @@ const dataSource = (() => {
   const seam = CONFIG.backend==="db"?db:tfl;
   // Live vehicle GPS (BODS SIRI-VM) always via our server proxy — key is server-side, 10s cached.
   seam.fetchLivePositions = async (line)=>{ const r=await fetch(`/api/live/vehicles?line=${encodeURIComponent(line||"")}`,{cache:"no-store"}); if(!r.ok) throw new Error("live vehicles HTTP "+r.status); return r.json(); };
+  // Live road incidents (TfL /Road/all/Disruption) via our own /api/v1 (edge-cached ~60s).
+  // Normalise the "[lng,lat]" point string into {lat,lng} + tidy fields.
+  seam.fetchRoadIncidents = async ()=>{
+    const r=await fetch(`/api/v1/live/road-disruptions`,{cache:"no-cache"}); if(!r.ok) throw new Error("road incidents HTTP "+r.status);
+    const j=await r.json(); const arr=Array.isArray(j.data)?j.data:[];
+    return arr.map(d=>{ let lat=null,lng=null; const m=String(d.point||"").match(/-?\d+\.\d+/g); if(m&&m.length>=2){ lng=+m[0]; lat=+m[1]; }
+      return { id:d.id, lat, lng, category:d.category||"Incident", subCategory:d.subCategory||"", severity:d.severity||"", location:d.location||"", comments:d.comments||d.currentUpdate||"", hasClosures:!!d.hasClosures, since:d.startDateTime||null }; })
+      .filter(d=>Number.isFinite(d.lat)&&Number.isFinite(d.lng));
+  };
   return seam;
 })();
 function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)&&!isNaN(nb)&&na!==nb)return na-nb; return String(a).localeCompare(String(b),"en"); }
@@ -1036,8 +1055,9 @@ let networkToken=0;              // guards against overlapping network draws on 
 
 /* Leaflet */
 const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London view (init + Clear all reset)
-let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer, bridgeLayer;
-let showRoutes=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, colorMode="operator";   // hydrated from settings in init
+let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer, bridgeLayer, incidentLayer;
+let showRoutes=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
+let roadIncidents=null;   // cached live road-incident list (fetched on demand when the layer is enabled)
 
 /* ===========================================================================
    THEME / FORMAT
@@ -1145,6 +1165,7 @@ function initMap(){
   garageLayer=L.layerGroup().addTo(map);
   accidentLayer=L.layerGroup().addTo(map);   // Sentinel — bus collision points (STATS19), severity-graded
   bridgeLayer=L.layerGroup().addTo(map);     // low bridges / height restrictions (clearance-graded)
+  incidentLayer=L.layerGroup().addTo(map);   // live road incidents (TfL Road Disruptions)
   divLayer=L.layerGroup().addTo(map);    // diversion overlays (affected segment + not-served stops)
   liveLayer=L.layerGroup().addTo(map);   // live vehicle GPS markers (BODS), on top
   map.on("zoomend",()=>{ if(showAccidents) drawAccidents(); });   // re-bin the accident clusters at the new zoom
@@ -1294,6 +1315,10 @@ function updateLegend(){
     `<div class="lr"><span class="lc lc-dot" style="background:#ff2d55"></span>Low bridge · below 4.4 m <span style="color:var(--paper-3)">(double-deck)</span></div>`,
     `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Low bridge · 4.4–5.0 m</div>`,
     `<div class="lr"><span class="lc lc-dot" style="background:#3fb87a"></span>Bridge · 5.0 m+</div>`);
+  if(showIncidents) sym.push(
+    `<div class="lr"><span class="lc lc-dot" style="background:#ff5470"></span>Road incident · collision</div>`,
+    `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Road incident · delay / breakdown</div>`,
+    `<div class="lr"><span class="lc lc-dot" style="background:#37c5c5"></span>Road incident · works / event</div>`);
   if(sym.length) parts.push("<div class='lh'>Map key</div>"+sym.join(""));
   if(!parts.length){ el.classList.remove("show"); el.innerHTML=""; return; }
   el.innerHTML=parts.join(""); el.classList.add("show");
@@ -1315,6 +1340,7 @@ function refreshMap(fit=true){
   drawGarages();
   drawAccidents();
   drawBridges();
+  drawIncidents();
   updateLegend();   // refresh the colour legend + Map key for the current layers/selection
 }
 
@@ -1388,9 +1414,46 @@ function drawBridges(){
   const { list }=bridgesForView();
   list.forEach(b=>{ if(!Number.isFinite(b.lat)||!Number.isFinite(b.lng)) return;
     const col=bridgeColor(b.height_m), danger=b.height_m!=null && b.height_m<DD_HEIGHT_M;
-    L.circleMarker([b.lat,b.lng],{ radius:danger?6:5, color:effectiveTheme()==="light"?"#ffffff":"#0a0e16", weight:1.5, fillColor:col, fillOpacity:.9 })
+    const icon=L.divIcon({ className:"bridge-pin", iconSize:[24,24], iconAnchor:[12,12], html:`<span class="bp" style="--bc:${col}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V9M21 20V9M3 9h18M3 13c4-3 6-3 9 0s5 3 9 0"/></svg></span>` });
+    L.marker([b.lat,b.lng],{ icon, zIndexOffset:700 })
       .bindPopup(`<div class="rh-pop"><div class="rh-h" style="color:${col}">${fmtHeight(b)} clearance</div><div class="rh-sub">${esc(b.name||b.road||"Low bridge")}${danger?` · <span style="color:var(--alert)">below double-deck (4.4 m)</span>`:""}</div></div>`)
       .addTo(bridgeLayer); });
+}
+/* Live road incidents (TfL Road Disruptions) — collisions, breakdowns, closures, works.
+   Fetched on demand when the layer is enabled; route-scoped to the line when selected. */
+const INCIDENT_STYLE = {
+  "Collisions":    { c:"#ff5470", t:"Collision" },
+  "Breakdowns":    { c:"#f5a524", t:"Breakdown" },
+  "Network delays":{ c:"#f5a524", t:"Delay" },
+  "Asset issues":  { c:"#8b7bf0", t:"Asset issue" },
+  "Planned events":{ c:"#37c5c5", t:"Event" },
+  "Works":         { c:"#37c5c5", t:"Works" },
+};
+function incidentStyle(cat){ return INCIDENT_STYLE[cat] || { c:"#9fb0c8", t:cat||"Incident" }; }
+async function ensureIncidents(){
+  if(roadIncidents) return roadIncidents;
+  try{ roadIncidents = await dataSource.fetchRoadIncidents(); }
+  catch(e){ roadIncidents = []; console.warn("[atlas] road incidents failed:",e.message); }
+  return roadIncidents;
+}
+function incidentsForView(){
+  let list = roadIncidents || [];
+  if(selected.length){
+    const lines=selected.map(r=>(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id)).filter(Boolean);
+    if(lines.length) list=list.filter(d=>lines.some(cs=>{ const p=routeProximity(cs,d.lat,d.lng); return p.offKm!=null && p.offKm<0.2; }));
+  }
+  return list;
+}
+function drawIncidents(){
+  if(!mapOK || !incidentLayer) return;
+  incidentLayer.clearLayers();
+  if(!showIncidents) return;
+  incidentsForView().forEach(d=>{
+    const st=incidentStyle(d.category);
+    const icon=L.divIcon({ className:"incident-pin", iconSize:[24,24], iconAnchor:[12,12], html:`<span class="ip" style="--ic:${st.c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></span>` });
+    L.marker([d.lat,d.lng],{ icon, zIndexOffset:650 })
+      .bindPopup(`<div class="rh-pop"><div class="rh-h" style="color:${st.c}">${esc(st.t)}${d.severity?` · ${esc(d.severity)}`:""}</div><div class="rh-sub">${esc(d.location||d.comments||"Road incident")}${d.hasClosures?` · <span style="color:var(--alert)">road closure</span>`:""}</div></div>`)
+      .addTo(incidentLayer); });
 }
 // Risk & accidents analytics — KSI, severity mix, year trend, hotspot boroughs (network)
 // or per-km density (route), most-recent. Returns the inner body (callers wrap it).
@@ -1667,7 +1730,7 @@ function renderFilters(){
 function syncMapCtl(){
   const c=document.getElementById("mapCtl"); if(!c) return;
   const set=(k,on)=>{ const el=c.querySelector(`[data-k="${k}"]`); el.classList.toggle("on",on); el.setAttribute("aria-pressed",String(on)); };
-  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("ctype",colorMode==="type"); set("coper",colorMode==="operator");
+  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("incidents",showIncidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator");
 }
 /* ⟳ — refresh ALL data Atlas uses (every store dataset + the selected route's live
    status), not just the filtered view. Clears all caches first so nothing is stale. */
@@ -1676,7 +1739,7 @@ async function refreshAll(){
   try{
     store.via=null; store.overviewByRoute=new Map();
     store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.manifest=null;
-    seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear();   // drop ALL in-memory caches → genuinely re-pull
+    seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear(); roadIncidents=null;   // drop ALL in-memory caches → genuinely re-pull
     await loadStore();              // routes, geometry, stops, route-meta, tenders, garages
     await loadRoutes();             // sets lastFetched = now → badge confirms the refresh
     for(const r of selected){ delete r._seq; await ensureSeq(r); await ensureDetail(r); }   // selected route geometry + live status
@@ -1894,7 +1957,7 @@ function setMode(m){
     : (pin?radius+" m":"drop a pin");
   document.getElementById("mapHint").classList.toggle("show", m==="catch" && !pin);
   if(mapOK){ routeLayer.clearLayers(); stopLayer.clearLayers(); divLayer.clearLayers(); catchLayer.clearLayers();
-    if(m==="route"){ refreshMap(); } else { paintCatch(true); drawAccidents(); drawBridges(); } }   // keep the user's current map view when entering Magnify — don't yank them back to all-London
+    if(m==="route"){ refreshMap(); } else { paintCatch(true); drawAccidents(); drawBridges(); drawIncidents(); } }   // keep the user's current map view when entering Magnify — don't yank them back to all-London
   applyDataMode();   // re-sync live tracking to the new mode: trackingOn() is false outside route mode,
                      // so this clears stale live markers + the countdown ring + the liveTick interval
   renderContext();
@@ -2374,19 +2437,28 @@ function renderContext(){
     if(!cs||!cs.length) return "";
     const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; });
     const ksi=near.filter(a=>sevOf(a)!=="slight").length;
-    // Low bridges within ~120 m of the line — clearance hazards for the (mostly double-deck) fleet.
-    const bd=bridgesData(); const nb=((bd&&bd.bridges)||[]).filter(b=>{ const p=routeProximity(cs,b.lat,b.lng); return p.offKm!=null && p.offKm<0.12; });
-    const heights=nb.map(b=>b.height_m).filter(Number.isFinite); const minH=heights.length?Math.min(...heights):null;
-    const subDD=nb.filter(b=>Number.isFinite(b.height_m)&&b.height_m<DD_HEIGHT_M).length;
-    const bridgeBody = nb.length
-      ? `<div class="metric"><div class="mnote">Low bridges · height restrictions</div>${metrics([ mcard("Low bridges",nb.length,"within 120 m"), mcard("Lowest",minH!=null?fmtHeight({height_m:minH}):"—","clearance"), mcard("Sub-4.4 m",subDD,"double-deck risk") ])}
-           <div class="mnote" style="margin-top:10px">Lowest clearances</div>${nb.slice().sort((a,b)=>(a.height_m||99)-(b.height_m||99)).slice(0,6).map(b=>{ const c=bridgeColor(b.height_m); return `<div class="kv"><span class="k kc">${esc(b.name||b.road||"Low bridge")}</span><span class="v" style="color:${c}">${fmtHeight(b)}</span></div>`; }).join("")}
+    // Low bridges in two tiers: ALONG the line (~120 m) and a wider DIVERSION CORRIDOR
+    // (~350 m). A diversion needn't follow the booked line — a low bridge a few streets
+    // off-route is still a strike risk if a (mostly double-deck) bus gets sent that way.
+    const bd=bridgesData();
+    const withOff=((bd&&bd.bridges)||[]).map(b=>{ const p=routeProximity(cs,b.lat,b.lng); return { b, off:p.offKm }; }).filter(x=>x.off!=null);
+    const corridor=withOff.filter(x=>x.off<0.35).map(x=>x.b);
+    const onLine=withOff.filter(x=>x.off<0.12).length;
+    const subDD=corridor.filter(b=>Number.isFinite(b.height_m)&&b.height_m<DD_HEIGHT_M);
+    const heights=corridor.map(b=>b.height_m).filter(Number.isFinite); const minH=heights.length?Math.min(...heights):null;
+    // prominent flag: any sub-double-deck bridge in the corridor = diversion strike risk
+    const bridgeFlag = subDD.length
+      ? `<div class="insight" style="border-left-color:var(--alert);margin:0 0 var(--s3)"><div class="ih"><svg viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Diversion strike risk</div>${subDD.length} low bridge${subDD.length>1?"s":""} under the 4.4 m double-deck height within 350 m of this route (lowest ${fmtHeight({height_m:minH})}). A diverted double-decker could strike — check before diverting.</div>`
+      : "";
+    const bridgeBody = corridor.length
+      ? `<div class="metric"><div class="mnote">Low bridges · diversion risk</div>${bridgeFlag}${metrics([ mcard("Near route",corridor.length,"within 350 m"), mcard("On the line",onLine,"within 120 m"), mcard("Sub-4.4 m",subDD.length,"strike risk") ])}
+           <div class="mnote" style="margin-top:10px">Lowest clearances nearby</div>${corridor.slice().sort((a,b)=>(a.height_m||99)-(b.height_m||99)).slice(0,6).map(b=>{ const c=bridgeColor(b.height_m); return `<div class="kv"><span class="k kc">${esc(b.name||b.road||"Low bridge")}</span><span class="v" style="color:${c}">${fmtHeight(b)}</span></div>`; }).join("")}
            ${bd.sample?`<div class="mnote" style="margin-top:6px;color:var(--paper-4)">sample bridge data</div>`:""}</div>`
-      : `<div class="metric"><div class="mnote">Low bridges · height restrictions</div><div class="empty" style="padding:7px 0">No low bridges within 120 m of this route.</div></div>`;
+      : `<div class="metric"><div class="mnote">Low bridges · diversion risk</div><div class="empty" style="padding:7px 0">No low bridges within 350 m of this route.</div></div>`;
     return group("risk","Risk & accidents","var(--alert)",
       `<div class="metric">${sentinelBody(near,data,"within 150 m of this route",{km})}</div>`
       + bridgeBody,
-      near.length?`${near.length} · ${ksi} KSI${nb.length?` · ${nb.length} br`:""}`:(nb.length?`${nb.length} low br`:"none nearby"));
+      near.length?`${near.length} · ${ksi} KSI${subDD.length?` · ⚠ ${subDD.length} br`:""}`:(subDD.length?`⚠ ${subDD.length} low br`:(corridor.length?`${corridor.length} br nearby`:"none nearby")));
   })();
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
@@ -2538,7 +2610,7 @@ function init(){
   // hydrate map display prefs + wire the control bar
   // Live vehicles + collisions are noisy overlays — always start OFF each session; the user
   // turns them on explicitly (not persisted as "on" across reloads). Other layers persist.
-  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k;
     // display toggles are global overrides — they re-paint in place and must NOT
@@ -2549,6 +2621,10 @@ function init(){
     else if(k==="live"){ showLive=!showLive; settings.showLive=showLive; saveSettings(); syncMapCtl(); applyDataMode(); return; }   // start/stop live tracking
     else if(k==="accidents"){ showAccidents=!showAccidents; settings.showAccidents=showAccidents; saveSettings(); syncMapCtl(); drawAccidents(); updateLegend(); renderContext(); return; }   // Sentinel
     else if(k==="bridges"){ showBridges=!showBridges; settings.showBridges=showBridges; saveSettings(); syncMapCtl(); drawBridges(); updateLegend(); renderContext(); return; }   // low bridges / height restrictions
+    else if(k==="incidents"){ showIncidents=!showIncidents; settings.showIncidents=showIncidents; saveSettings(); syncMapCtl();   // live road incidents (TfL)
+      if(showIncidents && !roadIncidents){ showMapToast("Loading road incidents…"); ensureIncidents().then(()=>{ hideMapToast(); drawIncidents(); updateLegend(); renderContext(); }); }
+      else { drawIncidents(); updateLegend(); renderContext(); }
+      return; }
     else if(k==="ctype"){ colorMode="type"; settings.colorMode="type"; saveSettings(); renderFilters(); renderRouteList(); }
     else if(k==="coper"){ colorMode="operator"; settings.colorMode="operator"; saveSettings(); renderFilters(); renderRouteList(); }
     syncMapCtl(); if(mode==="catch") paintCatch(false); else refreshMap(false);
