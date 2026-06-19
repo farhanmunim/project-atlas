@@ -1,10 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Atlas">
-  <!-- matches the topbar .brand .logo: green pin (--green #3fb87a) on the panel
-       tile with an 18% green overlay (color-mix(--acc 18%, transparent)) -->
-  <rect width="32" height="32" rx="8.5" fill="#111725"/>
-  <rect width="32" height="32" rx="8.5" fill="#3fb87a" fill-opacity="0.18"/>
-  <g transform="translate(6 6) scale(0.8333)" fill="none" stroke="#3fb87a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/>
-    <circle cx="12" cy="10" r="2.5"/>
-  </g>
+  <!-- Atlas mark: a FILLED green map-pin on the dark panel tile — bold so it reads
+       at 16px tab size (the topbar logo is stroked, fine at 30px; a favicon needs fill).
+       Matches the brand green (--green #3fb87a) on the panel (--panel #111725). -->
+  <rect width="32" height="32" rx="7" fill="#111725"/>
+  <rect width="32" height="32" rx="7" fill="#3fb87a" fill-opacity="0.16"/>
+  <path fill="#3fb87a" fill-rule="evenodd"
+        d="M16 4.2c-4.75 0-8.6 3.85-8.6 8.6 0 6.1 8.6 14.9 8.6 14.9s8.6-8.8 8.6-14.9c0-4.75-3.85-8.6-8.6-8.6Zm0 11.85a3.25 3.25 0 1 1 0-6.5 3.25 3.25 0 0 1 0 6.5Z"/>
 </svg>
