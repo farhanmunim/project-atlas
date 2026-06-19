@@ -91,7 +91,11 @@ export async function onRequest(context) {
   const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
   parts.push(`order=${order}`, `limit=${limit}`);
 
-  const url = `${base.replace(/\/$/, "")}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
+  // Use only the origin of SUPABASE_URL, so a pasted trailing path/slash (e.g. ".../rest/v1")
+  // can't produce a malformed "/rest/v1/rest/v1/..." path (PostgREST PGRST125).
+  let supaOrigin;
+  try { supaOrigin = new URL(base).origin; } catch { return json({ error: "SUPABASE_URL is not a valid URL" }, { status: 503 }); }
+  const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
   // NB: no `cacheEverything` here — Cloudflare rejects force-caching a subrequest that
   // carries an Authorization header (throws), so cache via our own Cache-Control instead.
   try {
