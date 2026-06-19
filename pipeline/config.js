@@ -21,6 +21,7 @@ import { build as buildVehicles } from "./build/vehicles.js";
 import { build as buildStatus } from "./build/status.js";
 import { build as buildPerformance } from "./build/performance.js";
 import { build as buildAccidents } from "./build/accidents.js";
+import { build as buildBridges } from "./build/bridges.js";
 import { build as buildDbMirror } from "./build/db-mirror.js";
 
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -81,6 +82,13 @@ export const DATASETS = [
     ttlMs: 30 * DAY,       // STATS19 is annual — a monthly TTL re-checks without hammering DfT
     soft: true,
     cadence: "annual · DfT STATS19",
+  },
+  {
+    name: "bridges",
+    build: buildBridges,
+    ttlMs: 30 * DAY,       // EPOWR is refreshed annually — a monthly TTL re-checks without hammering the Datastore
+    soft: true,
+    cadence: "annual · London Datastore EPOWR (TfL height restrictions)",
   },
   {
     name: "status",

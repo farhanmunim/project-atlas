@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T08:39:51.276Z",
+  "generatedAt": "2026-06-19T10:53:29.037Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -105,6 +105,17 @@
       ],
       "cadence": "annual · DfT STATS19",
       "note": "4515 collisions · live · 2021–2023 · fatal=25 serious=787 slight=3703"
+    },
+    "bridges": {
+      "source": "TfL / London Datastore — Bridges, Tunnels, Road Barriers & Height Restrictions (EPOWR)",
+      "fetchedAt": "2026-06-19T10:53:29.037Z",
+      "status": "ok",
+      "rows": 877,
+      "files": [
+        "data/bridges.json"
+      ],
+      "cadence": "annual · London Datastore EPOWR (TfL height restrictions)",
+      "note": "877 structures · live · sub-double-deck(<4.4m)=599"
     }
   }
 }

@@ -116,6 +116,7 @@ http.createServer(async (req, res) => {
       if (name === "manifest")      return json(res, 200, { generatedAt, source: "database" });
       if (name === "route-performance") { try { return json(res, 200, JSON.parse(fs.readFileSync(path.join(ROOT, "data", "route-performance.json"), "utf8"))); } catch { return json(res, 404, { error: "no route-performance" }); } }
       if (name === "accidents") { try { return json(res, 200, JSON.parse(fs.readFileSync(path.join(ROOT, "data", "accidents.json"), "utf8"))); } catch { return json(res, 404, { error: "no accidents" }); } }
+      if (name === "bridges") { try { return json(res, 200, JSON.parse(fs.readFileSync(path.join(ROOT, "data", "bridges.json"), "utf8"))); } catch { return json(res, 404, { error: "no bridges" }); } }
       if (name === "routes-overview") {
         const features = dbx.allCurrent("route_geometry").map((x) => { const [routeId, direction] = x.id.split(":");
           return { type: "Feature", properties: { routeId, direction, lengthKm: x.data.lengthKm, stops: x.data.stops }, geometry: { type: "LineString", coordinates: x.data.coords } }; });
