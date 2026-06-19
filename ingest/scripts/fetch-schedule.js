@@ -113,11 +113,14 @@ function lengthKmFromSequence(seq) {
   for (const ls of raw) {
     let coords;
     try { coords = typeof ls === 'string' ? JSON.parse(ls) : ls; } catch { continue; }
-    if (!Array.isArray(coords) || coords.length < 2) continue;
+    if (!Array.isArray(coords) || !coords.length) continue;
+    // TfL wraps the ring one level deep: [[[lng,lat],…]] → unwrap to [[lng,lat],…]
+    const ring = (Array.isArray(coords[0]) && Array.isArray(coords[0][0])) ? coords[0] : coords;
+    if (!Array.isArray(ring) || ring.length < 2) continue;
     let km = 0;
-    for (let i = 1; i < coords.length; i++) {
-      const p = coords[i - 1], q = coords[i];
-      if (Array.isArray(p) && Array.isArray(q)) km += haversineKm(p, q);
+    for (let i = 1; i < ring.length; i++) {
+      const p = ring[i - 1], q = ring[i];
+      if (Array.isArray(p) && Array.isArray(q) && p.length >= 2 && q.length >= 2) km += haversineKm(p, q);
     }
     if (km > best) best = km;
   }
@@ -247,6 +250,8 @@ function isFresh(cached, cutoffMs) {
   if (!cached?.lastCheckedAt) return false;
   // 200 (parsed) and 404 (no sequence) are sticky; error states retry next run.
   if (cached.status !== 200 && cached.status !== 404) return false;
+  // A 200 with a null length is from the pre-fix geometry bug — re-fetch to recompute.
+  if (cached.status === 200 && cached.length_km == null) return false;
   const ts = new Date(cached.lastCheckedAt).getTime();
   return Number.isFinite(ts) && ts >= cutoffMs;
 }
