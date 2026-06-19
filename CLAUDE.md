@@ -227,6 +227,45 @@ prod as follows — keep both in sync:
 - Pages build config: **no build command**, output directory **repo root** (`/`);
   the `functions/` dir at root is auto-detected.
 
+## Built Atlas features & data layers (current state)
+
+What exists in `index.html` today — don't rebuild it, and keep it working:
+
+- **Map layers** (toggles in the topbar `#mapCtl`, persisted in settings *except*
+  the two noisy overlays): route lines · garages · stops · **live buses (BODS GPS)**
+  · **collisions (STATS19)**. Live + collisions **always start OFF each session**
+  (reset on load, not persisted-on); the user enables them explicitly, and when on
+  they scope to the selected/searched route(s). A contextual **Map key** legend
+  (`updateLegend`) labels every visible symbol.
+- **Route dossier** (right rail, `renderContext`) — accordion `group()`s: Live ops ·
+  **Route** (incl. a **Reliability** block — EWT/OTP vs MPS + % mileage, from
+  `store.perf`) · **Risk & accidents** (collisions near the route: density, KSI,
+  severity split, by-year trend, hotspot boroughs — `sentinelBody`) · Fleet ·
+  **Commercial** (tender history with **bid spread low–won–high**, previous-operator
+  + win/loss flag, notes, contracted miles). Network view + catchment (Magnify) also
+  carry a Risk & accidents readout.
+- **Classification**: route type now includes **`prefix`** (lettered SL/EL/W/X routes,
+  `isPrefixRoute`) alongside regular/24-hour/night/school.
+- **Selection UX**: search **auto-detects** single vs multi (one token → single;
+  comma-separated → multi-compare) — the Single/Multi toggle is just a manual
+  override. Clicking a route (similar-route row, connection pill, marker/stop popup)
+  while one is selected **adds** it to the view rather than replacing. Selected routes
+  show as removable **chips** on the left rail.
+- **Accidents map = density heatmap**: nearby collisions bin into one circle whose
+  radius + colour scale with the count (amber few → deep red many), re-binned on
+  zoom (`drawAccidents`).
+- **Responsive**: ≤820px → simple single-column, page-scrolling layout (route list →
+  map → analysis all reachable); map `invalidateSize` on resize.
+- **Atlas data files** (seam-read): routes, route-meta, route-stops, garages, fleet,
+  vehicles, tenders, routes-overview.geojson, **route-performance.json** (EWT/OTP/MPS,
+  `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`).
+  Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
+  gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
+  overwrite last-good.
+
+> **"Sentinel"** is the **legacy internal name** for the accidents/risk layer — it must
+> NOT appear in any user-facing copy (only in code comments / function names).
+
 ## Supabase warehouse pipeline (`ingest/`)
 
 A **standalone, isolated** ingestion subtree (moved in from the old london-buses
@@ -237,21 +276,37 @@ workflows; it shares **no code path** with `pipeline/` or the site. It writes
 can never block the Cloudflare site.
 
 - **Scripts self-locate** via `__dirname/..` → always read/write `ingest/data`
-  regardless of cwd. Orchestrator: `ingest/scripts/refresh.js` (18 steps).
+  regardless of cwd. Orchestrator: `ingest/scripts/refresh.js`.
   Supabase upsert: `ingest/scripts/push-to-supabase.js` → tables `vehicles`,
   `route_snapshots`, `garage_snapshots`, `route_performance`, `tenders`,
-  `tender_programme`, `route_vehicle_observations` (+ `route_vehicle_sightings`).
-- **Reuses the existing Supabase schema** (`ingest/db/migrations/`). Don't
-  reshape tables; map onto them.
-- **Three workflows** (all `permissions: contents: read` — Supabase-only, no
+  `tender_programme`, `route_vehicle_observations`, `route_vehicle_sightings`,
+  **`accidents`** (STATS19 collisions), and the live-reliability tables
+  (`route_schedule`, `arrival_samples`, `route_reliability_daily` — our own
+  EWT/OTD/lost-mileage, see below).
+- **Reuses the existing Supabase project from london-buses**, so tables
+  `0001`–`0013` were already live (no migration needed at the switch). **New
+  migrations to run once in Supabase SQL Editor:** `0014_accidents.sql`,
+  `0015_live_reliability.sql`. The rest pre-existed. Don't reshape existing
+  tables; add a migration for anything new.
+- **Workflows** (all `permissions: contents: read` — Supabase-only, no
   commit-back):
   - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.
   - `ingest-supabase-sampler.yml` — daily fleet sample, 08:37 UTC.
   - `ingest-supabase-heartbeat.yml` — daily 12:37 UTC, INSERTs into `keep_alive`.
     **Load-bearing:** the free tier auto-pauses after 7 days with no DB **write**
     activity → eventual deletion. A SELECT does *not* count; only the INSERT does.
-    Never disable this, and keep at least one daily writer (heartbeat + sampler
-    are two independent ones) alive.
+    Never disable this, and keep at least one daily writer alive.
+  - `ingest-headway-sampler.yml` — every ~30 min in service hours; appends live
+    arrival/headway observations to `arrival_samples`.
+  - `ingest-reliability-build.yml` — daily; derives EWT/SWT/AWT, OTD and lost
+    mileage into `route_reliability_daily` from the samples + `route_schedule`.
+- **Live reliability (our own, supplementing TfL's quarterly figures).** EWT =
+  AWT − SWT where AWT/SWT = Σ(h²)/(2·Σh) over observed/scheduled headways; OTD =
+  % departures 2 min early–5 min late (low-freq); lost mileage = scheduled − operated
+  km. Scheduled side from TfL Timetable (`fetch-schedule.js`); observed side from
+  sampling `/Line/{id}/Arrivals` (`sample-headways.js`). Accuracy improves as
+  samples accrue and is bounded by sampling frequency — it's an estimate, labelled
+  as such; TfL's published `route_performance` remains the authoritative quarterly.
 - **Secrets (GitHub Actions):** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
   `DVLA_API_KEY`, and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in
   the workflow env. Service-role key is server-only; never in code or the browser.
