@@ -16,6 +16,7 @@
  */
 
 import { rowsWithin } from "../lib/validate.js";
+import { cleanMake, propulsionOf } from "../lib/normalize.js";
 
 export async function build(ctx) {
   const { sink, log } = ctx;
@@ -33,7 +34,7 @@ export async function build(ctx) {
       if (!v.routes.includes(route)) v.routes.push(route);
       if (!v.operator && meta[route]?.operator) v.operator = meta[route].operator;
       const d = dvla[reg];
-      if (d) { v.make = d.make; v.year = d.year; v.fuel = d.fuel; }
+      if (d) { v.make = cleanMake(d.make); v.year = d.year; v.fuel = d.fuel; v.propulsion = propulsionOf(d.fuel); }
     }
   }
   for (const v of Object.values(byReg)) v.routes.sort();

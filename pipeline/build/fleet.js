@@ -21,17 +21,7 @@ import { lineArrivals } from "../sources/tfl.js";
 import { mapLimit } from "../lib/http.js";
 import { hasKey, lookupMany } from "../sources/dvla.js";
 import { rowsWithin, notAllNull, check } from "../lib/validate.js";
-
-// DVLA fuelType → our propulsion buckets (the same vocabulary the tools use).
-function propOf(fuel) {
-  const f = String(fuel || "").toUpperCase();
-  if (f.includes("ELECTRIC") && f.includes("HYBRID")) return "hybrid";
-  if (f.includes("HYBRID")) return "hybrid";
-  if (f === "ELECTRICITY" || f === "ELECTRIC") return "electric";
-  if (f.includes("HYDROGEN") || f.includes("FUEL CELL")) return "hydrogen";
-  if (f.includes("DIESEL") || f.includes("GAS OIL")) return "diesel";
-  return null;
-}
+import { propulsionOf, cleanMake } from "../lib/normalize.js";
 
 export async function build(ctx) {
   const { sink, log, args } = ctx;
@@ -78,8 +68,8 @@ export async function build(ctx) {
       const makes = {}; let ageSum = 0, ageN = 0;
       for (const reg of e.regs) {
         const v = cache[reg]; if (!v) continue;
-        const p = propOf(v.fuel); if (p) prop[p]++;
-        if (v.make) makes[v.make] = (makes[v.make] || 0) + 1;
+        const p = propulsionOf(v.fuel); if (p) prop[p]++;
+        const mk = cleanMake(v.make); if (mk) makes[mk] = (makes[mk] || 0) + 1;
         if (v.year && v.year >= 1990 && v.year <= thisYear) { ageSum += thisYear - v.year; ageN++; }
       }
       e.avgAgeYears = ageN ? +(ageSum / ageN).toFixed(1) : null;

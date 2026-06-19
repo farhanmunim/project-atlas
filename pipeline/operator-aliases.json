@@ -1,0 +1,15 @@
+{
+  "_note": "Canonical London bus operator brands → the messy variants/subsidiaries that roll up to them. Used by lib/normalize.js canonicalOperator(). Match is case-insensitive, after stripping legal suffixes (Ltd/Limited/PLC). Keep brand names aligned with route-meta's operator values so tenders cross-reference cleanly.",
+  "brands": [
+    { "brand": "Arriva London", "aliases": ["arriva london north", "arriva london south", "arriva london north east", "arriva the shires", "arriva kent thameside", "arriva wandsworth", "arriva southern counties", "arriva"] },
+    { "brand": "Go-Ahead London", "aliases": ["london general", "london central", "blue triangle", "metrobus", "docklands buses", "east thames buses", "go ahead london", "go-ahead london", "go-ahead", "goahead"] },
+    { "brand": "Metroline", "aliases": ["metroline travel", "metroline west", "metroline london"] },
+    { "brand": "Stagecoach London", "aliases": ["selkent", "east london bus", "east london", "thameside", "stagecoach selkent", "stagecoach east london", "stagecoach"] },
+    { "brand": "Abellio London", "aliases": ["abellio", "travel london", "travel london (abellio)"] },
+    { "brand": "Transport UK London Bus (RATP)", "aliases": ["transport uk london bus", "ratp dev transit london", "ratp dev", "ratp", "london united", "london sovereign", "quality line", "nsl", "epsom buses", "tower transit"] },
+    { "brand": "Uno", "aliases": ["universitybus", "uno buses", "uno"] },
+    { "brand": "First Bus London", "aliases": ["first bus london", "first london", "first capital", "first centrewest", "first"] },
+    { "brand": "Sullivan Buses", "aliases": ["sullivan buses", "sullivans"] },
+    { "brand": "HCT Group", "aliases": ["hct group", "ct plus", "ctplus"] }
+  ]
+}
