@@ -364,6 +364,10 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .maplegend .lr{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--paper);margin-bottom:4px}
 .maplegend .lr:last-child{margin-bottom:0}
 .maplegend .lc{width:16px;height:3px;border-radius:3px;flex:none}
+.maplegend .lh:not(:first-child){margin-top:10px}
+.maplegend .lc-dot{width:9px;height:9px;border-radius:50%}
+.maplegend .lc-sq{width:9px;height:9px;border-radius:2px}
+.maplegend .lc-tri{width:0;height:3px;background:transparent;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid currentColor;border-radius:0}
 
 /* ============================ RIGHT RAIL ============================ */
 .rail-right{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;min-height:0}
@@ -573,7 +577,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></button>
           <button type="button" data-k="live" class="on" aria-pressed="true" aria-label="Show or hide live buses" data-tip="Show / hide live buses">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 L19 21 L12 16 L5 21 Z"/></svg></button>
-          <button type="button" data-k="accidents" aria-pressed="false" aria-label="Show or hide bus collisions (Sentinel)" data-tip="Show / hide bus collisions — Sentinel">
+          <button type="button" data-k="accidents" aria-pressed="false" aria-label="Show or hide bus collisions" data-tip="Show / hide bus collisions">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></button>
         </div>
         <div class="seg" aria-label="Colour routes by">
@@ -1104,6 +1108,7 @@ function initMap(){
   accidentLayer=L.layerGroup().addTo(map);   // Sentinel — bus collision points (STATS19), severity-graded
   divLayer=L.layerGroup().addTo(map);    // diversion overlays (affected segment + not-served stops)
   liveLayer=L.layerGroup().addTo(map);   // live vehicle GPS markers (BODS), on top
+  map.on("zoomend",()=>{ if(showAccidents) drawAccidents(); });   // re-bin the accident clusters at the new zoom
   map.on("click",e=>{
     if(mode==="catch"){ setPin(e.latlng.lat,e.latlng.lng); return; }
     const names=routesNear(e.latlng);
@@ -1222,26 +1227,34 @@ function diversionPanelHtml(r){
 }
 function updateLegend(){
   const el=document.getElementById("mapLegend");
-  // network view (route mode w/ nothing selected, or catchment) → colour-by legend
+  const parts=[];
+  // ── colour-by section ──
   if((mode==="route" && !selected.length) || mode==="catch"){
-    if(!showRoutes){ el.classList.remove("show"); el.innerHTML=""; return; }
-    if(colorMode==="operator"){
-      const ops=[...new Set(applyFilters(routes).map(r=>metaOf(r).op).filter(Boolean))].sort();
-      if(!ops.length){ el.classList.remove("show"); el.innerHTML=""; return; }
-      el.innerHTML="<div class='lh'>Operator</div>"+ops.slice(0,8).map(o=>`<div class="lr"><span class="lc" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</div>`).join("");
-      el.classList.add("show"); return;
+    if(showRoutes){
+      if(colorMode==="operator"){
+        const ops=[...new Set(applyFilters(routes).map(r=>metaOf(r).op).filter(Boolean))].sort();
+        if(ops.length) parts.push("<div class='lh'>Operator</div>"+ops.slice(0,8).map(o=>`<div class="lr"><span class="lc" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</div>`).join(""));
+      } else {
+        const types=[...new Set(applyFilters(routes).map(r=>typeOf(r)))];
+        if(types.length) parts.push("<div class='lh'>Route type</div>"+types.map(t=>`<div class="lr"><span class="lc" style="background:${TYPE_DEFS[t].color}"></span>${TYPE_DEFS[t].label}</div>`).join(""));
+      }
     }
-    const types=[...new Set(applyFilters(routes).map(r=>typeOf(r)))];
-    if(!types.length){ el.classList.remove("show"); el.innerHTML=""; return; }
-    el.innerHTML="<div class='lh'>Route type</div>"+types.map(t=>`<div class="lr"><span class="lc" style="background:${TYPE_DEFS[t].color}"></span>${TYPE_DEFS[t].label}</div>`).join("");
-    el.classList.add("show"); return;
+  } else if(selectMode==="multi" && selected.length>=2){
+    parts.push("<div class='lh'>Routes</div>"+selected.map((r,i)=>`<div class="lr"><span class="lc" style="background:${colorFor(i)}"></span>Route ${esc(r.name)}</div>`).join(""));
   }
-  // multi-select → colour-by-route legend
-  if(selectMode==="multi" && selected.length>=2){
-    el.innerHTML="<div class='lh'>Routes</div>"+selected.map((r,i)=>`<div class="lr"><span class="lc" style="background:${colorFor(i)}"></span>Route ${esc(r.name)}</div>`).join("");
-    el.classList.add("show"); return;
-  }
-  el.classList.remove("show"); el.innerHTML="";
+  // ── map key (symbols) — only the overlays currently visible ──
+  const sym=[];
+  if(showLive && trackingOn()) sym.push(
+    `<div class="lr"><span class="lc lc-tri" style="color:var(--cyan)"></span>Outbound bus · live</div>`,
+    `<div class="lr"><span class="lc lc-tri" style="color:var(--amber)"></span>Inbound bus · live</div>`);
+  if(showStops && selected.length) sym.push(`<div class="lr"><span class="lc lc-dot" style="background:var(--paper)"></span>Bus stop</div>`);
+  if(showGarages) sym.push(`<div class="lr"><span class="lc lc-sq" style="background:var(--paper-3)"></span>Garage</div>`);
+  if(showAccidents) sym.push(
+    `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Collisions · fewer</div>`,
+    `<div class="lr"><span class="lc lc-dot" style="background:#ff2d55"></span>Collisions · more <span style="color:var(--paper-3)">(size ∝ count)</span></div>`);
+  if(sym.length) parts.push("<div class='lh'>Map key</div>"+sym.join(""));
+  if(!parts.length){ el.classList.remove("show"); el.innerHTML=""; return; }
+  el.innerHTML=parts.join(""); el.classList.add("show");
 }
 function setMapNote(text){ const el=document.getElementById("mapNote"); if(!text){ el.classList.remove("show"); el.innerHTML=""; return; } el.innerHTML=`<span class="ld"></span>${text}`; el.classList.add("show"); }
 
@@ -1259,6 +1272,7 @@ function refreshMap(fit=true){
   else drawNetwork();
   drawGarages();
   drawAccidents();
+  updateLegend();   // refresh the colour legend + Map key for the current layers/selection
 }
 
 function mkNetworkLine(r, coords){
@@ -1290,32 +1304,59 @@ function accidentsForView(){
   }
   return { data, list };
 }
+// density heat ramp: amber (few) → deep red (many)
+function accHeat(t){ const a=[245,165,36], b=[255,45,85], m=i=>Math.round(a[i]+(b[i]-a[i])*t); return `rgb(${m(0)},${m(1)},${m(2)})`; }
+const ACC_GRID_PX=40, ACC_MIN_R=5, ACC_MAX_R=26;
 function drawAccidents(){
   if(!mapOK || !accidentLayer) return;
   accidentLayer.clearLayers();
   if(!showAccidents) return;
-  const { list }=accidentsForView();
-  list.forEach(a=>{ const sv=sevOf(a), s=SEV[sv];
-    L.circleMarker([a.lat,a.lng],{ radius:sv==="fatal"?6:sv==="serious"?5:4, color:effectiveTheme()==="light"?"#ffffff":"#0a0e16", weight:1, fillColor:s.color, fillOpacity:.85 })
-      .bindPopup(`<div class="rh-pop"><div class="rh-h" style="color:${s.color}">${s.label} collision</div><div class="rh-sub">${esc(fmtDate(a.date))} · ${esc(boroughName(a.borough))}${a.vehicles?` · ${a.vehicles} vehicles`:""}</div></div>`)
+  const { list }=accidentsForView(); if(!list.length) return;
+  // bin into a geo-grid sized to ~ACC_GRID_PX screen pixels at the current zoom, so nearby
+  // collisions group into one circle; the grid shrinks as you zoom in → clusters split apart.
+  const cell=(360/(256*Math.pow(2,map.getZoom())))*ACC_GRID_PX;
+  const bins=new Map();
+  list.forEach(a=>{ if(!Number.isFinite(a.lat)||!Number.isFinite(a.lng)) return;
+    const k=Math.floor(a.lng/cell)+":"+Math.floor(a.lat/cell);
+    let b=bins.get(k); if(!b){ b={n:0,lat:0,lng:0,fatal:0,serious:0,slight:0}; bins.set(k,b); }
+    b.n++; b.lat+=a.lat; b.lng+=a.lng; b[sevOf(a)]++; });
+  let maxN=1; bins.forEach(b=>{ if(b.n>maxN) maxN=b.n; });
+  bins.forEach(b=>{ const t=Math.sqrt(b.n/maxN);   // 0..1 density (sqrt → area-proportional)
+    const r=ACC_MIN_R+(ACC_MAX_R-ACC_MIN_R)*t, ksi=b.fatal+b.serious;
+    L.circleMarker([b.lat/b.n, b.lng/b.n],{ radius:r, color:effectiveTheme()==="light"?"#ffffff":"#0a0e16", weight:1, fillColor:accHeat(t), fillOpacity:0.4+0.45*t })
+      .bindPopup(`<div class="rh-pop"><div class="rh-h">${b.n} collision${b.n>1?"s":""} here</div><div class="rh-sub">${ksi?`<span style="color:var(--alert)">${ksi} killed / serious</span> · `:""}${b.slight} slight</div></div>`)
       .addTo(accidentLayer); });
 }
-// Sentinel context block — severity breakdown + KSI + most-recent, for the network or a route.
-function sentinelHtml(list, data, scopeNote){
-  if(!data) return "";
-  const head = `Safety <span class="mono" style="color:var(--paper-4)">${data.sample?"sample":esc(data.period||"")}</span>`;
-  if(!list || !list.length) return metricBlock(head, `<div class="empty" style="padding:7px 0">No bus collisions recorded ${esc(scopeNote||"")}.</div>`);
-  const by={fatal:0,serious:0,slight:0}; list.forEach(a=>by[sevOf(a)]++);
+// Risk & accidents analytics — KSI, severity mix, year trend, hotspot boroughs (network)
+// or per-km density (route), most-recent. Returns the inner body (callers wrap it).
+function sentinelBody(list, data, scopeNote, opts={}){
+  if(!list || !list.length) return `<div class="empty" style="padding:7px 0">No bus collisions recorded ${esc(scopeNote||"")}.</div>`;
+  const by={fatal:0,serious:0,slight:0}, byYear={}, byBorough={};
+  list.forEach(a=>{ by[sevOf(a)]++; const y=String(a.date||"").slice(0,4); if(/^\d{4}$/.test(y)) byYear[y]=(byYear[y]||0)+1;
+    const bn=boroughName(a.borough); if(bn&&bn!=="—"&&bn!=="Outside London") byBorough[bn]=(byBorough[bn]||0)+1; });
   const tot=list.length, ksi=by.fatal+by.serious;
-  const recent=[...list].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
   const seg=ks=>ks.filter(k=>by[k]);
-  return metricBlock(head,
-    metrics([ mcard("Collisions",tot.toLocaleString("en-GB"),scopeNote||"bus-involved"), mcard("KSI",ksi.toLocaleString("en-GB"),tot?`${Math.round(ksi/tot*100)}% killed / serious`:"","color:var(--alert)") ])+
+  const years=Object.keys(byYear).sort(), ymax=Math.max(1,...years.map(y=>byYear[y]));
+  let trend=null; if(years.length>=2){ const f=byYear[years[0]], l=byYear[years[years.length-1]], d=f?Math.round((l-f)/f*100):0;
+    trend={ txt:`${d>0?"↑":d<0?"↓":"→"} ${Math.abs(d)}% ${years[0].slice(2)}→${years[years.length-1].slice(2)}`, col:d>0?"var(--alert)":d<0?"var(--green)":"var(--paper-3)" }; }
+  const topB=Object.entries(byBorough).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const recent=[...list].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
+  const perKm = opts.km>0 ? tot/opts.km : null;
+  return metrics([ mcard("Collisions",tot.toLocaleString("en-GB"),scopeNote||"bus-involved"), mcard("KSI",ksi.toLocaleString("en-GB"),tot?`${Math.round(ksi/tot*100)}% killed / serious`:"","color:var(--alert)") ])+
+    (perKm!=null?`<div style="margin-top:var(--s3)"><div class="kv"><span class="k">Density</span><span class="v">${perKm.toFixed(1)} <span class="u">/km</span></span></div></div>`:"")+
     `<div class="pbar" style="margin-top:12px">${seg(["fatal","serious","slight"]).map(k=>`<i style="width:${(by[k]/tot*100).toFixed(1)}%;background:${SEV[k].color}" title="${SEV[k].label}: ${by[k]}"></i>`).join("")}</div>`+
     `<div class="plegend">${seg(["fatal","serious","slight"]).map(k=>`<span><span class="d" style="background:${SEV[k].color}"></span>${SEV[k].label} ${by[k]}</span>`).join("")}</div>`+
-    `<div class="mnote" style="margin-top:8px">Most recent</div>`+
-    recent.map(a=>kv(`<span class="kc"><span style="color:${SEV[sevOf(a)].color}">●</span> ${esc(boroughName(a.borough))}</span>`,esc(fmtDate(a.date)))).join("")+
-    crossLink(`source · ${esc(data.source||"DfT STATS19")}${data.sample?" · sample data":""}`));
+    (years.length>=2?`<div class="mnote" style="margin-top:10px;display:flex;justify-content:space-between"><span>By year</span><span style="color:${trend.col}">${trend.txt}</span></div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:30px;margin-top:5px">${years.map(y=>`<div title="${y}: ${byYear[y]}" style="flex:1;display:flex;flex-direction:column-reverse;align-items:center;gap:3px"><span style="font-size:8px;color:var(--paper-4);font-family:var(--mono)">${y.slice(2)}</span><div style="width:100%;height:${Math.max(2,Math.round(byYear[y]/ymax*22))}px;background:var(--cyan);border-radius:2px"></div></div>`).join("")}</div>`:"")+
+    (topB.length>1?`<div class="mnote" style="margin-top:10px">Hotspot boroughs</div>`+topB.map(([b,n])=>`<div class="kv"><span class="k kc">${esc(b)}</span><span class="v">${n.toLocaleString("en-GB")}</span></div>`).join(""):"")+
+    `<div class="mnote" style="margin-top:10px">Most recent</div>`+
+    recent.map(a=>`<div class="kv"><span class="k kc"><span style="color:${SEV[sevOf(a)].color}">●</span> ${esc(boroughName(a.borough))}</span><span class="v">${esc(fmtDate(a.date))}</span></div>`).join("")+
+    crossLink(`source · ${esc(data.source||"DfT STATS19")}${data.sample?" · sample data":""}`);
+}
+// Network-view standalone "Risk & accidents" metric block
+function sentinelHtml(list, data, scopeNote, opts){
+  if(!data) return "";
+  return metricBlock(`Risk &amp; accidents <span class="mono" style="color:var(--paper-4)">${data.sample?"sample":esc(data.period||"")}</span>`, sentinelBody(list,data,scopeNote,opts));
 }
 function drawGarages(){
   if(!mapOK || !garageLayer) return;
@@ -2241,13 +2282,14 @@ function renderContext(){
        ${opName?`<span class="pill">${esc(shortOp(opName))}</span>`:""}
        ${prop?`<span class="pill" title="sample tag">${prop}</span>`:""}
      </div></div>`;
-  // Sentinel — bus collisions within ~150 m of this route's line
-  const sentinelRouteBlock = (()=>{
+  // Risk & accidents — its own group: bus collisions within ~150 m of this route's line
+  const riskGroup = (()=>{
     const data=accidentsData(); if(!data) return "";
     const cs=(r._seq&&r._seq.coords&&r._seq.coords.length)?r._seq.coords:storeCoordsFor(r.id);
     if(!cs||!cs.length) return "";
     const near=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<0.15; });
-    return sentinelHtml(near, data, "within 150 m of this route");
+    const ksi=near.filter(a=>sevOf(a)!=="slight").length;
+    return group("risk","Risk & accidents","var(--alert)", sentinelBody(near,data,"within 150 m of this route",{km}), near.length?`${near.length} · ${ksi} KSI`:"none nearby");
   })();
   const geometryBlock = metricBlock("Geometry",
       metrics([ mcard("Stops",stops.length,"served"), mcard("Length",stops.length?distVU(km):"—","end to end") ])+
@@ -2299,7 +2341,8 @@ function renderContext(){
   // ── grouped readout: a handful of collapsible top-level groups ──
   el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
-    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+sentinelRouteBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    riskGroup+
     group("fleet","Fleet","var(--violet)", fleetProfileBlock+fleetBlock, fdata&&fdata.avgAgeYears!=null?`${fdata.avgAgeYears}y avg`:"")+
     group("commercial","Commercial","var(--amber)", commercialBlock+opBlock+tenderAnalysisBlock+tenderBlock, tenders.length?`${tenders.length} tenders`:"");
 }
@@ -2405,7 +2448,7 @@ function init(){
     else if(k==="garages"){ showGarages=!showGarages; settings.showGarages=showGarages; saveSettings(); }
     else if(k==="stops"){ showStops=!showStops; settings.showStops=showStops; saveSettings(); }
     else if(k==="live"){ showLive=!showLive; settings.showLive=showLive; saveSettings(); syncMapCtl(); applyDataMode(); return; }   // start/stop live tracking
-    else if(k==="accidents"){ showAccidents=!showAccidents; settings.showAccidents=showAccidents; saveSettings(); syncMapCtl(); drawAccidents(); renderContext(); return; }   // Sentinel
+    else if(k==="accidents"){ showAccidents=!showAccidents; settings.showAccidents=showAccidents; saveSettings(); syncMapCtl(); drawAccidents(); updateLegend(); renderContext(); return; }   // Sentinel
     else if(k==="ctype"){ colorMode="type"; settings.colorMode="type"; saveSettings(); renderFilters(); renderRouteList(); }
     else if(k==="coper"){ colorMode="operator"; settings.colorMode="operator"; saveSettings(); renderFilters(); renderRouteList(); }
     syncMapCtl(); if(mode==="catch") paintCatch(false); else refreshMap(false);
@@ -2490,6 +2533,7 @@ function applyDataMode(){
     if(autoPolling()){ ring.hidden=false; nextRefreshAt=Date.now()+LIVE_SEC()*1000; updateRing(); liveTick=setInterval(updateRing, reduceMotion()?1000:250); }
     else { ring.hidden=true; }   // Cached: one-shot snapshot, no auto-refresh ring
   } else { ring.hidden=true; liveLayer&&liveLayer.clearLayers(); liveVehicles=[]; }
+  if(mapOK) updateLegend();   // keep the Map key in sync when live tracking starts/stops
 }
 function updateRing(){
   if(!trackingOn()) return;
