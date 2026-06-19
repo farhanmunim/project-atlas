@@ -28,6 +28,15 @@ const RATE_LIMIT = Symbol("dvla-429");
 export function hasKey() { return !!process.env.DVLA_API_KEY; }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Normalise + validate a UK VRM before spending a DVLA lookup on it. Bus feeds carry
+// the odd bonnet/placeholder id that DVLA 400s on; skip those so we don't waste the
+// per-run budget or pollute the cache with junk keys.
+export function normReg(reg) { return String(reg || "").replace(/\s+/g, "").toUpperCase(); }
+export function looksLikeUkVrm(reg) {
+  const r = normReg(reg);
+  return /^[A-Z0-9]{5,7}$/.test(r) && /[A-Z]/.test(r) && /[0-9]/.test(r);
+}
+
 /** Look up one registration. Returns a record, null on miss/error, or RATE_LIMIT on 429. */
 export async function lookup(reg) {
   const key = process.env.DVLA_API_KEY;
@@ -59,7 +68,12 @@ export async function lookupMany(regs, cache = {}, opts = {}) {
   if (!hasKey()) return { cache, looked: 0, deferred: 0, stopped: false };
   const delayMs = opts.delayMs ?? envInt("DVLA_DELAY_MS", 220);
   const max = opts.max ?? envInt("DVLA_MAX_LOOKUPS", 5000);
-  const todo = [...new Set(regs.map((r) => String(r).replace(/\s+/g, "").toUpperCase()))].filter((r) => r && !(r in cache));
+  const fresh = [...new Set(regs.map(normReg))].filter((r) => r && !(r in cache));
+  // Skip ids that aren't valid UK VRMs (bonnet/placeholder numbers) — cache them as
+  // null so they're not retried, and never waste a DVLA call (a sure 400) on them.
+  let skipped = 0;
+  for (const r of fresh) if (!looksLikeUkVrm(r)) { cache[r] = null; skipped++; }
+  const todo = fresh.filter(looksLikeUkVrm);
   let looked = 0, stopped = false;
   for (const reg of todo) {
     if (looked >= max) break;            // per-run cap → spread cold starts over days
@@ -74,5 +88,5 @@ export async function lookupMany(regs, cache = {}, opts = {}) {
     if (delayMs) await sleep(delayMs);
   }
   const deferred = todo.length - looked;
-  return { cache, looked, deferred, stopped };
+  return { cache, looked, deferred, stopped, skipped };
 }

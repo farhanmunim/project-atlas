@@ -58,7 +58,14 @@ export async function build(ctx) {
   let cache = {}, dvla = { looked: 0, deferred: 0, stopped: false };
   if (enriched) {
     try { cache = (await sink.readDataset("fleet-dvla-cache"))?.byReg || {}; } catch { cache = {}; }
-    dvla = await lookupMany([...allRegs], cache);   // bounded + 429-safe; mutates cache
+    // Backfill: look up not just the regs on the road THIS minute, but every reg we've
+    // ever rostered (the `vehicles` dataset) that isn't cached yet — so newly-observed
+    // plates fill in regardless of whether they happen to be running right now. Still
+    // bounded by the per-run cap + 429 backoff inside lookupMany.
+    let rosterRegs = [];
+    try { rosterRegs = Object.keys((await sink.readDataset("vehicles"))?.byReg || {}); } catch { rosterRegs = []; }
+    const lookupSet = new Set([...allRegs, ...rosterRegs]);
+    dvla = await lookupMany([...lookupSet], cache);   // bounded + 429-safe; mutates cache
     cache = dvla.cache;
     await sink.writeDataset("fleet-dvla-cache", { generatedAt: new Date().toISOString(), byReg: cache });   // persist partial progress
   }
