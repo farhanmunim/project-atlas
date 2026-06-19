@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light">
 <title>Atlas — London Bus Network · live, fleet, tenders</title>
 <meta name="description" content="Atlas — an interactive map and analytics deep-dive for the London bus network: toggleable layers (route lines, garages, stops, live buses, accidents) with a unified context panel for route info, network analysis, live operations, fleet, tenders and accidents.">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="30x30" href="logo.png">
 <!-- Open Graph / Twitter card -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Atlas">
@@ -111,9 +111,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
   background:var(--panel);border-bottom:1px solid var(--line);min-width:0;z-index:600}
 .brand{display:flex;align-items:center;gap:var(--s3);min-width:0}
 .brand a.home{display:flex;align-items:center;gap:var(--s3);min-width:0}
-.brand .logo{width:30px;height:30px;border-radius:8px;flex:none;background:color-mix(in srgb,var(--acc) 18%,transparent);
-  display:grid;place-items:center;color:var(--acc)}
-.brand .logo svg{width:18px;height:18px}
+.brand .logo{width:30px;height:30px;border-radius:8px;flex:none;display:block;object-fit:contain}
 .brand h1{font-size:var(--fz-lg);font-weight:680;letter-spacing:-.02em;white-space:nowrap}
 .brand .sub{font-size:var(--fz-xs);color:var(--paper-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
 .crumbs{display:flex;align-items:center;gap:var(--s2);font-size:var(--fz-xs);color:var(--paper-3);font-family:var(--mono)}
@@ -566,7 +564,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
   <header class="topbar">
     <div class="brand">
       <a class="home" href="index.html" data-tip="Back to the hub">
-        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+        <img class="logo" src="logo.png" alt="" aria-hidden="true" width="30" height="30">
         <div><h1>Atlas</h1><div class="sub">Interactive route map</div></div>
       </a>
     </div>
