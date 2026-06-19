@@ -1764,7 +1764,9 @@ async function selectFromSearch(raw){
   for(const tok of tokens){ const r=resolveRoute(tok); if(r){ if(!matched.some(m=>m.id===r.id)) matched.push(r); } else misses.push(tok); }
   if(!matched.length){ toast(`No route matches “${esc(raw.trim())}”`); return; }
   const sb=document.getElementById("routeSearch"); if(sb) sb.value="";
-  if(tokens.length>1 || matched.length>1){
+  // Auto-detect: a single token → single view; comma-separated (2+) → multi view.
+  // The Single/Multi toggle is just a manual override; the search infers the intent.
+  if(tokens.length>1){
     if(selectMode!=="multi") setSelectMode("multi");
     ctxView={type:"auto"}; clearRouteFilters(); renderFilters();
     selected = matched.map(r=>({...r}));
@@ -1773,7 +1775,8 @@ async function selectFromSearch(raw){
     renderRouteList(); renderContext(); applyDataMode();
     Promise.all(selected.map(r=>ensureSeq(r))).then(()=>{ refreshMap(); renderContext(); if(trackingOn()) refreshLive(); });
   } else {
-    await toggleRoute(matched[0]);   // single → full single-select flow
+    if(selectMode!=="single") setSelectMode("single");   // single token always resolves to a single-route view
+    await toggleRoute(matched[0]);
   }
   if(misses.length) toast(`No match: ${esc(misses.join(", "))}`);
 }
@@ -2508,9 +2511,13 @@ function init(){
     const r=routes.find(x=>x.name===p.dataset.route); if(!r) return;
     if(mapOK) map.closePopup(); if(canvasView==="table") setCanvasView("map");
     setLeftTab("routes");
-    const sb=document.getElementById("routeSearch"); if(sb) sb.value=r.name;   // reflect it as a search
-    if(selectMode==="single") selected=[];
-    toggleRoute(r);   // clears filters + re-renders the (now route-filtered) list + selects
+    const sb=document.getElementById("routeSearch"); if(sb) sb.value="";
+    if(isSelected(r)) return;   // already in the view
+    // If a route is already selected, ADD this one to the current view (multi-compare);
+    // otherwise it's a fresh single-route view.
+    if(selected.length){ if(selectMode!=="multi") setSelectMode("multi"); }
+    else { if(selectMode!=="single") setSelectMode("single"); }
+    toggleRoute(r);   // multi → adds; single → selects
   });
   // context-rail drill-down: Back, and operator/garage links push detail views
   document.getElementById("ctx").addEventListener("click", e=>{
