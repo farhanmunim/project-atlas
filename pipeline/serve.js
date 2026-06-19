@@ -91,22 +91,31 @@ function apiData(name) {
 }
 
 // Public-API surface (mirrors functions/api/v1/[[path]].js DATASETS — keep in sync).
+// v1 reads the committed data/*.json FILES (exactly what the prod Pages Function
+// re-serves), NOT the warehouse DB — so dev mirrors prod precisely and picks up
+// build-time fixes (e.g. garage dedup) that CDC wouldn't tombstone from the DB.
 const V1_SETS = {
-  "routes": "All London bus routes — [{ id, name }].",
-  "route-meta": "Per-route metadata keyed by route name (operator, propulsion, garage, type, PVR).",
-  "route-classifications": "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered).",
-  "route-stops": "Ordered stop sequences per route and direction.",
-  "line-status": "Most recent line-status snapshot — per-route service status + a network summary (capturedAt).",
-  "routes-overview": "Route line geometry as a GeoJSON FeatureCollection.",
-  "garages": "Bus garages — code, name, operator, lat/lng, PVR, routes served.",
-  "fleet": "Fleet profile per route — vehicle count, average age, propulsion mix, makes.",
-  "vehicles": "Vehicle register keyed by registration — routes, operator, make, year, fuel.",
-  "tenders": "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles.",
-  "route-performance": "Reliability per route — EWT/OTP vs the MPS benchmark, % mileage operated.",
-  "accidents": "STATS19 bus collisions — lat/lng, severity, date, borough.",
-  "bridges": "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road.",
-  "manifest": "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts.",
+  "routes":            { file: "routes.json",             desc: "All London bus routes — [{ id, name }]." },
+  "route-meta":        { file: "route-meta.json",         desc: "Per-route metadata keyed by route name (operator, propulsion, garage, type, PVR)." },
+  "route-classifications": { file: "route-classifications.json", desc: "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered)." },
+  "route-stops":       { file: "route-stops.json",        desc: "Ordered stop sequences per route and direction." },
+  "line-status":       { file: "line-status.json",        desc: "Most recent line-status snapshot — per-route service status + a network summary (capturedAt)." },
+  "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection." },
+  "garages":           { file: "garages.json",            desc: "Bus garages — code, name, operator, lat/lng, PVR, routes served." },
+  "fleet":             { file: "fleet.json",              desc: "Fleet profile per route — vehicle count, average age, propulsion mix, makes." },
+  "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
+  "tenders":           { file: "tenders.json",            desc: "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles." },
+  "route-performance": { file: "route-performance.json",  desc: "Reliability per route — EWT/OTP vs the MPS benchmark, % mileage operated." },
+  "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough." },
+  "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
+  "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };
+// Read a v1 dataset straight from its committed file (mirrors the prod function).
+function v1File(name) {
+  const ds = V1_SETS[name]; if (!ds) return { code: 404, obj: { error: "unknown dataset: " + name, available: Object.keys(V1_SETS) } };
+  try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", ds.file), "utf8")) }; }
+  catch { return { code: 404, obj: { error: "dataset unavailable: " + name } }; }
+}
 const V1_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS", "Access-Control-Allow-Headers": "*" };
 function jsonCors(res, code, obj) { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300", ...V1_CORS }); res.end(JSON.stringify(obj)); }
 function v1Discovery(req) {
@@ -116,7 +125,7 @@ function v1Discovery(req) {
     description: "Open, read-only API for the London bus network: routes, stops, garages, fleet, tenders, reliability, collisions and low bridges. CORS-open, no key required.",
     attribution: "Derived from open sources — TfL Unified API, DfT/STATS19, London Datastore (EPOWR), DVLA VES, londonbusroutes.net. Respect the upstream licences when reusing.",
     livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — a separate, volatile endpoint (10s edge cache), not part of v1." },
-    endpoints: Object.entries(V1_SETS).map(([k, desc]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: desc })),
+    endpoints: Object.entries(V1_SETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
   };
 }
 
@@ -168,7 +177,7 @@ http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") { res.writeHead(204, { ...V1_CORS, "Access-Control-Max-Age": "86400" }); return res.end(); }
     const name = urlPath.slice("/api/v1/".length);
     if (!V1_SETS[name]) return jsonCors(res, 404, { error: "unknown dataset: " + name, available: Object.keys(V1_SETS) });
-    try { const { code, obj } = apiData(name); return jsonCors(res, code, obj); }
+    try { const { code, obj } = v1File(name); return jsonCors(res, code, obj); }
     catch (e) { return jsonCors(res, 500, { error: String(e.message || e) }); }
   }
 
