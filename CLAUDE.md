@@ -247,15 +247,20 @@ prod as follows — keep both in sync:
 What exists in `index.html` today — don't rebuild it, and keep it working:
 
 - **Map layers** (toggles in the topbar `#mapCtl`, persisted in settings *except*
-  the two noisy overlays): route lines · garages · stops · **live buses (BODS GPS)**
-  · **collisions (STATS19)**. Live + collisions **always start OFF each session**
-  (reset on load, not persisted-on); the user enables them explicitly, and when on
-  they scope to the selected/searched route(s). A contextual **Map key** legend
-  (`updateLegend`) labels every visible symbol.
+  the noisy overlays): route lines · garages · stops · **live buses (BODS GPS)** ·
+  **collisions (STATS19)** · **low bridges** (clearance-graded bridge-icon markers) ·
+  **live road incidents** (TfL Road Disruptions via `/api/v1/live/road-disruptions` —
+  collisions/breakdowns/delays/works/closures, category-coloured). Live · collisions ·
+  bridges · incidents **always start OFF each session** (reset on load, not persisted-on);
+  the user enables them explicitly, and when on they scope to the selected/searched
+  route(s). A contextual **Map key** legend (`updateLegend`) labels every visible symbol.
 - **Route dossier** (right rail, `renderContext`) — accordion `group()`s: Live ops ·
   **Route** (incl. a **Reliability** block — EWT/OTP vs MPS + % mileage, from
   `store.perf`) · **Risk & accidents** (collisions near the route: density, KSI,
-  severity split, by-year trend, hotspot boroughs — `sentinelBody`) · Fleet ·
+  severity split, by-year trend, hotspot boroughs — `sentinelBody`; plus a **low-bridge
+  diversion-risk** readout that flags bridges under the 4.4 m double-deck height near the
+  route, and a **user-set alert-proximity slider** (`riskRadius`, persisted) that drives
+  the collision + bridge corridors and re-scopes their map layers) · Fleet ·
   **Commercial** (tender history with **bid spread low–won–high**, previous-operator
   + win/loss flag, notes, contracted miles). Network view + catchment (Magnify) also
   carry a Risk & accidents readout.
@@ -339,6 +344,27 @@ can never block the Cloudflare site.
   (no committed cache churn) and runs don't cold-pull ~9000 DVLA lookups. A
   one-time seed of these is committed for the first warm run; everything else the
   pipeline regenerates is gitignored (`ingest/.gitignore`).
+
+## Every datapoint flows through to the warehouse AND the API (no dead ends)
+
+When you add or change a datapoint, field, or dataset, wire it end-to-end so it's
+reflected **automatically** everywhere downstream — never just in one place:
+
+- **Pipeline → store.** A new field is produced by a `build/<name>.js`, validated, and
+  written to `data/*.json` (the prod read layer) and mirrored into the warehouse
+  (`db-mirror.js` / Supabase ingest). If it's time-series, it accrues via CDC.
+- **Store → API.** It must be reachable through `/api/v1` — either it rides an existing
+  dataset (current group) or it gets a new endpoint. Add it to the prod Pages Function
+  **and** the `serve.js` dev mirror (keep them in sync), and list it in the `/api/v1`
+  discovery index. Live feeds → `/api/v1/live/*`; Supabase time-series → `/api/v1/history/*`.
+- **API → app + docs.** The app reads it via the `dataSource` seam (never a raw inline
+  fetch), and `README.md` (the public API reference) + this file are updated so the new
+  surface is documented. A datapoint that the warehouse holds but the API can't serve, or
+  that the API serves but the docs don't mention, is an incomplete change.
+
+Net: capture once, expose everywhere — the warehouse, the public API, the app, and the
+docs stay in lockstep. The default expectation for any data change is "is it queryable
+through `/api/v1` and documented?"
 
 ## Golden rule
 
