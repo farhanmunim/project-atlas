@@ -212,12 +212,21 @@ prod as follows — keep both in sync:
   warehouse output) ship as static assets. The store reader tries our public API
   `/api/v1/*` first, then falls back to `./data/*.json`. The `data/*.db` warehouse is
   gitignored and **not** deployed (JSON is the prod read layer).
-- **Public API** — `/api/v1/*` is our own open, versioned, CORS-open read API over the
-  warehouse (no key; GET only; discovery at `/api/v1`). In prod it's the Pages Function
-  [`functions/api/v1/[[path]].js`] (re-serving the static `data/*.json` with CORS + edge
-  cache); in dev `serve.js` mirrors it (DB-backed). Same dataset names + shapes — keep
-  the two in sync. The app consumes this API; it's also documented in `README.md` for
-  external reuse. Real-time GPS stays separate at `/api/live/vehicles` (volatile, keyed).
+- **Public API** — `/api/v1/*` is our own open, versioned, CORS-open read API (no key;
+  GET only; discovery at `/api/v1`, which lists three groups). The app consumes it; it's
+  documented in `README.md` for external reuse. Keep the prod Pages Functions and the
+  `serve.js` dev mirror in sync.
+  - **current** — `/api/v1/<dataset>` re-serves the static `data/*.json`
+    ([`functions/api/v1/[[path]].js`]; dev reads the same files).
+  - **live** — `/api/v1/live/*` proxies TfL (status · disruptions · arrivals ·
+    road-disruptions) ([`functions/api/v1/live/[[path]].js`]), keyless, edge-cached.
+    Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
+  - **history** — `/api/v1/history/*` serves the Supabase time-series (reliability-daily ·
+    performance-history · schedule · tender-programme · vehicle-sightings)
+    ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
+    filters + capped page size); `SUPABASE_URL` + `SUPABASE_KEY` (anon key + RLS read
+    policies) are server-side Cloudflare secrets, never shipped. See README "Historical
+    API setup". Returns 503 (not 502) when unconfigured; live + current still work.
 - **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
   It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
   push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
@@ -267,7 +276,16 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
-  overwrite last-good.
+  overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
+  the warehouse lands already-clean: `cleanMake` (DVLA ALL-CAPS chassis → tidy brand),
+  `propulsionOf` (fuelType → electric/hybrid/hydrogen/diesel/gas, incl. the DVLA edge
+  cases — but DVLA reports most hybrids as plain diesel, so route-meta/londonbusroutes
+  stays the hybrid authority), and `canonicalOperator` (+ `operator-aliases.json`) which
+  rolls messy tender operator variants up to the parent brand (raw kept on `operatorRaw`;
+  the append-only `byId` tender cache is never mutated). **DVLA fleet enrichment**
+  (`sources/dvla.js`) pre-validates UK VRMs, caches hits + misses, is per-run-capped +
+  429-backed-off, and `build/fleet.js` backfills every rostered reg (not just those
+  running this minute) so new plates fill in regardless of timing.
 
 > **"Sentinel"** is the **legacy internal name** for the accidents/risk layer — it must
 > NOT appear in any user-facing copy (only in code comments / function names).
