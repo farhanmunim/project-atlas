@@ -2462,7 +2462,9 @@ function init(){
 
   document.getElementById("refresh").addEventListener("click",refreshAll);
   // hydrate map display prefs + wire the control bar
-  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = !!settings.showLive; showAccidents = !!settings.showAccidents; colorMode = settings.colorMode || "type"; syncMapCtl();
+  // Live vehicles + collisions are noisy overlays — always start OFF each session; the user
+  // turns them on explicitly (not persisted as "on" across reloads). Other layers persist.
+  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k;
     // display toggles are global overrides — they re-paint in place and must NOT
