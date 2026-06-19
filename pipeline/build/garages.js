@@ -55,13 +55,29 @@ export async function build(ctx) {
       pvr: g.pvr, capacity: cap, utilisation, routes: g.routes };
   });
 
+  // Drop stale duplicate garages: a garage with NO routes sitting on top of (<150 m) an
+  // active route-serving garage is a historical/duplicate listing — e.g. Ash Grove is
+  // still listed under its former Arriva code (AE) while Stagecoach now runs it as HK.
+  // Genuine out-of-area depots (no routes, but not co-located with an active garage) stay.
+  const near = (a, b) => { const R = 6371000, toR = (d) => (d * Math.PI) / 180;
+    const dl = toR(b.lat - a.lat), dn = toR(b.lng - a.lng);
+    const x = Math.sin(dl / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dn / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x)); };
+  const routed = out.filter((g) => g.routes && g.routes.length && g.lat != null);
+  const deduped = out.filter((g) => {
+    if ((g.routes && g.routes.length) || g.lat == null) return true;
+    const dup = routed.find((r) => r.code !== g.code && near(g, r) < 150);
+    if (dup) { log.info(`garages: dropped stale duplicate ${g.code} (${g.operator}) — co-located with active ${dup.code} (${dup.operator}, ${dup.name})`); return false; }
+    return true;
+  });
+
   // London has ~88 garages; floor catches a garages.csv outage. notAllNull on lat
   // ensures an all-failed-geocode run can't overwrite good coordinates (garages are
   // kept without coords by design, but ALL coords going null is an outage, not design).
-  rowsWithin(out, 50, undefined, "garages");
-  notAllNull(out, "lat", "garages");
-  await sink.writeDataset("garages", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net + postcodes.io", garages: out });
-  const withCap = out.filter((g) => g.capacity != null).length;
-  log.info(`garages: ${out.length} (${placed} geocoded · ${overridden} override · ${fromCompany} company-addr fallback · ${withCap} with capacity)`);
-  return { source: "londonbusroutes.net garages.csv + postcodes.io", rows: out.length, files: ["data/garages.json"], note: `${placed} geocoded${overridden?`, ${overridden} override`:""}` };
+  rowsWithin(deduped, 50, undefined, "garages");
+  notAllNull(deduped, "lat", "garages");
+  await sink.writeDataset("garages", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net + postcodes.io", garages: deduped });
+  const withCap = deduped.filter((g) => g.capacity != null).length;
+  log.info(`garages: ${deduped.length} (${placed} geocoded · ${overridden} override · ${fromCompany} company-addr fallback · ${withCap} with capacity · ${out.length - deduped.length} stale dupes dropped)`);
+  return { source: "londonbusroutes.net garages.csv + postcodes.io", rows: deduped.length, files: ["data/garages.json"], note: `${placed} geocoded${overridden?`, ${overridden} override`:""}` };
 }

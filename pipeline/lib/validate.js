@@ -43,8 +43,3 @@ export function notAllNull(arr, field, label = "rows") {
   check(someValue, `${label}: column "${field}" is entirely null`);
   return arr;
 }
-
-export function finiteNumber(n, label) {
-  check(typeof n === "number" && Number.isFinite(n), `${label}: not a finite number (${n})`);
-  return n;
-}
