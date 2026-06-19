@@ -2103,8 +2103,12 @@ function renderContext(){
             crossLink(`latest award per route · full tender market history`))
           : metricBlock(`Award £/mile (${zoneLbl})`,`<div class="empty" style="padding:6px 0">No tender award data for these routes.</div>`)),
         costs.length?money(med).replace(/<[^>]+>/g,""):"")+
-      group("zonesafety","Safety","var(--alert)",
-        metricBlock(`Accidents (${zoneLbl})`,`<div class="empty" style="padding:6px 0">Accident stats land with the accidents layer (TfL Bus Safety Data).</div>`))+
+      group("zonesafety","Risk & accidents","var(--alert)", (()=>{
+        const data=accidentsData();
+        if(!data||!pin) return `<div class="metric"><div class="empty" style="padding:6px 0">No accident data loaded.</div></div>`;
+        const rkm=radius/1000, inzone=(data.accidents||[]).filter(a=>haversine([pin.lat,pin.lng],[a.lat,a.lng])<=rkm);
+        return `<div class="metric">${sentinelBody(inzone,data,`within ${fmtDist(rkm)} of the pin`)}</div>`;
+      })())+
       group("zoneroutes", near?"Nearest routes & stops":"Routes & stops","var(--cyan)",
         metricBlock(`${near?"Nearest routes":"Routes in zone"} <span class="mono">${lines.length}</span>`, lines.length?routePillsHtml(lines):'<div class="empty" style="padding:6px 0">No routes nearby.</div>')+
         metricBlock(`${near?"Nearest stops":"Stops"} <span class="mono">${stops.length}</span>`,
