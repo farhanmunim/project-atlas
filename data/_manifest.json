@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:00:54.502Z",
+  "generatedAt": "2026-06-20T07:07:47.932Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-19T08:39:50.763Z",
+      "fetchedAt": "2026-06-20T07:07:47.433Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-19T08:39:51.275Z",
+      "fetchedAt": "2026-06-20T07:07:47.932Z",
       "status": "ok",
-      "rows": 13371,
+      "rows": 13498,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 88 (88△); fleet 676 (676△); vehicle 6078 (6078△); line_status 676 (676△); route_geometry 1315 (1315△)"
+      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6207 (6207△); line_status 676 (676△); route_geometry 1315 (1315△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
