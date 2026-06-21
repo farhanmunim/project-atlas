@@ -369,6 +369,8 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .maplegend .lh:not(:first-child){margin-top:10px}
 .maplegend .lc-dot{width:9px;height:9px;border-radius:50%}
 .maplegend .lc-tri{width:0;height:3px;background:transparent;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:9px solid currentColor;border-radius:0}
+.maplegend .lc-ico{width:16px;height:16px;border-radius:50%;background:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;border:1.5px solid currentColor}
+.maplegend .lc-ico svg{width:10px!important;height:10px!important}
 
 /* ============================ RIGHT RAIL ============================ */
 .rail-right{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;min-height:0}
@@ -1314,14 +1316,16 @@ function updateLegend(){
   if(showAccidents) sym.push(
     `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Collisions · fewer</div>`,
     `<div class="lr"><span class="lc lc-dot" style="background:#ff2d55"></span>Collisions · more <span style="color:var(--paper-3)">(size ∝ count)</span></div>`);
-  if(showBridges) sym.push(
-    `<div class="lr"><span class="lc lc-dot" style="background:#ff2d55"></span>Low bridge · below 4.4 m <span style="color:var(--paper-3)">(double-deck)</span></div>`,
-    `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Low bridge · 4.4–5.0 m</div>`,
-    `<div class="lr"><span class="lc lc-dot" style="background:#3fb87a"></span>Bridge · 5.0 m+</div>`);
-  if(showIncidents) sym.push(
-    `<div class="lr"><span class="lc lc-dot" style="background:#ff5470"></span>Road incident · collision</div>`,
-    `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Road incident · delay / breakdown</div>`,
-    `<div class="lr"><span class="lc lc-dot" style="background:#37c5c5"></span>Road incident · works / event</div>`);
+  if(showBridges){ const lcB=c=>`<span class="lc lc-ico" style="color:${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V9M21 20V9M3 9h18M3 13c4-3 6-3 9 0s5 3 9 0"/></svg></span>`;
+    sym.push(
+    `<div class="lr">${lcB("#ff2d55")}Low bridge · below 4.4 m <span style="color:var(--paper-3)">(double-deck)</span></div>`,
+    `<div class="lr">${lcB("#f5a524")}Low bridge · 4.4–5.0 m</div>`,
+    `<div class="lr">${lcB("#3fb87a")}Bridge · 5.0 m+</div>`); }
+  if(showIncidents){ const lcI=c=>`<span class="lc lc-ico" style="color:${c}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></span>`;
+    sym.push(
+    `<div class="lr">${lcI("#ff5470")}Road incident · collision</div>`,
+    `<div class="lr">${lcI("#f5a524")}Road incident · delay / breakdown</div>`,
+    `<div class="lr">${lcI("#37c5c5")}Road incident · works / event</div>`); }
   if(sym.length) parts.push("<div class='lh'>Map key</div>"+sym.join(""));
   if(!parts.length){ el.classList.remove("show"); el.innerHTML=""; return; }
   el.innerHTML=parts.join(""); el.classList.add("show");
