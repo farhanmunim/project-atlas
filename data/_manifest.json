@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-20T07:07:47.932Z",
+  "generatedAt": "2026-06-21T08:10:57.812Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-20T07:07:47.433Z",
+      "fetchedAt": "2026-06-21T08:10:57.414Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-20T07:07:47.932Z",
+      "fetchedAt": "2026-06-21T08:10:57.812Z",
       "status": "ok",
-      "rows": 13498,
+      "rows": 10535,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6207 (6207△); line_status 676 (676△); route_geometry 1315 (1315△)"
+      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 3244 (3244△); line_status 676 (676△); route_geometry 1315 (1315△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -59,25 +59,25 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-06-19T17:27:41.735Z",
+      "fetchedAt": "2026-06-21T08:10:52.819Z",
       "status": "ok",
       "rows": 676,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "533 routes with vehicles, DVLA-enriched"
+      "note": "520 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache",
-      "fetchedAt": "2026-06-19T18:00:54.201Z",
+      "fetchedAt": "2026-06-21T08:10:52.840Z",
       "status": "ok",
-      "rows": 6207,
+      "rows": 3244,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · derived from fleet (no API calls)",
-      "note": "6 multi-route"
+      "note": "0 multi-route"
     },
     "tenders": {
       "status": "ok",
