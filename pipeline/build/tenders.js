@@ -16,6 +16,24 @@ import { check } from "../lib/validate.js";
 import { canonicalOperator } from "../lib/normalize.js";
 
 function parseDate(s) { if (!s) return 0; const t = Date.parse(s); return Number.isNaN(t) ? 0 : t; }
+
+/**
+ * Re-clean a cached award. Award pages are fetched once and frozen in `byId`, so a
+ * parser fix never reaches already-cached records — this pure, idempotent pass runs
+ * on EVERY build and clamps out-of-range values that an older/buggier parser left
+ * behind (multi-figure bid cells smashed into astronomical numbers; cost-per-mile
+ * cells that hold the full annual bid). Out-of-range → null, never a fake value.
+ */
+const inRange = (v, lo, hi) => (typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null);
+export function cleanAward(a) {
+  return {
+    ...a,
+    acceptedBid: inRange(a.acceptedBid, 1000, 50_000_000),
+    lowestBid: inRange(a.lowestBid, 1000, 50_000_000),
+    highestBid: inRange(a.highestBid, 1000, 50_000_000),
+    costPerMile: inRange(a.costPerMile, 0, 200),
+  };
+}
 function routeKeys(routeText) {
   // "1/N1" → ["1","N1"]; "24" → ["24"]
   return routeText.split(/[\/,]/).map((s) => s.trim()).filter(Boolean);
@@ -44,6 +62,10 @@ export async function build(ctx) {
     } catch (e) { fail++; }
     if (++done % 200 === 0 || done === todo.length) log.info(`  fetched ${done}/${todo.length} (ok ${ok}, fail ${fail})`);
   });
+
+  // Self-heal cached records against the current cleaning rules before regrouping,
+  // so a parser fix retroactively corrects awards fetched by an older parser.
+  for (const id of Object.keys(byId)) byId[id] = cleanAward(byId[id]);
 
   // regroup everything by route, newest-first
   const byRoute = {};

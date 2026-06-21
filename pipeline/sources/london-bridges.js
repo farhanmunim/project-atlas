@@ -287,7 +287,12 @@ export async function fetchLondonBridges({ bbox = LONDON_BBOX, timeoutMs, log } 
     if (!inBbox(lng, lat, bbox)) continue;
 
     const heightImperial = (row[COL.heightImp] && String(row[COL.heightImp]).trim()) || null;
-    const heightM = heightToMetres(row[COL.heightM]) ?? heightToMetres(heightImperial);
+    // Conservative clearance: when the source's metric and imperial columns disagree
+    // (the metric band-bound is often rounded UP, e.g. 15'0"=4.572 m shown as "4.6"),
+    // take the TIGHTER reading — a strike-avoidance figure must never overstate headroom.
+    const hMetric = heightToMetres(row[COL.heightM]);
+    const hImp = heightToMetres(heightImperial);
+    const heightM = (hMetric != null && hImp != null) ? Math.min(hMetric, hImp) : (hMetric ?? hImp);
     const road = (row[COL.road] && String(row[COL.road]).trim()) || null;
     const roadNo = (row[COL.roadNo] && String(row[COL.roadNo]).trim()) || null;
     const borough = (row[COL.borough] && String(row[COL.borough]).trim()) || null;

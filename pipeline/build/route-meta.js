@@ -23,8 +23,13 @@ function propFromVehicle(v) {
   if (!v) return null;
   const s = v.toLowerCase();
   if (/hydrogen|fuel ?cell|fcev|hydroliner/.test(s)) return "hydrogen";
-  if (/\bbev\b|electric|\bev\b|\bbyd\b|enviro400 ?ev|e40ev|electroliner|e-?bus/.test(s)) return "electric";
-  if (/\blh\b|hybrid|new bus for london|nbfl|\bh\b|b5lh|e40h|mmc h/.test(s)) return "hybrid";
+  // EV marker must tolerate a digit prefix ("E100EV", "200EV", "Enviro100EV") — the
+  // old \bev\b had no word boundary after a digit, so battery models like the
+  // Enviro100EV fell through to diesel. (?<![a-z]) keeps it from matching "prev"/"rev".
+  if (/\bbev\b|electric|(?<![a-z])ev\b|\bbyd\b|enviro ?\d* ?ev|e\d+ev|electroliner|e-?bus/.test(s)) return "electric";
+  // NB: no bare \bh\b here — it over-matches a stray "H" token. The real hybrid
+  // suffixes (B5LH, E40H, MMC H, …LH) are each matched explicitly.
+  if (/\blh\b|hybrid|new bus for london|nbfl|b5lh|e40h|mmc h/.test(s)) return "hybrid";
   return "diesel";
 }
 

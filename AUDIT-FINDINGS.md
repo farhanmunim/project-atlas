@@ -66,3 +66,32 @@ onConflict keys / idempotency / BUS_API_KEY bridge / heartbeat anti-pause / hard
 ### Where Atlas already leads london-buses (keep)
 Derived network analysis (route role, sinuosity, interchange intensity, corridor overlap),
 live operations + diversion panel, and garage utilisation — all richer than the predecessor.
+
+---
+
+## 2026-06-21 — Data-correctness audit pass (fix log)
+
+Adversarial re-audit focused on data we fetch/clean/output (app · CSV · `/api/v1`),
+each finding VERIFIED against committed source data before fixing. Every parser fix is
+paired with a one-time correction of the committed `data/*.json` (append-only/incremental
+stores never re-fetch); the fixed builders reproduce the corrected values on next run.
+
+| Area | Finding (VERIFIED) | Fix | Severity |
+|---|---|---|---|
+| Tenders | `num()` concatenated multi-figure bid cells → 103 bids >£50M (one 5.68×10²⁰) + 5 cpm >£200 | `bidMoney()` leading-token + £1k–£50M clamp; `cleanAward()` re-cleans `byId` each build; `tenders.json` purged | CRITICAL |
+| Route-meta | `\bev\b` missed `E100EV`/`Enviro100EV` → 7 electric routes shown diesel (233,322,R3,R8,W12,B14,G1) | digit-tolerant EV marker; dropped over-matching `\bh\b`; `route-meta.json` re-derived | HIGH |
+| Performance | 28 high-freq rows had `awtMinutes < swt` (AWT≡SWT+EWT impossible) | `reconcileAwt()` trusts the identity on mis-align; `route-performance.json` reconciled | HIGH |
+| Bridges | metric band-bound rounds clearance UP (15'0"=4.572 m → "4.6") — overstates headroom | take tighter of metric/imperial; 733 tightened (0 cross 4.4 m) | MEDIUM |
+| Fleet | missing `gas` propulsion bucket → `undefined++`=`NaN` when a CNG bus is rostered | add `gas:0` bucket | MEDIUM |
+| API | history `order=` allowed ANY column (schema probing); PostgREST error body echoed; `serve.js` could use RLS-bypass service-role key | whitelist `order` to exposed columns; drop error passthrough; serve.js anon-key only | MEDIUM |
+| Store | `Buffer.byteLength(file)` measured the path, not the content | measure `text` | LOW |
+| App | theme ignored OS pref; CSV view missing Reliability col + wrong order; catchment Area hardcoded km²; live legend wrong in multi mode; stale "(soon)" copy; misleading "bid range" label | all fixed (`effectiveTheme`, `exportCurrent`, `fmtArea`, `updateLegend`, copy) | LOW–MED |
+
+### Documented limitation (not changed — faithful to source by design)
+- **Fleet propulsion mix reports 0 hybrids network-wide.** The per-vehicle mix in
+  `fleet.json` is DVLA-VES-sourced, and DVLA registers most series/parallel hybrids as
+  plain `DIESEL`. This is *faithful to DVLA* but understates hybrids; the route-level
+  **Route panel** correctly shows `hybrid` (from the londonbusroutes fleet-code authority
+  via `route-meta`). The two panels measure different things. Closing the gap needs a
+  per-reg hybrid authority (not currently available) — tracked, not patched, to avoid
+  substituting a heuristic guess for the honest DVLA figure.

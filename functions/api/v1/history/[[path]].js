@@ -88,7 +88,12 @@ export async function onRequest(context) {
   }
   let limit = parseInt(q.get("limit"), 10);
   limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, MAX_LIMIT) : DEFAULT_LIMIT;
-  const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
+  // `order` is whitelisted to columns this endpoint already exposes (its filter columns
+  // + the default-order column), not just shape-validated — so a caller can't order by
+  // (and thereby probe) arbitrary table columns.
+  const orderCols = new Set([ep.defaultOrder.split(".")[0], ...Object.values(ep.filters).map(([c]) => c)]);
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(q.get("order") || "");
+  const order = om && orderCols.has(om[1]) ? `${om[1]}.${om[2]}` : ep.defaultOrder;
   parts.push(`order=${order}`, `limit=${limit}`);
 
   // Use only the origin of SUPABASE_URL, so a pasted trailing path/slash (e.g. ".../rest/v1")
@@ -101,7 +106,7 @@ export async function onRequest(context) {
   try {
     const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     const body = await r.text();
-    if (!r.ok) return json({ error: `historical query failed (${r.status})`, detail: body.slice(0, 300) }, { status: r.status === 404 ? 404 : 502 });
+    if (!r.ok) return json({ error: `historical query failed (${r.status})` }, { status: r.status === 404 ? 404 : 502 });
     let rows; try { rows = JSON.parse(body); } catch { return json({ error: "historical store returned non-JSON", detail: body.slice(0, 200) }, { status: 502 }); }
     return json({ dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows });
   } catch (e) {

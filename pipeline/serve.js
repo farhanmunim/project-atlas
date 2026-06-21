@@ -167,12 +167,16 @@ async function serveLive(req, res, name) {
 }
 async function serveHistory(req, res, name) {
   const ep = HIST_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown history dataset: " + name, available: Object.keys(HIST_EP) });
-  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Mirror prod: anon/read key only — never the service-role key (it bypasses RLS).
+  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!base || !key) return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
   const q = new URL(req.url, "http://x").searchParams; const parts = [];
   for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
   let limit = parseInt(q.get("limit"), 10); limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
-  const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
+  // whitelist order to this endpoint's exposed columns (matches the prod Function)
+  const orderCols = new Set([ep.defaultOrder.split(".")[0], ...Object.values(ep.filters).map(([c]) => c)]);
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(q.get("order") || "");
+  const order = om && orderCols.has(om[1]) ? `${om[1]}.${om[2]}` : ep.defaultOrder;
   parts.push(`order=${order}`, `limit=${limit}`);
   let supaOrigin; try { supaOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "SUPABASE_URL is not a valid URL" }); }
   const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;

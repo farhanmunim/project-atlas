@@ -28,6 +28,15 @@ const SOURCE = "TfL Bus Performance (QSI) + per-route MPS PDFs";
 const MPS_CACHE = "route-mps-cache"; // sidecar dataset (the MPS sticky cache)
 const MPS_TTL_MS = 28 * 86_400_000;  // re-check each TfL period (~4 weeks)
 
+/** AWT ≡ SWT + EWT. Use the parsed AWT when it agrees with the identity (rounding
+ *  aside); otherwise the cell mis-aligned — recompute it so AWT is never < SWT. */
+function reconcileAwt(awt, swt, ewt) {
+  if (swt == null || ewt == null) return awt ?? null;
+  const derived = Math.round((swt + ewt) * 10) / 10;
+  if (awt == null || Math.abs(awt - derived) > 0.2) return derived;
+  return awt;
+}
+
 export async function build(ctx) {
   const { sink, log, args } = ctx;
 
@@ -114,7 +123,10 @@ export async function build(ctx) {
       serviceClass: h.serviceClass ?? (mpsOk ? m.service_class : null) ?? null,
       ewtMinutes: h.ewtMinutes ?? null,
       swtMinutes: h.swtMinutes ?? null,
-      awtMinutes: h.awtMinutes ?? null,
+      // AWT ≡ SWT + EWT by definition. The QSI PDF's AWT column occasionally mis-aligns
+      // (a handful of rows land an impossible AWT < SWT). Trust the identity over the
+      // raw cell when they disagree beyond rounding — keep the published value otherwise.
+      awtMinutes: reconcileAwt(h.awtMinutes, h.swtMinutes, h.ewtMinutes),
       onTimePercent: h.onTimePercent ?? null,
       mileagePercent: mpsOk ? (m.mileage_operated_latest_percent ?? null) : null,
       ewtMps: mpsOk ? (m.ewt_mps_minutes ?? null) : null,

@@ -64,7 +64,9 @@ export async function build(ctx) {
   for (const k of Object.keys(byRoute)) {
     const e = byRoute[k];
     if (enriched && e.regs.length) {
-      const prop = { electric: 0, hydrogen: 0, hybrid: 0, diesel: 0 };
+      // include `gas` — propulsionOf() can return it (CNG/biogas); an absent bucket
+      // would make prop[p]++ do undefined++ → NaN and corrupt the mix.
+      const prop = { electric: 0, hydrogen: 0, hybrid: 0, diesel: 0, gas: 0 };
       const makes = {}; let ageSum = 0, ageN = 0;
       for (const reg of e.regs) {
         const v = cache[reg]; if (!v) continue;

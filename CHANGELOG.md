@@ -5,6 +5,42 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-06-21 — Data-correctness audit pass
+
+Adversarial audit of the data we fetch, clean, and output (app · CSV · `/api/v1`),
+cross-checked against the committed source data. Each pipeline fix is paired with a
+one-time correction of the already-committed `data/*.json` (the prod read layer), since
+several stores are append-only/incremental and never re-fetch.
+
+- **Tender bids — corrupt values purged.** `num()` stripped all non-digits, so a bid
+  cell holding more than one figure concatenated into an astronomical number (103 bid
+  values >£50M, e.g. a £5.68×10²⁰ "lowest bid"; 5 cost-per-mile cells >£200). New
+  `bidMoney()` takes only the leading monetary token + a £1k–£50M sanity clamp;
+  `cleanAward()` re-cleans the frozen `byId` cache on every build so parser fixes reach
+  old records. `tenders.json` rebuilt clean (genuine joint-bid sub-range awards kept).
+- **Propulsion — electric buses no longer shown as diesel.** `propFromVehicle`'s `\bev\b`
+  failed on digit-glued models (`E100EV`, `Enviro100EV`) → 7 routes (233, 322, R3, R8,
+  W12, B14, G1) mislabelled diesel. Fixed the EV marker and dropped the over-matching
+  bare `\bh\b` hybrid token; `route-meta.json` re-derived.
+- **Performance — impossible AWT fixed.** 28 high-frequency rows had `awtMinutes < swt`
+  (AWT ≡ SWT + EWT). `reconcileAwt()` trusts the identity when the parsed cell mis-aligns;
+  `route-performance.json` reconciled.
+- **Bridges — conservative clearance.** Height now takes the *tighter* of the metric/
+  imperial columns (the metric band-bound rounds up, e.g. 15'0"=4.572 m shown as 4.6) —
+  a strike-avoidance figure must never overstate headroom. 733 bridges tightened (none
+  crossed the 4.4 m double-deck threshold; no flag change).
+- **Fleet — gas propulsion bucket** added (`propulsionOf` can return `gas`; the missing
+  bucket would `undefined++` → `NaN`).
+- **API hardening.** History `order=` is now whitelisted to each endpoint's exposed
+  columns (was any column → schema probing); PostgREST error bodies no longer echoed;
+  `serve.js` no longer falls back to the RLS-bypassing service-role key (matches prod).
+- **App.** Theme defaults to OS `prefers-color-scheme` on first visit; CSV "view" export
+  now includes the Reliability column and matches table column order; catchment Area
+  honours mi/km units (`fmtArea`); live-bus legend shows per-route colour in multi mode;
+  stale "(soon) accident stats" copy and the misleading "bid range" label corrected.
+
+---
+
 ## 2026-06-18 — Diversions layer
 
 Live diversions/disruptions now surface on a selected route. A new seam method

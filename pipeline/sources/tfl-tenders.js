@@ -37,6 +37,23 @@ const money = (s) => {
   if (!/^-?\d+(?:\.\d+)?$/.test(cleaned)) return null;
   return parseFloat(cleaned);
 };
+
+/**
+ * Bid-cell parser. TfL's bid columns sometimes carry MORE than one figure in a
+ * single cell (a joint-bid total, per-variant bids, a footnote). The old all-digit
+ * strip concatenated them into one astronomical number (e.g. "5,682,000 6,334,000"
+ * → 56820006334000), which then surfaced as a nonsense headline bid. So take only
+ * the LEADING monetary token, parse it with money() (handles '6,25'→6.25), and
+ * sanity-clamp to a plausible annual-contract range — anything outside is a
+ * column/format mix-up → null rather than a £-quintillion bid.
+ */
+const BID_MIN = 1000, BID_MAX = 50_000_000;
+const bidMoney = (s) => {
+  if (s == null) return null;
+  const m = String(s).replace(/&pound;/g, "£").match(/£?\s*(-?\d[\d,]*(?:\.\d+)?)/);
+  const v = m ? money(m[1]) : null;
+  return v != null && v >= BID_MIN && v <= BID_MAX ? v : null;
+};
 const WORD_NUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10 };
 
 /** Every award event as { btID, route } (route text e.g. "1/N1"). */
@@ -67,9 +84,9 @@ export async function fetchTenderResult(btID, opts = {}) {
     btID, route,
     operator: after("Successful Tenderer"),
     numberOfTenderers: tenderersRaw ? (WORD_NUM[tenderersRaw.toLowerCase()] ?? num(tenderersRaw)) : null,
-    acceptedBid: num(after("Accepted Bid")),
-    lowestBid: num(after("Lowest Individual Compliant Bid")),
-    highestBid: num(after("Highest Individual Compliant Bid")),
+    acceptedBid: bidMoney(after("Accepted Bid")),
+    lowestBid: bidMoney(after("Lowest Individual Compliant Bid")),
+    highestBid: bidMoney(after("Highest Individual Compliant Bid")),
     // Sanity-clamp cost per mile: TfL's form sometimes pastes the full annual bid
     // into this cell instead of the per-mile rate. Real rates span ~£3-15 (and up
     // to ~£100 for school routes); anything outside 0-200 is a column mix-up → null

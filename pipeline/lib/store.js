@@ -40,8 +40,9 @@ const fsSink = {
   /** name → /data/<name>.<ext>. `pretty` only for small/diffable files. */
   async writeDataset(name, data, { ext = "json", pretty = false } = {}) {
     const file = path.join(DATA_DIR, `${name}.${ext}`);
-    atomicWrite(file, pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data));
-    return { file: path.relative(ROOT, file), bytes: Buffer.byteLength(file) };
+    const text = pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data);
+    atomicWrite(file, text);
+    return { file: path.relative(ROOT, file), bytes: Buffer.byteLength(text) };
   },
   /** Read a previously-written dataset, or null (used for last-good fallback). */
   async readDataset(name, { ext = "json" } = {}) {

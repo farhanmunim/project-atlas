@@ -1068,7 +1068,7 @@ let riskRadiusTimer=null;
    THEME / FORMAT
    =========================================================================== */
 const prefersDark=window.matchMedia("(prefers-color-scheme: dark)");
-function effectiveTheme(){ return settings.theme || "light"; }   // light by default on first visit; user choice persists
+function effectiveTheme(){ return settings.theme || (prefersDark.matches ? "dark" : "light"); }   // OS preference on first visit; user choice persists
 function applyTheme(){ const t=effectiveTheme(); document.documentElement.setAttribute("data-theme",t);
   document.querySelector('meta[name="color-scheme"]').setAttribute("content",t==="dark"?"dark light":"light dark");
   document.getElementById("themeBtn").setAttribute("aria-pressed",String(t==="light")); syncSettingsUI();
@@ -1086,6 +1086,7 @@ function ingest(entityType, items){
   try{ fetch("/ingest", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ entityType, kind:"live", items }) }).catch(()=>{}); }catch(e){}
 }
 function fmtDist(km){ if(settings.units==="mi"){ const mi=km*0.621371; return mi.toFixed(mi<10?2:1)+" mi"; } return km.toFixed(km<10?2:1)+" km"; }
+function fmtArea(km2){ if(settings.units==="mi"){ const mi2=km2*0.386102; return mi2.toFixed(2)+" mi²"; } return km2.toFixed(2)+" km²"; }
 // distance as a KPI value with the unit set small/subordinate (e.g. 14.9 km → 14.9 ᵏᵐ)
 function distVU(km){ const s=fmtDist(km); const i=s.lastIndexOf(" "); return i<0?s:`${s.slice(0,i)}<span class="u">${s.slice(i+1)}</span>`; }
 // All user-facing dates render DD/MM/YYYY (en-GB). Handles en-GB DD/MM/YY(YY) EXPLICITLY
@@ -1309,9 +1310,15 @@ function updateLegend(){
   }
   // ── map key (symbols) — only the overlays currently visible ──
   const sym=[];
-  if(showLive && trackingOn()) sym.push(
-    `<div class="lr"><span class="lc lc-tri" style="color:var(--cyan)"></span>Outbound bus · live</div>`,
-    `<div class="lr"><span class="lc lc-tri" style="color:var(--amber)"></span>Inbound bus · live</div>`);
+  if(showLive && trackingOn()){
+    // In multi-route mode live buses are coloured per route (matching the Routes key
+    // above), not by direction — so don't show a direction key that won't match.
+    if(selectMode==="multi" && selected.length>=2) sym.push(
+      `<div class="lr"><span class="lc lc-tri" style="color:var(--paper)"></span>Live bus · coloured by route</div>`);
+    else sym.push(
+      `<div class="lr"><span class="lc lc-tri" style="color:var(--cyan)"></span>Outbound bus · live</div>`,
+      `<div class="lr"><span class="lc lc-tri" style="color:var(--amber)"></span>Inbound bus · live</div>`);
+  }
   if(showStops && selected.length) sym.push(`<div class="lr"><span class="lc lc-dot" style="background:var(--paper)"></span>Bus stop</div>`);
   if(showAccidents) sym.push(
     `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Collisions · fewer</div>`,
@@ -2213,7 +2220,7 @@ function renderContext(){
   if(ctxView.type==="operator"){ el.innerHTML=operatorDetailHtml(ctxView.op); return; }
   if(ctxView.type==="garage"){ el.innerHTML=garageDetailHtml(ctxView.code); return; }
   if(mode==="catch"){
-    if(!pin){ el.innerHTML=ctxHead("Magnify","drop a pin")+`<div class="empty">Drop a pin and set its radius — Magnify zooms into that zone: every route &amp; stop within reach, the tender-cost spread, and (soon) accident stats.</div>`; return; }
+    if(!pin){ el.innerHTML=ctxHead("Magnify","drop a pin")+`<div class="empty">Drop a pin and set its radius — Magnify zooms into that zone: every route &amp; stop within reach, the tender-cost spread, and accident stats.</div>`; return; }
     const stops=currentNear?currentNear.stops:[]; const lineSet=new Set(); stops.forEach(s=>(s.lines||[]).forEach(l=>lineSet.add(l)));
     const lines=[...lineSet].sort(cmpRoute);
     const near=!!(currentNear&&currentNear.nearestOnly), closest=stops[0]&&stops[0]._dist;
@@ -2229,7 +2236,7 @@ function renderContext(){
       group("zone", near?"Nearest":"In this zone","var(--green)",
         metricBlock("Coverage",
           metrics([ mcard("Routes",lines.length,near?"nearby":""), mcard("Stops",stops.length,near?"nearby":"") ])+
-          `<div style="margin-top:var(--s3)">`+kv("Pin",`${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`)+kv("Radius",fmtDist(radius/1000))+(near&&closest?kv("Closest stop",fmtDist(closest/1000)):kv("Area",`${(Math.PI*(radius/1000)**2).toFixed(2)} km²`))+`</div>`),
+          `<div style="margin-top:var(--s3)">`+kv("Pin",`${pin.lat.toFixed(4)}, ${pin.lng.toFixed(4)}`)+kv("Radius",fmtDist(radius/1000))+(near&&closest?kv("Closest stop",fmtDist(closest/1000)):kv("Area",fmtArea(Math.PI*(radius/1000)**2)))+`</div>`),
         near?`nearest ${lines.length}`:`${lines.length} routes`)+
       group("zonetender","Tender cost","var(--amber)",
         (costs.length?
@@ -2354,7 +2361,7 @@ function renderContext(){
       ${tenders.slice(0,8).map(a=>{ const jb=isJointBid(a), mi=contractedMiles(a); const cpm=(a.costPerMile>0&&a.costPerMile<=200)?a.costPerMile:null; return `<div class="cmp" style="border-bottom:1px solid var(--line)">
         <div style="flex:1;min-width:0"><div style="font-weight:600">${esc(a.operator)||"—"}</div>
           <div style="font-size:10px;color:var(--paper-3);font-family:var(--mono)">${a.awardDate?esc(fmtDate(a.awardDate)):"—"} · ${a.numberOfTenderers??"?"} bid${a.numberOfTenderers===1?"":"s"} · <span${jb&&a.jointBid?` title="${esc(a.jointBid)}"`:""}>${jb?"joint bid":"sole bid"}</span></div>
-          ${(a.lowestBid||a.highestBid)?`<div style="font-size:9.5px;color:var(--paper-4);font-family:var(--mono);margin-top:2px" title="lowest – highest individual compliant bid (per annum); winning bid shown right">bid range ${a.lowestBid?fmtMoneyShort(a.lowestBid):"?"} – ${a.highestBid?fmtMoneyShort(a.highestBid):"?"}</div>`:""}
+          ${(a.lowestBid||a.highestBid)?`<div style="font-size:9.5px;color:var(--paper-4);font-family:var(--mono);margin-top:2px" title="lowest – highest individual compliant bid, per annum (a like-for-like benchmark; the winning bid — shown right — can sit below it when awarded as part of a joint bid or on a revised vehicle/schedule basis)">compliant bids ${a.lowestBid?fmtMoneyShort(a.lowestBid):"?"} – ${a.highestBid?fmtMoneyShort(a.highestBid):"?"}</div>`:""}
           ${a.notes?`<div style="font-size:9.5px;color:var(--paper-4);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.notes)}">${esc(a.notes)}</div>`:""}</div>
         <div class="stat" title="cost per live mile · winning bid · contracted miles">${cpm!=null?"£"+cpm+"/mi":"—"}<br><span style="color:var(--paper-3);font-size:10px">${a.acceptedBid?fmtMoney(a.acceptedBid)+" pa won":""}</span>${mi?`<br><span style="color:var(--paper-4);font-size:10px">${mi.toLocaleString("en-GB")} mi/yr</span>`:""}</div></div>`; }).join("")}
       <div class="xlink">source · TfL tender results</div>
@@ -2552,10 +2559,14 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","Length km","Fleet","Contract"],
+    // Header + column order mirror the rendered table (what's shown), incl. Reliability.
+    rows=[["Route","Type","Operator","Garage","PVR","Length km","Propulsion","Reliability","Contract","Fleet"],
       ...filtered.map(r=>{ const m=metaOf(r);
-        return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
-          m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||"")]; })];
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
+        const rel=pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)} EWT` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}% OTP` : "") : "";
+        return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"",
+          m.lengthKm||"", m.prop?PROP_DEFS[m.prop]:"", rel,
+          m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""), m.fleet||""]; })];
     fname=`atlas_routes_${todayStamp()}.csv`;
   }
   downloadCSV(fname,rows); toast("Exported "+fname);
