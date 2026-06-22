@@ -143,6 +143,7 @@ const LIVE_EP = {
   "arrivals":        { ttl: 30, url: (p) => { const r = (p.get("route") || "").trim(), s = (p.get("stop") || "").trim(); return s ? `/StopPoint/${encodeURIComponent(s)}/Arrivals` : r ? `/Line/${encodeURIComponent(r)}/Arrivals` : null; }, desc: "Live arrivals. ?stop=<naptan> or ?route=<id>." },
   "road-disruptions":{ ttl: 60, url: () => `/Road/all/Disruption`, desc: "Live London road incidents / closures (TfL control centre, ~5 min)." },
   "national-highways":{ ttl: 120, custom: true, desc: "Live National Highways unplanned events on the strategic road network, filtered to Greater London (keyless RSS)." },
+  "vehicles":        { ttl: 10, custom: true, desc: "Live bus GPS positions (BODS SIRI-VM), Greater London. ?line=25 or ?route=25 filters to a route; omit for the whole network." },
 };
 // National Highways open RSS → London-scoped incidents (mirrors functions/api/v1/live/[[path]].js).
 const NH_FEED = "https://m.highwaysengland.co.uk/feeds/rss/UnplannedEvents.xml";
@@ -180,6 +181,17 @@ function histDiscovery(req) { const origin = `http://${req.headers.host || "loca
     endpoints: Object.entries(HIST_EP).map(([k, v]) => ({ name: k, path: `/api/v1/history/${k}`, url: `${origin}/api/v1/history/${k}`, description: v.desc })) }; }
 async function serveLive(req, res, name) {
   const ep = LIVE_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown live feed: " + name, available: Object.keys(LIVE_EP) });
+  // Live bus GPS — shares the /api/live/vehicles cached London snapshot (liveCache "_london").
+  if (ep.custom && name === "vehicles") {
+    if (!hasBodsKey()) return jsonCors(res, 200, { feed: name, live: false, count: 0, data: [], note: "no BODS key — live positions unavailable" });
+    const sp = new URL(req.url, "http://x").searchParams;
+    const lines = new Set((sp.get("line") || sp.get("route") || "").split(",").map((s) => s.trim()).filter(Boolean));
+    const filt = (v) => !lines.size || lines.has(String(v.publishedLine));
+    const reply = (rec, cached) => { const data = rec.vehicles.filter(filt); return jsonCors(res, 200, { feed: name, live: true, cached, capturedAt: rec.at, count: data.length, data }); };
+    const hit = liveCache.get("_london"); if (hit && Date.now() - hit.at < LIVE_TTL_MS) return reply(hit, true);
+    try { const rec = { at: Date.now(), vehicles: await fetchVehicleActivity({}) }; liveCache.set("_london", rec); return reply(rec, false); }
+    catch (e) { if (hit) return reply(hit, true); return jsonCors(res, 502, { feed: name, live: false, data: [], error: String(e.message || e) }); }
+  }
   if (ep.custom && name === "national-highways") {
     try { const r = await fetch(NH_FEED, { headers: { "User-Agent": "Atlas/1.0" } });  // upstream 500s if sent an Accept header
       if (!r.ok) return jsonCors(res, 502, { error: `national highways feed failed (${r.status})` });

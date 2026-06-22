@@ -205,19 +205,15 @@
   .bar .btrack{grid-column:1 / -1; height:5px; background:#1B222B; border-radius:3px; overflow:hidden}
   .bar .bfill{height:100%; border-radius:3px; transition:width .12s linear}
   .lens-empty{font-size:11px; color:var(--faint); font-style:italic; padding:4px 0}
-  /* route dossier card (data from the Atlas API) */
-  #dossierBody{gap:9px}
-  #dossierBody .dsec{font-family:var(--mono); font-size:8.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint); margin-top:3px; display:flex; gap:6px; align-items:center}
-  #dossierBody .dsec .da{margin-left:auto; color:var(--faint); text-transform:none; letter-spacing:.02em}
-  #dossierBody .drow{display:flex; justify-content:space-between; gap:10px; font-size:12px; align-items:baseline}
-  #dossierBody .drow .dk{color:var(--muted)}
+  /* route dossier card — clean full-width rows with quiet dividers (data from the Atlas API) */
+  #dossierBody{display:block; padding:2px 0}
+  #dossierBody .drow{display:flex; justify-content:space-between; gap:16px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
+  #dossierBody .drow .dk{color:var(--muted); white-space:nowrap}
   #dossierBody .drow .dv{font-family:var(--mono); color:var(--text); text-align:right; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  #dossierBody .dpills{display:flex; flex-wrap:wrap; gap:5px}
-  #dossierBody .dpill{display:inline-flex; gap:5px; align-items:center; font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:20px; border:1px solid var(--border); color:var(--text)}
-  #dossierBody .dpill .dd{width:7px; height:7px; border-radius:50%}
-  #dossierBody .dpill.amber{color:var(--amber); border-color:rgba(242,162,12,.45)}
-  #dossierBody .dpill.cyan{color:var(--cyan); border-color:rgba(54,197,240,.4)}
-  #dossierBody .dempty{font-size:11px; color:var(--faint); font-style:italic}
+  #dossierBody .dsec{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); display:flex; gap:6px; align-items:baseline; padding:13px 0 6px; border-bottom:1px solid var(--border-soft)}
+  #dossierBody .dsec .da{margin-left:auto; text-transform:none; letter-spacing:.02em}
+  #dossierBody > .drow:last-child{border-bottom:none}
+  #dossierBody .dempty{font-size:12px; color:var(--faint); font-style:italic; padding:6px 0}
   .sevline{display:flex; gap:6px; flex-wrap:wrap; margin:-2px 0 9px}
   .sv{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border)}
   .sv.f{color:#FF6B66; border-color:rgba(220,36,31,.5)}
@@ -352,8 +348,8 @@
     <div class="card-b">
       <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Road incidents · live</span><label class="sw"><input type="checkbox" id="tgRoad"><span class="track"></span></label></div>
-      <div class="toggle-row"><span>Live buses · route</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
-      <div class="hint">Garages &amp; incidents from the Atlas API. Live buses (BODS GPS) need a selected route.</div>
+      <div class="toggle-row"><span>Live buses · BODS GPS</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
+      <div class="hint">All from the Atlas API. Live buses show the selected route, or the whole network when none is picked — refreshed every ~12s.</div>
     </div>
   </div>
 
@@ -763,23 +759,27 @@ function toggleRoad(on){
     map.addLayer(roadLayer); status(n+' live road incidents · TfL + National Highways','ok');
   }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
 }
-// Live buses — BODS SIRI-VM GPS via the keyed /api/live/vehicles proxy (route-scoped).
+// Live buses — BODS SIRI-VM GPS through our API (/api/v1/live/vehicles). Route-scoped
+// when a route is selected; the whole network otherwise (same 10s-cached snapshot).
 function busIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:12px;height:12px;border-radius:50%;background:#4FD675;border:2px solid #0A0C10;box-shadow:0 0 7px rgba(79,214,117,.85)"></div>'}); }
 function refreshBuses(){
-  if(!$('tgBuses').checked || !state.routeId) return;
-  fetch('/api/live/vehicles?line='+encodeURIComponent(state.routeId),{cache:'no-store'})
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(arr){ arr=Array.isArray(arr)?arr:(arr&&arr.data)||[]; busLayer.clearLayers();
-      arr.forEach(function(v){ if(Number.isFinite(v.lat)&&Number.isFinite(v.lng)) L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip((v.reg||'bus')+' · route '+(v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); });
-      map.addLayer(busLayer);
-      status(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now'),'ok');
-    }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
+  if(!$('tgBuses').checked) return;
+  var network=!state.routeId;
+  var url=atlasBase()+'/live/vehicles'+(network?'':'?line='+encodeURIComponent(state.routeId));
+  getJSON(url).then(function(j){
+    var arr=(j.data||j.vehicles||[]); busLayer.clearLayers();
+    arr.forEach(function(v){ if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng)) return;
+      if(network){ L.circleMarker([v.lat,v.lng],{radius:2.5,weight:0,fillColor:'#4FD675',fillOpacity:.85,renderer:ptRenderer}).addTo(busLayer); }
+      else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip((v.reg||'bus')+' · route '+(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); }
+    });
+    map.addLayer(busLayer);
+    status(network?(arr.length+' live buses · whole network'):(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
+  }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
 }
 function toggleBuses(on){
   if(busTimer){ clearInterval(busTimer); busTimer=null; }
   if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); return; }
-  if(!state.routeId){ status('Pick a route to see its live buses.','err'); $('tgBuses').checked=false; return; }
-  refreshBuses(); busTimer=setInterval(refreshBuses, 15000);
+  refreshBuses(); busTimer=setInterval(refreshBuses, 12000);   // ~feed cadence; cache collapses upstream load
 }
 // Lazy-load the two big DB-backed datasets once, then cache them.
 function ensureRouteData(){
@@ -841,8 +841,10 @@ function ensureDossierData(){
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
-function row(k,v){ return v==null||v===''?'':'<div class="drow"><span class="dk">'+esc(k)+'</span><span class="dv" title="'+esc(v)+'">'+esc(v)+'</span></div>'; }
-function propPill(p){ if(!p||!PROP_COL[p]) return ''; return '<span class="dpill"><span class="dd" style="background:'+PROP_COL[p]+'"></span>'+PROP_LBL[p]+'</span>'; }
+// one clean label→value row; `color` tints the value (used for status / propulsion / bid).
+function drow(k,v,color){ if(v==null||v==='') return ''; var t=esc(String(v));
+  return '<div class="drow"><span class="dk">'+esc(k)+'</span><span class="dv"'+(color?' style="color:'+color+'"':'')+' title="'+t+'">'+t+'</span></div>'; }
+function dsec(label,annot){ return '<div class="dsec">'+esc(label)+(annot?'<span class="da">'+esc(annot)+'</span>':'')+'</div>'; }
 function renderDossier(){
   var name=state.routeName; if(!name) return;
   var card=$('dossierCard'), title=$('dossierTitle'), body=$('dossierBody');
@@ -856,60 +858,53 @@ function renderDossier(){
     var fl=(state.fleet||{})[name]||null;
     var html='';
 
-    // Identity
-    html+='<div class="dpills">'+propPill(m.propulsion)+
-      (m.operator?'<span class="dpill">'+esc(m.operator)+'</span>':'')+'</div>';
-    html+=row('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
-    html+=row('Peak vehicles (PVR)', m.pvr);
-    html+=row('Spec', m.fleet);
-    html+=row('Contract', m.contractStart?(m.contractStart+'→'+(m.contractEnd||'?')):(m.contractDate||null));
+    // Identity — plain rows, propulsion tinted by fuel.
+    html+=drow('Operator', m.operator);
+    html+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
+    html+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
+    html+=drow('Peak vehicles (PVR)', m.pvr);
+    html+=drow('Spec', m.fleet);
+    html+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
 
     // Reliability
     if(pf){
-      html+='<div class="dsec">Reliability<span class="da">'+esc(pf.serviceClass||'')+'</span></div>';
+      html+=dsec('Reliability', pf.serviceClass);
       if(pf.serviceClass==='high-frequency' && pf.ewtMinutes!=null)
-        html+=row('Excess wait (EWT)', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
-      if(pf.onTimePercent!=null) html+=row('On-time (OTP)', Math.round(pf.onTimePercent)+'%');
-      if(pf.mileagePercent!=null) html+=row('Mileage operated', pf.mileagePercent.toFixed(1)+'%');
+        html+=drow('Excess wait (EWT)', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
+      if(pf.onTimePercent!=null) html+=drow('On-time (OTP)', Math.round(pf.onTimePercent)+'%');
+      if(pf.mileagePercent!=null) html+=drow('Mileage operated', pf.mileagePercent.toFixed(1)+'%');
     }
 
     // Commercial — latest award (joint-bid / awarded vehicle / tranche)
     if(tn.length){
-      var a=tn[0];
-      var jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary;
-      html+='<div class="dsec">Commercial<span class="da">'+tn.length+' awards</span></div>';
-      html+=row('Latest operator', a.operator);
-      html+=row('Awarded', a.awardDate);
-      if(a.costPerMile>0&&a.costPerMile<=200) html+=row('Cost / mile', '£'+a.costPerMile);
-      if(a.tranche!=null) html+=row('Tranche', a.tranche);
-      var pills='';
-      pills+= jb
-        ? '<span class="dpill amber" title="'+esc((a.jb&&a.jb.raw)||'')+'">Joint bid'+(a.jb.total?' · £'+a.jb.total.toLocaleString('en-GB'):'')+'</span>'
-        : '<span class="dpill">Sole bid</span>';
-      if(a.jb&&a.jb.partners&&a.jb.partners.length) pills+='<span class="dpill" title="awarded with '+esc(a.jb.partners.join(', '))+'">with '+esc(a.jb.partners.slice(0,4).join(', '))+(a.jb.partners.length>4?'…':'')+'</span>';
-      if(veh) pills+='<span class="dpill cyan" title="vehicle the contract was awarded on">🚌 '+esc(veh)+'</span>';
-      html+='<div class="dpills">'+pills+'</div>';
+      var a=tn[0], jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary;
+      html+=dsec('Commercial', tn.length+' awards');
+      html+=drow('Latest operator', a.operator);
+      html+=drow('Awarded', a.awardDate);
+      if(a.costPerMile>0&&a.costPerMile<=200) html+=drow('Cost / mile', '£'+a.costPerMile);
+      if(a.tranche!=null) html+=drow('Tranche', a.tranche);
+      var bid = jb ? ('Joint'+(a.jb.total?' · £'+a.jb.total.toLocaleString('en-GB'):'')+((a.jb.partners&&a.jb.partners.length)?' (with '+a.jb.partners.slice(0,3).join(', ')+(a.jb.partners.length>3?'…':'')+')':'')) : 'Sole';
+      html+=drow('Bid', bid, jb?'var(--amber)':null);
+      if(veh) html+=drow('Awarded on', veh, 'var(--cyan)');
     }
 
     // Fleet
     if(fl && (fl.count||fl.avgAgeYears!=null)){
-      html+='<div class="dsec">Fleet<span class="da">live sample</span></div>';
-      html+=row('On the road now', fl.count);
-      if(fl.avgAgeYears!=null) html+=row('Average age', fl.avgAgeYears+' yrs');
-      if(fl.makes&&fl.makes.length){
-        html+='<div class="dpills">'+fl.makes.slice(0,4).map(function(mk){return '<span class="dpill">'+esc(mk.make)+' '+mk.n+'</span>';}).join('')+'</div>';
-      }
+      html+=dsec('Fleet', 'live sample');
+      html+=drow('On the road now', fl.count);
+      if(fl.avgAgeYears!=null) html+=drow('Average age', fl.avgAgeYears+' yrs');
+      if(fl.makes&&fl.makes.length) html+=drow('Top make', fl.makes[0].make+' ('+fl.makes[0].n+')');
     }
 
     if(!html) html='<div class="dempty">No detail on record for route '+esc(name)+'.</div>';
     body.innerHTML=html;
-    // live line status (non-cached, prepended when it arrives)
+    // live line status (non-cached) — prepended as the first row when it arrives.
     getJSON(atlasBase()+'/live/status?route='+encodeURIComponent(name)).then(function(j){
       if(state.routeName!==name) return;
       var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]); var ln=arr[0];
       var s=ln&&ln.lineStatuses&&ln.lineStatuses[0]; var sev=s&&s.statusSeverityDescription;
       if(!sev) return; var good=/good service/i.test(sev);
-      body.insertAdjacentHTML('afterbegin','<div class="dpills" style="margin-bottom:7px"><span class="dpill" style="border-color:'+(good?'rgba(79,214,117,.5)':'rgba(242,162,12,.5)')+';color:'+(good?'#4FD675':'#F2A20C')+'">● '+esc(sev)+'</span></div>');
+      body.insertAdjacentHTML('afterbegin', drow('Status', sev, good?'#4FD675':'var(--amber)'));
     }).catch(function(){});
   }).catch(function(e){ body.innerHTML='<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>'; });
 }
