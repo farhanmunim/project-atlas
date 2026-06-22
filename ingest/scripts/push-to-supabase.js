@@ -621,6 +621,7 @@ async function pushAccidents() {
       collision_date: a.date ?? null,
       borough:        a.borough ?? null,
       vehicles:       Number.isFinite(a.vehicles) ? a.vehicles : null,
+      casualties:     Number.isFinite(a.casualties) ? a.casualties : null,   // migration 0019
       // decoded STATS19 collision-context (migration 0017) — clean labels, nullable
       road_type:      a.roadType ?? null,
       speed_limit:    a.speedLimit ?? null,
@@ -634,7 +635,7 @@ async function pushAccidents() {
     }));
   // the six context columns land via migration 0017; until it's applied, upsert strips them
   // and writes the base record rather than failing the accidents push.
-  await upsertInBatches('accidents', rows, 'collision_id', ['road_type', 'speed_limit', 'junction', 'light', 'weather', 'road_surface', 'day', 'time_band']);
+  await upsertInBatches('accidents', rows, 'collision_id', ['road_type', 'speed_limit', 'junction', 'light', 'weather', 'road_surface', 'day', 'time_band', 'casualties']);
 }
 
 // route_schedule — the scheduled-side baseline (SWT, scheduled km) the live-

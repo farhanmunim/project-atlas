@@ -177,6 +177,8 @@ function synthSample() {
 
     const vr = rnd();
     const vehicles = vr < 0.7 ? 2 : vr < 0.92 ? 1 : vr < 0.98 ? 3 : 4;
+    const cr = rnd();
+    const casualties = cr < 0.78 ? 1 : cr < 0.94 ? 2 : cr < 0.99 ? 3 : 4;
 
     out.push({
       id: `SAMPLE-${String(i + 1).padStart(4, "0")}`,
@@ -186,6 +188,7 @@ function synthSample() {
       date,
       borough: BOROUGHS[Math.floor(rnd() * BOROUGHS.length)],
       vehicles,
+      casualties,
       roadType: pick(ROAD_TYPES),
       speedLimit: pick(SPEEDS),
       junction: pick(JUNCTIONS),

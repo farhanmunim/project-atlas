@@ -89,6 +89,9 @@ try {
   ok("all coords within Greater London bbox", inBbox, "");
   const sev = rows.reduce((a, r) => (a[r.severity] = (a[r.severity] || 0) + 1, a), {});
   ok("severity parts sum to total", (sev.fatal || 0) + (sev.serious || 0) + (sev.slight || 0) === rows.length, JSON.stringify(sev));
+  // casualties: positive integer where present, ≥1 (a collision with casualties has ≥1 injured)
+  const casBad = rows.filter((r) => r.casualties != null && !(Number.isInteger(r.casualties) && r.casualties >= 1)).length;
+  ok("casualties are positive integers (or null)", casBad === 0, `${casBad} invalid`);
 
   // ── manifest freshness ─────────────────────────────────────────────────────
   section("manifest");

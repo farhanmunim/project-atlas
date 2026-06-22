@@ -1223,14 +1223,14 @@ function loadAtlasAccidents(){
     if(!near.length){ status('No STATS19 collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName+'.', 'ok'); return; }
     var rows=near.map(function(a){ return {
       lat:a.lat, lon:(a.lng!=null?a.lng:a.lon),
-      severity:a.severity, date:a.date, vehicles:a.vehicles,
+      severity:a.severity, date:a.date, vehicles:a.vehicles, casualties:a.casualties,
       borough:(GSS_BOROUGH[a.borough]|| (/^E0\d/.test(a.borough||'')?'Outside Greater London':a.borough)),
       // decoded STATS19 collision-context — each becomes an "aggregate by" lens dimension
       roadType:a.roadType||'', speedLimit:a.speedLimit||'', junction:a.junction||'',
       light:a.light||'', weather:a.weather||'', roadSurface:a.roadSurface||'',
       day:a.day||'', timeBand:a.timeBand||''
     }; });
-    ingest(['lat','lon','severity','date','vehicles','borough','roadType','speedLimit','junction','light','weather','roadSurface','day','timeBand'], rows, 'Atlas STATS19 · '+state.routeName);
+    ingest(['lat','lon','severity','date','vehicles','casualties','borough','roadType','speedLimit','junction','light','weather','roadSurface','day','timeBand'], rows, 'Atlas STATS19 · '+state.routeName);
     if($('tgCollisions')) $('tgCollisions').checked=true;
     status('Loaded '+rows.length+' collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName, 'ok');
   };
@@ -1431,7 +1431,7 @@ function setHeat(on){
   else { if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; } if(!map.hasLayer(ptLayer)) map.addLayer(ptLayer); }
 }
 // readable labels for the known STATS19 keys; arbitrary CSV columns fall back to their raw header.
-var POPUP_LABEL={severity:'Severity', date:'Date', vehicles:'Vehicles', borough:'Borough',
+var POPUP_LABEL={severity:'Severity', date:'Date', vehicles:'Vehicles', casualties:'Casualties', borough:'Borough',
   roadType:'Road type', speedLimit:'Speed limit', junction:'Junction', light:'Light',
   weather:'Weather', roadSurface:'Road surface', day:'Day', timeBand:'Time of day'};
 function popupHTML(row){

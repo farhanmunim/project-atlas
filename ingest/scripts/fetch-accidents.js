@@ -163,6 +163,7 @@ async function fetchYear(year, timeoutMs) {
     const sev = SEVERITY[(f[idx.collision_severity] || '').trim()];
     if (!sev) return;
     const nv = parseInt(f[idx.number_of_vehicles], 10);
+    const ncas = parseInt(f[idx.number_of_casualties], 10);
     const lad = idx.local_authority_ons_district != null
       ? (f[idx.local_authority_ons_district] || '').trim() : '';
     const at = (col) => (idx[col] != null ? f[idx[col]] : '');
@@ -174,6 +175,7 @@ async function fetchYear(year, timeoutMs) {
       date: isoDate(f[idx.date]),
       borough: lad && lad !== '-1' ? lad : null,
       vehicles: Number.isFinite(nv) && nv > 0 ? nv : null,
+      casualties: Number.isFinite(ncas) && ncas > 0 ? ncas : null,   // people injured
       // decoded collision-context attributes (clean labels; missing/unknown -> null)
       roadType: decode(ROAD_TYPE, at('road_type')),
       speedLimit: speedLimit(at('speed_limit')),
