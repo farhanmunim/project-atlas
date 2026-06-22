@@ -267,6 +267,9 @@
   .dossier-b .drow .dv{font-family:var(--mono); color:var(--text); text-align:left; word-break:break-word; line-height:1.45}
   .dossier-b > .drow:last-child{border-bottom:none}
   .dossier-b .dempty{font-size:12px; color:var(--faint); font-style:italic; padding:6px 0}
+  /* in-card subsection divider (Reliability / Fleet folded into the Route card) */
+  .dossier-b .dsec{display:flex; align-items:baseline; gap:8px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding:11px 0 5px; margin-top:4px; border-top:1px solid var(--border-soft)}
+  .dossier-b .dsec .da{margin-left:auto; letter-spacing:.06em; text-transform:none; color:var(--faint)}
   .sevline{display:flex; gap:6px; flex-wrap:wrap; margin:-2px 0 9px}
   .sv{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border)}
   .sv.f{color:#FF6B66; border-color:rgba(220,36,31,.5)}
@@ -1092,25 +1095,45 @@ function renderDossier(){
     var fl=(state.fleet||{})[name]||null;
     var cards='';
 
-    // ── Route info card (identity; live Status fills the slot when it arrives) ──
-    var ident='<div id="dossierStatusSlot"></div>';
-    ident+=drow('Operator', m.operator);
-    ident+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
-    ident+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
-    ident+=drow('PVR', m.pvr);
-    ident+=drow('Spec', m.fleet);
-    ident+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
-    cards+=dcardHTML(rtitle, null, ident, true);
+    // ── Route card — identity + Reliability + Fleet all count as route info, so they live in
+    //    one collapsible card (Reliability/Fleet as in-card subsections). live Status fills the slot. ──
+    var rc='<div id="dossierStatusSlot"></div>';
+    rc+=drow('Operator', m.operator);
+    rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
+    rc+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
+    rc+=drow('PVR', m.pvr);
+    rc+=drow('Spec', m.fleet);   // the contracted/rostered vehicle type (route-meta)
+    rc+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
 
-    // ── Reliability card ──
+    // Reliability subsection (EWT/OTP vs MPS) — same route, so folded into the Route card.
     if(pf){
       var r='';
       if(pf.serviceClass==='high-frequency' && pf.ewtMinutes!=null)
         r+=drow('EWT', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
       if(pf.onTimePercent!=null) r+=drow('OTP', Math.round(pf.onTimePercent)+'%'+(pf.otpMps!=null?' · MPS '+pf.otpMps:''));
       if(pf.mileagePercent!=null) r+=drow('Mileage', pf.mileagePercent.toFixed(1)+'%'+(pf.mileageMps!=null?' · MPS '+pf.mileageMps:''));
-      if(r) cards+=dcardHTML('Reliability', pf.serviceClass, r, true);
+      if(r) rc+=dsec('Reliability', pf.serviceClass)+r;
     }
+
+    // Fleet subsection — the LIVE DVLA sample of what's actually rostered, vs the contracted Spec above.
+    if(fl && (fl.count||fl.avgAgeYears!=null)){
+      var f='';
+      f+=drow('On road', fl.count);
+      if(fl.avgAgeYears!=null) f+=drow('Avg age', fl.avgAgeYears+' yrs');
+      // Only surface the zero-emission count when it ADDS to the Propulsion line above (i.e. the live
+      // sample shows electric/hydrogen the contracted propulsion doesn't already state). When the route
+      // is already an electric/hydrogen contract it just repeats "Electric" — and reads as a clash with
+      // the Make line — so we drop it. (DVLA reports hybrids as diesel, so it can only ever ADD zero-em.)
+      var metaZero = (m.propulsion==='electric'||m.propulsion==='hydrogen');
+      if(fl.propulsion && !metaZero){ var zp=[]; if(fl.propulsion.electric) zp.push('Electric '+fl.propulsion.electric); if(fl.propulsion.hydrogen) zp.push('Hydrogen '+fl.propulsion.hydrogen);
+        if(zp.length) f+=drow('Zero-em', zp.join(' · '), '#7ED957'); }
+      // Make = the chassis maker DVLA records for the plates running (e.g. BYD) — complements the Spec
+      // body type above (e.g. BYD chassis + ADL Enviro400EV City body = one bus, two facts).
+      if(fl.makes&&fl.makes.length) f+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
+      if(f) rc+=dsec('Fleet', 'live sample')+f;
+    }
+
+    cards+=dcardHTML(rtitle, null, rc, true);
 
     // ── Commercial card — latest award + won price, previous operator, contract expiry ──
     if(tn.length){
@@ -1129,19 +1152,6 @@ function renderDossier(){
       var exp=monthsUntil(m.contractEnd);
       if(exp!=null) c+=drow('Expires', m.contractEnd+(exp<=0?' · expired':' · '+Math.floor(exp/12)+'y '+(exp%12)+'m left'), exp<=6?'var(--amber)':null);
       cards+=dcardHTML('Commercial', tn.length+' awards', c, false);
-    }
-
-    // ── Fleet card — live sample ──
-    if(fl && (fl.count||fl.avgAgeYears!=null)){
-      var f='';
-      f+=drow('On road', fl.count);
-      if(fl.avgAgeYears!=null) f+=drow('Avg age', fl.avgAgeYears+' yrs');
-      // DVLA reliably flags electric/hydrogen (but reports hybrids as diesel), so only
-      // surface the trustworthy zero-emission count — the genuine re-fleet signal.
-      if(fl.propulsion){ var zp=[]; if(fl.propulsion.electric) zp.push('Electric '+fl.propulsion.electric); if(fl.propulsion.hydrogen) zp.push('Hydrogen '+fl.propulsion.hydrogen);
-        if(zp.length) f+=drow('Zero-em', zp.join(' · '), '#7ED957'); }
-      if(fl.makes&&fl.makes.length) f+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
-      cards+=dcardHTML('Fleet', 'live sample', f, false);
     }
 
     cont.innerHTML = cards || dcardHTML(rtitle, null, '<div class="dempty">No detail on record for route '+esc(name)+'.</div>', true);
