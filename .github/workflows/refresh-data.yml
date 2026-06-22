@@ -58,6 +58,12 @@ jobs:
           node pipeline/run.js \
             ${{ github.event.inputs.only && format('--only={0}', github.event.inputs.only) || '' }} \
             ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+      # Hard validation gate (CLAUDE.md "Validate before it lands"): shape / vocab /
+      # reconciliation checks on the freshly-built data/*.json. If it fails, the job aborts
+      # BEFORE the commit step below, so a degraded build is never committed or deployed —
+      # the previous good data/*.json stays in place (the builders already keep last-good too).
+      - name: Validate data layer (hard gate)
+        run: node pipeline/validate-atlas.js
       - name: Commit refreshed store
         run: |
           git config user.name  "transit-instruments-bot"
