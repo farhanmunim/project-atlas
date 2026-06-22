@@ -3,7 +3,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta charset="utf-8">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <meta name="description" content="Route Lens · Atlas — collision & incident density along any London bus route corridor. Drag a lens to read the STATS19 risk profile beneath it.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta property="og:title" content="Route Lens · Atlas — London Bus Network">
@@ -15,21 +15,48 @@
 <meta name="twitter:title" content="Route Lens · Atlas — London Bus Network">
 <meta name="twitter:description" content="Collision & incident density along any London bus route corridor.">
 <title>Route Lens · Atlas — London Bus Network</title>
+<!-- resolve theme before first paint (shared settings → OS pref) so there's no flash of the wrong theme -->
+<script>(function(){try{var s=JSON.parse(localStorage.getItem('transit-instruments:settings')||'{}')||{};var t=(s.theme==='light'||s.theme==='dark')?s.theme:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  :root{
+  :root, [data-theme="dark"]{
     --bg:#0A0C10; --panel:rgba(17,21,27,0.90); --panel-solid:#11151B;
     --border:#262E38; --border-soft:#1A212A;
     --text:#E7ECF1; --muted:#8C97A4; --faint:#7C8794; --line:#5C6772;
     --red:#DC241F; --red-bright:#FF463F;
-    --cyan:#36C5F0; --amber:#F2A20C;
-    --mono:'IBM Plex Mono',ui-monospace,monospace;
-    --sans:'Inter',system-ui,-apple-system,sans-serif;
+    --cyan:#36C5F0; --amber:#F2A20C; --green:#7ED957;
     --shadow:0 8px 30px rgba(0,0,0,.55);
   }
+  :root{
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+    --sans:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  /* ---- LIGHT THEME: a token swap (components never branch on theme) + the few hardcoded surfaces.
+     Data-accent hues are re-tuned to clear ~4.5:1 on white; their MEANING is unchanged. ---- */
+  [data-theme="light"]{
+    --bg:#E9EEF5; --panel:rgba(255,255,255,0.92); --panel-solid:#FFFFFF;
+    --border:#D2DCEA; --border-soft:#E4EAF3;
+    --text:#1A2230; --muted:#566480; --faint:#62708A; --line:#9EACC0;
+    --red:#DC241F; --red-bright:#C81E18;
+    --cyan:#0E7490; --amber:#B45309; --green:#157347;
+    --shadow:0 8px 30px rgba(30,55,100,.15);
+  }
+  [data-theme="light"] input[type=text], [data-theme="light"] select,
+  [data-theme="light"] input[type=number]{background:#F3F6FB}
+  [data-theme="light"] .seg, [data-theme="light"] .hint code, [data-theme="light"] .ychip{background:#F3F6FB}
+  [data-theme="light"] .opt:hover, [data-theme="light"] .opt.active{background:#EDF2F9}
+  [data-theme="light"] .btn{background:#F3F6FB}
+  [data-theme="light"] .btn:hover{background:#E9EEF5; border-color:var(--line)}
+  [data-theme="light"] .btn.ghost{background:transparent}
+  [data-theme="light"] .sw .track{background:#C8D2E0}
+  [data-theme="light"] .sw .track::before{background:#FFFFFF; box-shadow:0 1px 2px rgba(0,0,0,.18)}
+  [data-theme="light"] input[type=range]{background:#D2DCEA}
+  [data-theme="light"] .bar .btrack{background:#E4EAF3}
+  [data-theme="light"] #topbar{background:linear-gradient(180deg, rgba(233,238,245,.97), rgba(233,238,245,.80) 70%, rgba(233,238,245,0))}
+  [data-theme="light"] .leaflet-control-attribution{background:rgba(255,255,255,.82)!important}
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
   body{
@@ -369,6 +396,7 @@
     <button type="button" class="clrbtn" id="clearAllBtn" title="Clear routes + filters" aria-label="Clear all routes and filters" style="display:none"><span aria-hidden="true">✕</span><span class="clbl">Clear all</span></button>
     <span class="fresh" id="freshBadge" title="Time since the live layers were last pulled"><span class="fdot"></span><span id="freshText">—</span></span>
     <button type="button" class="rbtn" id="refreshBtn" aria-label="Refresh data" title="Refresh data">⟳</button>
+    <button type="button" class="rbtn" id="themeBtn" aria-label="Toggle light or dark theme" aria-pressed="false" title="Toggle light / dark"><svg aria-hidden="true" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
     <span class="clock"><span class="cdot"></span><time id="clock" aria-label="Current time">--:--:--</time></span>
   </div>
 </div>
@@ -553,6 +581,9 @@ function fmtClock(d){ if(USE_12H){ var h=d.getHours(), ap=h<12?'AM':'PM', h12=h%
   return (h12<10?'0'+h12:h12)+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+' '+ap; }
   return d.toTimeString().slice(0,8); }
 var PROP_COL={electric:'#7ED957', hydrogen:'#36C5F0', hybrid:'#F2A20C', diesel:'#9AA7B2'};
+// theme-aware tints for propulsion shown as TEXT (dossier) — resolve against the themed tokens so
+// they keep contrast on both dark and light (the hex PROP_COL above stays for map/chip swatches).
+var PROP_TXT={electric:'var(--green)', hydrogen:'var(--cyan)', hybrid:'var(--amber)', diesel:'var(--muted)'};
 var PROP_LBL={electric:'Electric', hydrogen:'Hydrogen', hybrid:'Hybrid', diesel:'Diesel'};
 
 /* ============================ MAP ============================ */
@@ -1099,7 +1130,7 @@ function renderDossier(){
     //    one collapsible card (Reliability/Fleet as in-card subsections). live Status fills the slot. ──
     var rc='<div id="dossierStatusSlot"></div>';
     rc+=drow('Operator', m.operator);
-    rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
+    rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_TXT[m.propulsion]:null);
     rc+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
     rc+=drow('PVR', m.pvr);
     rc+=drow('Spec', m.fleet);   // the contracted/rostered vehicle type (route-meta)
@@ -1126,7 +1157,7 @@ function renderDossier(){
       // the Make line — so we drop it. (DVLA reports hybrids as diesel, so it can only ever ADD zero-em.)
       var metaZero = (m.propulsion==='electric'||m.propulsion==='hydrogen');
       if(fl.propulsion && !metaZero){ var zp=[]; if(fl.propulsion.electric) zp.push('Electric '+fl.propulsion.electric); if(fl.propulsion.hydrogen) zp.push('Hydrogen '+fl.propulsion.hydrogen);
-        if(zp.length) f+=drow('Zero-em', zp.join(' · '), '#7ED957'); }
+        if(zp.length) f+=drow('Zero-em', zp.join(' · '), 'var(--green)'); }
       // Make = the chassis maker DVLA records for the plates running (e.g. BYD) — complements the Spec
       // body type above (e.g. BYD chassis + ADL Enviro400EV City body = one bus, two facts).
       if(fl.makes&&fl.makes.length) f+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
@@ -1175,7 +1206,7 @@ function renderDossier(){
         if(!vp.length || vp.some(function(p){return p.isNow;})){ active=st; break; }
       }
       var sev = active ? active.statusSeverityDescription : 'Good Service';
-      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, active?'var(--amber)':'#4FD675');
+      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, active?'var(--amber)':'var(--green)');
     }).catch(function(){});
   }).catch(function(e){ cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>', true); cont.querySelectorAll('.card-h').forEach(wireCardHeader); });
 }
@@ -1887,6 +1918,29 @@ function refresh(){
   setTimeout(function(){ if(btn){ btn.classList.remove('spin'); btn.disabled=false; } }, 700);
 }
 $('refreshBtn').addEventListener('click', refresh);
+
+// ---- theme (light/dark) — flips data-theme on <html>; persisted in the SHARED settings key so a
+// choice made in any Atlas tool carries across. Defaults to OS preference until the user picks. ----
+var prefersLight = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+function effectiveTheme(){ var t=APP_SETTINGS.theme; return (t==='light'||t==='dark') ? t : ((prefersLight&&prefersLight.matches)?'light':'dark'); }
+function applyTheme(){
+  var t=effectiveTheme();
+  document.documentElement.setAttribute('data-theme', t);
+  var btn=$('themeBtn'); if(btn) btn.setAttribute('aria-pressed', String(t==='light'));
+  // swap the basemap to match the chrome (Carto dark_all ↔ light_all)
+  if(typeof baseLayer!=='undefined' && baseLayer) baseLayer.setUrl('https://{s}.basemaps.cartocdn.com/'+(t==='light'?'light_all':'dark_all')+'/{z}/{x}/{y}{r}.png');
+}
+function setTheme(t){
+  APP_SETTINGS.theme=t;
+  // merge into the shared settings object without clobbering other tools' keys
+  try{ var cur=JSON.parse(localStorage.getItem('transit-instruments:settings')||'{}')||{}; cur.theme=t; localStorage.setItem('transit-instruments:settings', JSON.stringify(cur)); }catch(e){}
+  applyTheme();
+}
+$('themeBtn').addEventListener('click', function(){ setTheme(effectiveTheme()==='dark'?'light':'dark'); });
+// follow the OS while the user hasn't made an explicit choice
+if(prefersLight && prefersLight.addEventListener) prefersLight.addEventListener('change', function(){ if(APP_SETTINGS.theme!=='light'&&APP_SETTINGS.theme!=='dark') applyTheme(); });
+applyTheme();   // sync button state + tile layer to the theme the head script already set
+
 tickClock(); paintFresh();
 $('radLabel').textContent=fmtRadius(state.radius);   // honour km/mi from the shared settings on first paint
 setInterval(function(){ tickClock(); paintFresh(); }, 1000);
