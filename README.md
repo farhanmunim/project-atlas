@@ -24,6 +24,12 @@ node pipeline/run.js                 # all datasets (per-dataset TTLs gate the w
 node pipeline/run.js --only=bridges --force
 ```
 
+Validate the data layer (shape, row counts, vocab, reconciliation — what `/api/v1/*` serves):
+
+```bash
+npm run validate:atlas               # dependency-free data-integrity gate; exit 0 = all pass
+```
+
 ## Environment / secrets
 
 Secrets live in `.env` (gitignored) locally and as Cloudflare/CI secrets in production —
