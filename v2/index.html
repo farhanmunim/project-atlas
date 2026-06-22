@@ -393,13 +393,33 @@
       <div class="toggle-row"><span>Show stops</span><label class="sw"><input type="checkbox" id="tgStops"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Basemap</span><label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label></div>
       <div class="meta" id="dataMeta" style="margin-top:2px">No data loaded</div>
+      <details>
+        <summary class="hint" style="cursor:pointer">Custom incident data (CSV)</summary>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
+          <div class="btn-row">
+            <label class="btn primary filelabel">Load CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
+            <button type="button" class="btn" id="genBtn">Sample</button>
+          </div>
+          <button type="button" class="btn" id="exportBtn">⤓ Export current view (CSV)</button>
+          <div id="mapCols" style="display:none; flex-direction:column; gap:8px">
+            <div class="btn-row">
+              <label class="fld" style="flex:1"><span>Lat column</span><select id="latCol"></select></label>
+              <label class="fld" style="flex:1"><span>Lon column</span><select id="lonCol"></select></label>
+            </div>
+          </div>
+          <button class="btn ghost" id="clearBtn" style="display:none">Clear data</button>
+          <div class="hint">One row per incident; header row required. Required: <code>lat</code>, <code>lon</code> (decimal degrees). Optional categorical columns (<code>severity</code>, <code>date</code>/<code>year</code>, <code>cause</code>…) become lens dimensions.</div>
+        </div>
+      </details>
     </div>
   </div>
 
-  <div class="card open" data-card="" id="lensCfgCard">
+  <!-- Lens controls only matter once incident data is on the map, so this card stays hidden
+       until there's something to profile (Collisions on, or a CSV/sample loaded). -->
+  <div class="card open" data-card="" id="lensCfgCard" style="display:none">
     <div class="card-h"><div class="dot"></div><h2>Lens</h2><span class="chev">▶</span></div>
     <div class="card-b">
-      <div class="hint">Turn on <b>Collisions</b> (Layers) to plot STATS19 along the route, then drag the lens to read the density beneath it.</div>
+      <div class="hint">Drag a lens along the corridor to read the incident density beneath it — add more to compare hotspots.</div>
       <label class="fld">
         <span>Aggregate by</span>
         <select id="dimSel"><option value="">—</option></select>
@@ -425,24 +445,6 @@
         <span style="font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Legend</span>
         <div class="legend" id="legend"></div>
       </div>
-      <details>
-        <summary class="hint" style="cursor:pointer">Custom data (CSV)</summary>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
-          <div class="btn-row">
-            <label class="btn primary filelabel">Load CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
-            <button type="button" class="btn" id="genBtn">Sample</button>
-          </div>
-          <button type="button" class="btn" id="exportBtn">⤓ Export current view (CSV)</button>
-          <div id="mapCols" style="display:none; flex-direction:column; gap:8px">
-            <div class="btn-row">
-              <label class="fld" style="flex:1"><span>Lat column</span><select id="latCol"></select></label>
-              <label class="fld" style="flex:1"><span>Lon column</span><select id="lonCol"></select></label>
-            </div>
-          </div>
-          <button class="btn ghost" id="clearBtn" style="display:none">Clear data</button>
-          <div class="hint">One row per incident; header row required. Required: <code>lat</code>, <code>lon</code> (decimal degrees). Optional categorical columns (<code>severity</code>, <code>date</code>/<code>year</code>, <code>cause</code>…) become lens dimensions.</div>
-        </div>
-      </details>
     </div>
   </div>
 
@@ -1158,9 +1160,13 @@ function buildPoints(){
   detectYears();
   renderPoints();
   updateStats();
+  syncLensCard();
   // the lens only appears once there's data to profile (no empty lens at boot).
   if(state.points.length && !state.lenses.length) addLens();
 }
+// Lens controls are noise without incident data — show the card only when there's something
+// to profile (Collisions on, or a CSV/sample loaded), hide it otherwise.
+function syncLensCard(){ var c=$('lensCfgCard'); if(c) c.style.display = state.points.length ? '' : 'none'; }
 
 /* ============================ ATLAS (live STATS19 + low bridges) ============================ */
 function atlasBase(){ var el=$('atlasBase'); return ((el&&el.value)||ATLAS_DEFAULT).trim().replace(/\/+$/,''); }
@@ -1610,6 +1616,7 @@ function clearCollisionData(){
   if($('tgCollisions')) $('tgCollisions').checked=false;
   removeAllLenses();
   updateStats();
+  syncLensCard();   // no data left → hide the Lens card
 }
 $('clearBtn').addEventListener('click', function(){ clearCollisionData(); status('Data cleared','ok'); });
 
