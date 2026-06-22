@@ -62,23 +62,35 @@ function readJsonOrNull(p) {
   }
 }
 
-async function upsertInBatches(table, rows, conflictKey) {
+// optionalCols: columns that may not exist yet (a migration is pending). If the upsert fails
+// because the schema lacks them, strip those columns and retry rather than failing the whole
+// table — so a newly-added field never blocks the warehouse ingest before its migration runs
+// (graceful degradation). Once the migration is applied, the columns persist automatically.
+const isMissingColumnError = (e) =>
+  !!e && (e.code === 'PGRST204' || /could not find the '.*' column|column .* does not exist|schema cache/i.test(e.message || ''));
+
+async function upsertInBatches(table, rows, conflictKey, optionalCols = null) {
   if (!rows.length) {
     console.log(`  ${table}: nothing to write`);
     return;
   }
-  let written = 0;
+  const strip = (chunk) => chunk.map((r) => { const c = { ...r }; optionalCols.forEach((k) => delete c[k]); return c; });
+  let written = 0, stripping = false;
   for (let i = 0; i < rows.length; i += BATCH) {
-    const chunk = rows.slice(i, i + BATCH);
-    const { error } = await supabase
-      .from(table)
-      .upsert(chunk, { onConflict: conflictKey, ignoreDuplicates: false });
+    let chunk = rows.slice(i, i + BATCH);
+    if (stripping) chunk = strip(chunk);
+    let { error } = await supabase.from(table).upsert(chunk, { onConflict: conflictKey, ignoreDuplicates: false });
+    if (error && optionalCols && optionalCols.length && !stripping && isMissingColumnError(error)) {
+      console.warn(`  ${table}: optional columns not in schema yet (${optionalCols.join(', ')}) — writing base record; apply the migration to capture them.`);
+      stripping = true;
+      ({ error } = await supabase.from(table).upsert(strip(chunk), { onConflict: conflictKey, ignoreDuplicates: false }));
+    }
     if (error) {
       throw new Error(`${table} upsert failed at row ${i}: ${error.message}`);
     }
     written += chunk.length;
   }
-  console.log(`  ${table}: wrote ${written} rows`);
+  console.log(`  ${table}: wrote ${written} rows${stripping ? ' (base columns only — migration pending)' : ''}`);
 }
 
 async function insertInBatches(table, rows) {
@@ -618,7 +630,9 @@ async function pushAccidents() {
       road_surface:   a.roadSurface ?? null,
       extracted_at:   extractedAt,
     }));
-  await upsertInBatches('accidents', rows, 'collision_id');
+  // the six context columns land via migration 0017; until it's applied, upsert strips them
+  // and writes the base record rather than failing the accidents push.
+  await upsertInBatches('accidents', rows, 'collision_id', ['road_type', 'speed_limit', 'junction', 'light', 'weather', 'road_surface']);
 }
 
 // route_schedule — the scheduled-side baseline (SWT, scheduled km) the live-
