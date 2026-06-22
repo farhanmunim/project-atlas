@@ -179,6 +179,10 @@
 
   /* year chips */
   .chips-wrap{display:flex; flex-wrap:wrap; gap:5px}
+  .fsec{display:flex; flex-direction:column; gap:6px}
+  .fsec .flbl{font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+  .ychip .yn{color:var(--faint); margin-left:5px}
+  .ychip .ysw{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle}
   .ychip{font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:#0C0F14}
   .ychip.on{background:rgba(220,36,31,.16); border-color:var(--red); color:var(--text)}
 
@@ -329,6 +333,17 @@
         <span>Basemap</span>
         <label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label>
       </div>
+    </div>
+  </div>
+
+  <div class="card open" data-card="" id="filterCard">
+    <div class="card-h"><div class="dot"></div><h2>Filters</h2><span class="chev">▶</span></div>
+    <div class="card-b">
+      <div class="meta" id="fShowing">All routes</div>
+      <div class="fsec"><span class="flbl">Operator</span><div class="chips-wrap" id="fOperator"></div></div>
+      <div class="fsec"><span class="flbl">Route type</span><div class="chips-wrap" id="fType"></div></div>
+      <div class="fsec"><span class="flbl">Propulsion</span><div class="chips-wrap" id="fPropulsion"></div></div>
+      <button class="btn ghost" id="fClear" style="display:none">Clear filters</button>
     </div>
   </div>
 
@@ -521,6 +536,7 @@ function loadRoutes(){
         return {id:l.id, name:l.name||l.id, type:l.type||'day', od:(TYPE_LABEL[l.type]||'')};
       }).sort(function(a,b){return naturalCmp(a.name,b.name);});
       status(state.routes.length+' routes ready', 'ok');
+      buildFilterChips();
     })
     .catch(function(e){
       status('Could not load routes from Atlas — '+e.message, 'err');
@@ -532,6 +548,7 @@ var search=$('routeSearch'), list=$('routeList');
 function renderList(filter){
   var f=(filter||'').trim().toLowerCase();
   var items = state.routes.filter(function(r){
+    if(!routePasses(r.name)) return false;
     return !f || r.name.toLowerCase().indexOf(f)===0 || r.name.toLowerCase().indexOf(f)>-1 || r.od.toLowerCase().indexOf(f)>-1;
   }).slice(0,200);
   if(!state.routes.length){ list.innerHTML='<div class="opt"><span class="empty">Loading routes…</span></div>'; return; }
@@ -595,6 +612,7 @@ function drawNetwork(){
   var feats=(state.overview.features||[]); var names={};
   feats.forEach(function(f){
     var p=f.properties||{}, name=p.name; if(!f.geometry) return;
+    if(!routePasses(name)) return;   // respect active filters
     var op=((state.meta||{})[name]||{}).operator, col=operatorColor(op);
     var rings = f.geometry.type==='LineString' ? [f.geometry.coordinates]
               : f.geometry.type==='MultiLineString' ? f.geometry.coordinates : [];
@@ -619,13 +637,74 @@ function showNetwork(){
   $('dossierCard').style.display='none';
   status('Loading network…');
   ensureNetworkData().then(function(){
+    buildFilterChips();
     var n=drawNetwork();
     map.fitBounds(L.latLngBounds([[51.28,-0.52],[51.70,0.30]]), {paddingTopLeft:[300,80], paddingBottomRight:[286,30]});
     $('emptyState').style.display='none';
-    showNetLabel(n+' routes · coloured by operator');
+    showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
     status(n+' routes ready', 'ok');
   }).catch(function(e){ status('Network load failed: '+e.message, 'err'); });
 }
+
+/* ============================ FILTERS (operator / type / propulsion) ============================ */
+var FILTERS={operator:new Set(), type:new Set(), propulsion:new Set()};
+var TYPE_FILTER_LBL={day:'Regular', night:'Night', school:'School', local:'Local', superloop:'Superloop', prefix:'Lettered', twentyfour:'24-hour'};
+function filtersActive(){ return FILTERS.operator.size||FILTERS.type.size||FILTERS.propulsion.size; }
+function routePasses(name){
+  var f=FILTERS;
+  if(f.operator.size || f.propulsion.size){
+    var m=(state.meta||{})[name]||{};
+    if(f.operator.size && !f.operator.has(m.operator)) return false;
+    if(f.propulsion.size && !f.propulsion.has(m.propulsion)) return false;
+  }
+  if(f.type.size){
+    var r=(state.routes||[]).filter(function(x){return x.name===name;})[0];
+    if(!r || !f.type.has(r.type)) return false;
+  }
+  return true;
+}
+function fChip(group,val,label,count,color){
+  var on=FILTERS[group].has(val);
+  return '<span class="ychip'+(on?' on':'')+'" data-g="'+group+'" data-v="'+esc(val)+'">'+
+    (color?'<span class="ysw" style="background:'+color+'"></span>':'')+esc(label)+
+    (count!=null?'<span class="yn">'+count+'</span>':'')+'</span>';
+}
+function buildFilterChips(){
+  var meta=state.meta||{}, routes=state.routes||[];
+  var opC={}, prC={}, tyC={};
+  for(var k in meta){ var m=meta[k]; if(m.operator) opC[m.operator]=(opC[m.operator]||0)+1; if(m.propulsion) prC[m.propulsion]=(prC[m.propulsion]||0)+1; }
+  routes.forEach(function(r){ if(r.type) tyC[r.type]=(tyC[r.type]||0)+1; });
+  if(Object.keys(opC).length){
+    $('fOperator').innerHTML=Object.keys(opC).sort(function(a,b){return opC[b]-opC[a];})
+      .map(function(o){return fChip('operator',o,o,opC[o],operatorColor(o));}).join('');
+  }
+  if(Object.keys(tyC).length){
+    $('fType').innerHTML=Object.keys(tyC).sort(function(a,b){return tyC[b]-tyC[a];})
+      .map(function(t){return fChip('type',t,TYPE_FILTER_LBL[t]||t,tyC[t]);}).join('');
+  }
+  var props=['electric','hybrid','hydrogen','diesel'].filter(function(p){return prC[p];});
+  if(props.length){ $('fPropulsion').innerHTML=props.map(function(p){return fChip('propulsion',p,PROP_LBL[p],prC[p],PROP_COL[p]);}).join(''); }
+}
+function applyFiltersUI(){
+  $('fClear').style.display = filtersActive()?'block':'none';
+  renderList($('routeSearch').value);
+  if(!state.routeName && state.overview){
+    var n=drawNetwork();
+    showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
+  }
+  var total=(state.routes||[]).length;
+  var shown=(state.routes||[]).filter(function(r){return routePasses(r.name);}).length;
+  $('fShowing').textContent = filtersActive()? (shown+' of '+total+' routes') : 'All routes';
+}
+function onFilterClick(e){
+  var c=e.target.closest&&e.target.closest('.ychip'); if(!c||!c.dataset.g) return;
+  var g=c.dataset.g, v=c.dataset.v;
+  if(FILTERS[g].has(v)) FILTERS[g].delete(v); else FILTERS[g].add(v);
+  c.classList.toggle('on');
+  applyFiltersUI();
+}
+['fOperator','fType','fPropulsion'].forEach(function(id){ $(id).addEventListener('click', onFilterClick); });
+$('fClear').addEventListener('click', function(){ FILTERS.operator.clear(); FILTERS.type.clear(); FILTERS.propulsion.clear(); buildFilterChips(); applyFiltersUI(); });
 // Lazy-load the two big DB-backed datasets once, then cache them.
 function ensureRouteData(){
   var jobs=[];
