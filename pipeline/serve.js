@@ -217,7 +217,7 @@ async function serveHistory(req, res, name) {
   parts.push(`order=${order}`, `limit=${limit}`);
   let supaOrigin; try { supaOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "SUPABASE_URL is not a valid URL" }); }
   const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
-  try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } }); if (!r.ok) return jsonCors(res, 502, { error: `historical query failed (${r.status})` });
+  try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } }); if (!r.ok) return jsonCors(res, (r.status >= 400 && r.status < 500) ? r.status : 502, { error: `historical query failed (${r.status})`, detail: (await r.text()).slice(0, 300) });
     const rows = await r.json(); return jsonCors(res, 200, { dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows }); }
   catch (e) { return jsonCors(res, 502, { error: "historical store unreachable" }); }
 }

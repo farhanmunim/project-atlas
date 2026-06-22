@@ -107,7 +107,10 @@ export async function onRequest(context) {
   try {
     const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     const body = await r.text();
-    if (!r.ok) return json({ error: `historical query failed (${r.status})`, detail: body.slice(0, 300) }, { status: r.status === 404 ? 404 : 502 });
+    // Map upstream client errors (e.g. PostgREST 400 "column does not exist" when a filter
+    // targets a column whose migration hasn't been applied yet) to a client status, not a 502 —
+    // a bad/unsupported query param is the caller's error, not a server failure.
+    if (!r.ok) return json({ error: `historical query failed (${r.status})`, detail: body.slice(0, 300) }, { status: (r.status >= 400 && r.status < 500) ? r.status : 502 });
     let rows; try { rows = JSON.parse(body); } catch { return json({ error: "historical store returned non-JSON", detail: body.slice(0, 200) }, { status: 502 }); }
     return json({ dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows });
   } catch (e) {
