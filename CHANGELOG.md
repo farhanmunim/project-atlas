@@ -5,6 +5,21 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-06-22 — Comparative insights + panel redesign + handover
+
+- **Network rankings.** `ensureRanks()` ranks every route across the network on collision
+  count/KSI/density, schedule drift (EWT high-freq / OTP low-freq), lost mileage, and
+  £/mile (rank 1 = worst). Surfaced as "#168 of 382 · worse than 56%" (severity-coloured)
+  in the Snapshot, Reliability, and Risk blocks — the comparative insight the legacy tool
+  can't give. Pure client-side derivation of API data; invalidated on refresh.
+- **Context panel redesign** toward the bus-tools reference: leads with a clean **Snapshot**
+  (hero reliability metric + colour-coded insight rows), detail behind progressive disclosure.
+- **Docs.** CLAUDE.md "Built features" documents rankings, the Snapshot, table enrichment,
+  and the per-route risk summary. **`HANDOVER.md`** added — a resume point listing what's
+  done and the network/Supabase-gated work (live Position/Schedule-Drift analysis, tender
+  tranche display, `/api/v1/history/accidents`, re-scraping the nulled tender bids) with the
+  exact allowlist domains + secrets needed.
+
 ## 2026-06-22 — Table enrichment + per-route risk; UI behaviour verified
 
 - **Per-route risk summary.** `build/accidents.js` now pre-aggregates, for every route,

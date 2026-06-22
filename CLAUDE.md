@@ -254,16 +254,30 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   bridges · incidents **always start OFF each session** (reset on load, not persisted-on);
   the user enables them explicitly, and when on they scope to the selected/searched
   route(s). A contextual **Map key** legend (`updateLegend`) labels every visible symbol.
-- **Route dossier** (right rail, `renderContext`) — accordion `group()`s: Live ops ·
-  **Route** (incl. a **Reliability** block — EWT/OTP vs MPS + % mileage, from
-  `store.perf`) · **Risk & accidents** (collisions near the route: density, KSI,
-  severity split, by-year trend, hotspot boroughs — `sentinelBody`; plus a **low-bridge
-  diversion-risk** readout that flags bridges under the 4.4 m double-deck height near the
-  route, and a **user-set alert-proximity slider** (`riskRadius`, persisted) that drives
-  the collision + bridge corridors and re-scopes their map layers) · Fleet ·
-  **Commercial** (tender history with **bid spread low–won–high**, previous-operator
-  + win/loss flag, notes, contracted miles). Network view + catchment (Magnify) also
-  carry a Risk & accidents readout.
+- **Route dossier** (right rail, `renderContext`) — leads with a clean **Snapshot**
+  (`routeSnapshot`): a hero reliability metric + colour-coded `label → value` insight rows
+  (road-risk and cost, each carrying its network rank), readable at a glance, then accordion
+  `group()`s for the detail (progressive disclosure — the panel reads instantly without
+  expanding anything). Groups: Live ops · **Route** (incl. a **Reliability** block — EWT/OTP
+  vs MPS + % mileage, from `store.perf`) · **Risk & accidents** (collisions near the route:
+  density, KSI, severity split, by-year trend, hotspot boroughs — `sentinelBody`; plus a
+  **low-bridge diversion-risk** readout flagging bridges under the 4.4 m double-deck height,
+  and a **user-set alert-proximity slider** (`riskRadius`, persisted) that drives the
+  collision + bridge corridors and re-scopes their map layers) · Fleet · **Commercial**
+  (tender history with the **individual-compliant bid range** + winning bid — the won bid can
+  legitimately sit below the range when joint-bid/revised-basis — previous-operator + win/loss
+  flag, notes, contracted miles). Network view + catchment (Magnify) also carry a Risk &
+  accidents readout.
+- **Comparative analysis / network rankings** (`ensureRanks` → `rankOf`/`rankNote`) — what
+  makes Atlas more than a fact sheet: every route is ranked across the whole network on
+  collision count / KSI / **density** (length-normalised), **schedule drift** (EWT for
+  high-freq, OTP for low-freq — separate cohorts), lost mileage, and **£/mile**. Rank 1 =
+  worst on each measure, surfaced as "**#168 of 382 · worse than 56%**" (severity-coloured)
+  in the Snapshot, the Reliability block, and the Risk block. Computed once from the loaded
+  store (a pure client-side derivation of API data — no new endpoint), invalidated on refresh.
+- **Table view enrichment** (`renderTable`) — beyond identity columns it carries
+  **Reliability** (EWT/OTP), **Risk** (collisions / KSI within 150 m), and **£/mi** (latest
+  tender), all O(1) from the store; the CSV "view" export mirrors them.
 - **Classification**: route type now includes **`prefix`** (lettered SL/EL/W/X routes,
   `isPrefixRoute`) alongside regular/24-hour/night/school.
 - **Selection UX**: search **auto-detects** single vs multi (one token → single;
@@ -278,7 +292,8 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   map → analysis all reachable); map `invalidateSize` on resize.
 - **Atlas data files** (seam-read): routes, route-meta, route-stops, garages, fleet,
   vehicles, tenders, routes-overview.geojson, **route-performance.json** (EWT/OTP/MPS,
-  `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`).
+  `pipeline/build/performance.js`), **accidents.json** (STATS19 points + a `byRoute`
+  per-route risk summary `{collisions, ksi}` within ~150 m, `pipeline/build/accidents.js`).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
