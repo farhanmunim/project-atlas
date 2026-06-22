@@ -61,6 +61,8 @@
   .leaflet-tooltip{font-family:var(--mono); font-size:10.5px; padding:3px 7px}
   .leaflet-tooltip-top:before{border-top-color:var(--border)}
 
+  /* basemap-offline notice */
+  #tileWarn{top:62px; left:50%; transform:translateX(-50%); background:var(--panel-solid); border:1px solid var(--amber); color:var(--amber); border-radius:8px; padding:7px 13px; font-family:var(--mono); font-size:11px; box-shadow:var(--shadow)}
   /* skip link (first focusable element) */
   .skip{position:absolute; left:8px; top:-60px; z-index:3000; background:var(--red); color:#fff; padding:9px 14px; border-radius:7px; font-family:var(--mono); font-size:12px; transition:top .15s}
   .skip:focus{top:8px}
@@ -285,6 +287,13 @@
     .chips{display:none}
     #topbar{height:48px}
     .leaflet-control-zoom{display:none}   /* pinch-zoom on touch; buttons would sit under the sheet */
+    /* comfortable touch targets (≈44px) */
+    .toggle-row{min-height:44px}
+    .card-h{min-height:46px}
+    .opt{min-height:44px}
+    .btn, .seg button{min-height:42px}
+    .ychip{min-height:34px; padding:7px 11px}
+    .rm{font-size:20px; padding:6px 10px}
   }
 </style>
 </head>
@@ -427,6 +436,8 @@
 <!-- STATUS -->
 <div class="hud" id="status" role="status" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">676 routes ready</span></div>
 
+<div class="hud" id="tileWarn" role="status" style="display:none">⚠ Basemap unavailable (offline?) — routes &amp; data still work.</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <script>
@@ -486,6 +497,11 @@ var baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/
   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · route data &copy; TfL',
   subdomains:'abcd', maxZoom:19
 }).addTo(map);
+// Tile/offline fallback (CLAUDE.md): if the basemap can't load, say so but keep the
+// vector layers (routes/collisions/lens) usable on the plain dark background.
+var _tileErrs=0;
+baseLayer.on('tileerror', function(){ if(++_tileErrs===6){ var el=$('tileWarn'); if(el) el.style.display='block'; } });
+baseLayer.on('load', function(){ _tileErrs=0; var el=$('tileWarn'); if(el) el.style.display='none'; });
 
 var ptRenderer = L.canvas({padding:0.5});
 var routeLayer = L.layerGroup().addTo(map);
