@@ -20,10 +20,21 @@ export async function build(ctx) {
     // them so the network status count reconciles with the 676-route catalogue.
     .filter((l) => !/^ZZ\d*$/i.test(String(l.name || l.id || "")))
     .map((l) => {
-      const s = (l.lineStatuses && l.lineStatuses[0]) || {};
+      const all = (l.lineStatuses) || [];
+      // Show the status active NOW. TfL flags planned works (e.g. a future diversion) as
+      // severity-0 "Special Service" with validityPeriods where isNow=false — those aren't a
+      // current problem (it's why ~1/3 of routes wrongly read "Special Service"). Count a
+      // disruption only if it has no validity window or one active now; else it's Good Service.
+      let cur = null;
+      for (const st of all) {
+        if (st.statusSeverity === 10) continue;
+        const vp = st.validityPeriods || [];
+        if (!vp.length || vp.some((p) => p.isNow)) { cur = st; break; }
+      }
+      const s = cur || { statusSeverityDescription: "Good Service", statusSeverity: 10, reason: "" };
       return {
         route: l.name || l.id,
-        status: s.statusSeverityDescription || "Unknown",
+        status: s.statusSeverityDescription || "Good Service",
         reason: s.reason || "",
         severity: typeof s.statusSeverity === "number" ? s.statusSeverity : 10,
       };
