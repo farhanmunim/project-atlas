@@ -90,6 +90,22 @@
   .chip .k{font-family:var(--mono); font-size:8.5px; letter-spacing:.14em; color:var(--faint); text-transform:uppercase}
   .chip .v{font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:230px}
   .chip .v.accent{color:var(--red-bright)}
+  /* topbar data-status cluster — freshness badge · manual refresh · live clock */
+  .dstatus{display:flex; align-items:center; gap:8px; flex:0 0 auto; margin-left:auto}
+  .fresh{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; color:var(--muted); white-space:nowrap}
+  .fresh .fdot{width:6px; height:6px; border-radius:50%; background:var(--muted)}
+  .fresh.stale{color:var(--amber)} .fresh.stale .fdot{background:var(--amber)}
+  .rbtn{width:28px; height:28px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+    background:var(--panel); border:1px solid var(--border-soft); border-radius:7px; color:var(--text);
+    font-size:15px; cursor:pointer; backdrop-filter:blur(8px); transition:transform .15s var(--ease), border-color .15s}
+  .rbtn:hover{border-color:var(--line)}
+  .rbtn.spin{animation:rspin .7s linear}
+  .rbtn[disabled]{opacity:.55; cursor:default}
+  @keyframes rspin{to{transform:rotate(360deg)}}
+  .clock{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap}
+  .clock .cdot{width:6px; height:6px; border-radius:50%; background:#4FD675; box-shadow:0 0 6px rgba(79,214,117,.8); animation:cpulse 2s ease-in-out infinite}
+  @keyframes cpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){ .rbtn.spin{animation:none} .clock .cdot{animation:none} }
 
   /* Side rails */
   #leftrail{top:62px; left:14px; width:286px}
@@ -286,6 +302,7 @@
     /* right rail becomes a bottom sheet so route info + lens are usable on phones */
     #rightrail{display:flex; top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46vh}
     .chips{display:none}
+    .fresh #freshText{display:none}   /* keep the dot, drop the text so the topbar never overflows */
     #topbar{height:48px}
     .leaflet-control-zoom{display:none}   /* pinch-zoom on touch; buttons would sit under the sheet */
     /* comfortable touch targets (≈44px) */
@@ -321,6 +338,11 @@
     <div class="chip"><span class="k">Corridor</span><span class="v" id="cLen">—</span></div>
     <div class="chip"><span class="k">Incidents</span><span class="v" id="cTotal">0</span></div>
     <div class="chip"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
+  </div>
+  <div class="dstatus">
+    <span class="fresh" id="freshBadge" title="Time since the live layers were last pulled"><span class="fdot"></span><span id="freshText">—</span></span>
+    <button type="button" class="rbtn" id="refreshBtn" aria-label="Refresh data" title="Refresh data">⟳</button>
+    <span class="clock"><span class="cdot"></span><time id="clock" aria-label="Current time">--:--:--</time></span>
   </div>
 </div>
 
@@ -559,7 +581,7 @@ function monthsUntil(ym){ if(!ym) return null; var m=/^(\d{4})-(\d{2})/.exec(Str
 // fed by our warehouse) — no direct TfL calls. See atlasBase().
 function loadRoutes(){
   status('Loading bus routes from Atlas…');
-  getJSON(atlasBase()+'/routes')
+  return getJSON(atlasBase()+'/routes')
     .then(function(list){
       if(!Array.isArray(list)) throw new Error('unexpected /routes shape');
       var seen={};
@@ -813,7 +835,8 @@ function toggleRoad(on){
         .bindTooltip('National Highways · '+esc(d.road||''),{className:'stop-tip'})
         .bindPopup('<div style="font-size:12px;max-width:240px"><b style="color:#B388FF">National Highways</b>'+(d.road?' · '+esc(d.road):'')+'<br>'+esc(d.category||'')+(d.severity?' · '+esc(d.severity):'')+(d.comments?'<br><span style="color:var(--muted)">'+esc(String(d.comments).slice(0,180))+'</span>':'')+'</div>')
         .addTo(roadLayer); n++; });
-    map.addLayer(roadLayer); status(n+' live road incidents · TfL + National Highways','ok');
+    map.addLayer(roadLayer); if(typeof markFresh==='function') markFresh();
+    status(n+' live road incidents · TfL + National Highways','ok');
   }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
 }
 // Live buses — BODS SIRI-VM GPS through our API (/api/v1/live/vehicles). Route-scoped
@@ -822,14 +845,18 @@ function busIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[
 function refreshBuses(){
   if(!$('tgBuses').checked) return;
   var network=!state.routeId;
+  var tok=state.routeId||'__net';   // guard against a slow response landing after a route switch
   var url=atlasBase()+'/live/vehicles'+(network?'':'?line='+encodeURIComponent(state.routeId));
   getJSON(url).then(function(j){
+    if(!$('tgBuses').checked) return;                 // toggled off mid-flight
+    if((state.routeId||'__net')!==tok) return;        // selection changed mid-flight — drop stale buses
     var arr=(j.data||j.vehicles||[]); busLayer.clearLayers();
     arr.forEach(function(v){ if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng)) return;
       if(network){ L.circleMarker([v.lat,v.lng],{radius:2.5,weight:0,fillColor:'#4FD675',fillOpacity:.85,renderer:ptRenderer}).addTo(busLayer); }
       else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip(esc(v.reg||'bus')+' · route '+esc(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); }
     });
     map.addLayer(busLayer);
+    if(typeof markFresh==='function') markFresh();   // live GPS just pulled — badge reflects it
     status(network?(arr.length+' live buses · whole network'):(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
   }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
 }
@@ -1065,6 +1092,8 @@ function findCol(headers, regexes){
 }
 function ingest(headers, data, name){
   state.headers=headers; state.rows=data;
+  // tag the source so the Collisions toggle never destroys imported/sample data on "off"
+  state.dataSrc = /^Atlas STATS19/.test(name||'') ? 'stats19' : (/^sample/.test(name||'') ? 'sample' : 'csv');
   // detect lat/lon
   var latC=findCol(headers,[/^lat$/i,/latitude/i,/^y$/i]);
   var lonC=findCol(headers,[/^lon$/i,/^lng$/i,/longitude/i,/^long$/i,/^x$/i]);
@@ -1134,7 +1163,14 @@ function withinCorridor(items, bufferM){
 
 // Collisions layer toggle (Layers card): on → load STATS19 along the corridor; off → clear.
 function toggleCollisions(on){
-  if(!on){ clearCollisionData(); status('Collisions cleared','ok'); return; }
+  if(!on){
+    // the incident store is shared with CSV import / sample data — only the STATS19
+    // overlay is ours to clear; never wipe a user's imported/generated dataset + lenses.
+    if(state.dataSrc && state.dataSrc!=='stats19'){
+      status('STATS19 overlay off — your imported data is kept (use Clear to remove it).','ok'); return;
+    }
+    clearCollisionData(); status('Collisions cleared','ok'); return;
+  }
   if(!state.routeId){ status('Pick a route first — collisions plot along its corridor.','err'); $('tgCollisions').checked=false; return; }
   loadAtlasAccidents();
 }
@@ -1538,7 +1574,7 @@ $('genBtn').addEventListener('click', function(){
 /* ============================ CLEAR ============================ */
 function removeAllLenses(){ state.lenses.slice().forEach(removeLens); }
 function clearCollisionData(){
-  state.rows=[]; state.points=[]; state.headers=[]; state.dimension=''; state.colorMap=new Map();
+  state.rows=[]; state.points=[]; state.headers=[]; state.dimension=''; state.colorMap=new Map(); state.dataSrc=null;
   state.yearCol=null; state.years=[]; state.activeYears=new Set();
   ptLayer.clearLayers();
   if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; } heatActive=false; if($('tgHeat')) $('tgHeat').checked=false;
@@ -1587,7 +1623,30 @@ document.querySelectorAll('.toggle-row').forEach(function(row){
   var inp=row.querySelector('input[type=checkbox]'), txt=row.querySelector('span:not(.track)');
   if(inp&&txt&&!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', txt.textContent.trim());
 });
-loadRoutes();   // → restoreFromURL() (deep-linked route) or showNetwork() once routes land
+// ---- topbar data-status cluster: live clock · freshness badge · manual refresh ----
+function tickClock(){ var c=$('clock'); if(c) c.textContent=new Date().toTimeString().slice(0,8); }   // HH:MM:SS, 24h
+function markFresh(){ state.lastRefresh=Date.now(); paintFresh(); }
+function paintFresh(){
+  var b=$('freshBadge'), t=$('freshText'); if(!b||!t) return;
+  if(!state.lastRefresh){ t.textContent='No live data yet'; b.classList.remove('stale'); return; }
+  var s=Math.round((Date.now()-state.lastRefresh)/1000);
+  t.textContent = s<5?'Updated just now' : s<60?('Updated '+s+'s ago') : s<3600?('Updated '+Math.floor(s/60)+'m ago') : ('Updated '+Math.floor(s/3600)+'h ago');
+  b.classList.toggle('stale', s>=120);   // amber once the live layers are >2 min old
+}
+// one code path for manual + auto refresh: re-pull the live feeds that are currently on.
+function refresh(){
+  var btn=$('refreshBtn'); if(btn){ btn.classList.add('spin'); btn.disabled=true; }
+  if($('tgRoad').checked) toggleRoad(true);          // live road incidents (TfL + National Highways)
+  if($('tgBuses').checked) refreshBuses();           // live bus GPS (BODS)
+  if(state.routeId) renderDossier();                 // live status / reliability for the selected route
+  markFresh();
+  setTimeout(function(){ if(btn){ btn.classList.remove('spin'); btn.disabled=false; } }, 700);
+}
+$('refreshBtn').addEventListener('click', refresh);
+tickClock(); paintFresh();
+setInterval(function(){ tickClock(); paintFresh(); }, 1000);
+
+loadRoutes().then(markFresh, markFresh);   // → restoreFromURL() (deep-linked route) or showNetwork(); seed the freshness badge
 })();
 </script>
 
