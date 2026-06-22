@@ -604,7 +604,7 @@ function drawNetwork(){
       line.on('click', function(){ var r=(state.routes||[]).filter(function(x){return x.name===name;})[0]||{id:p.routeId,name:name}; selectRoute(r); });
       line.on('mouseover', function(){ line.setStyle({weight:4, opacity:1}); line.bringToFront(); });
       line.on('mouseout',  function(){ line.setStyle({weight:1.5, opacity:.7}); });
-      line.bindTooltip(name+(op?' · '+op:''), {sticky:true, className:'stop-tip'});
+      line.bindTooltip(esc(name)+(op?' · '+esc(op):''), {sticky:true, className:'stop-tip'});
       line.addTo(networkLayer);
     });
     names[name]=1;
@@ -740,7 +740,7 @@ function refreshBuses(){
     var arr=(j.data||j.vehicles||[]); busLayer.clearLayers();
     arr.forEach(function(v){ if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng)) return;
       if(network){ L.circleMarker([v.lat,v.lng],{radius:2.5,weight:0,fillColor:'#4FD675',fillOpacity:.85,renderer:ptRenderer}).addTo(busLayer); }
-      else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip((v.reg||'bus')+' · route '+(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); }
+      else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip(esc(v.reg||'bus')+' · route '+esc(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); }
     });
     map.addLayer(busLayer);
     status(network?(arr.length+' live buses · whole network'):(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
@@ -900,7 +900,7 @@ function renderStops(){
   if(!$('tgStops').checked) return;
   (state._stops||[]).forEach(function(sp){
     L.circleMarker([sp.lat,sp.lon], {radius:3, color:'#E7ECF1', weight:1, opacity:.55, fillColor:'#0A0C10', fillOpacity:1, renderer:ptRenderer})
-      .bindTooltip(sp.name, {direction:'top', className:'stop-tip'}).addTo(stopLayer);
+      .bindTooltip(esc(sp.name), {direction:'top', className:'stop-tip'}).addTo(stopLayer);
   });
 }
 $('tgStops').addEventListener('change', function(){
@@ -972,7 +972,7 @@ function ingest(headers, data, name){
   var latC=findCol(headers,[/^lat$/i,/latitude/i,/^y$/i]);
   var lonC=findCol(headers,[/^lon$/i,/^lng$/i,/longitude/i,/^long$/i,/^x$/i]);
   // populate mapping selects
-  var optHTML=headers.map(function(h){return '<option value="'+h.replace(/"/g,'&quot;')+'">'+h+'</option>';}).join('');
+  var optHTML=headers.map(function(h){return '<option value="'+esc(h)+'">'+esc(h)+'</option>';}).join('');
   $('latCol').innerHTML=optHTML; $('lonCol').innerHTML=optHTML;
   if(latC)$('latCol').value=latC; if(lonC)$('lonCol').value=lonC;
   $('mapCols').style.display='flex';
@@ -1074,7 +1074,7 @@ function drawBridges(all){
   var near=withinCorridor(low, CORRIDOR_BUFFER_M);
   near.forEach(function(b){
     L.marker([b.lat,(b.lng!=null?b.lng:b.lon)], {icon:bridgeIcon(), zIndexOffset:500})
-      .bindTooltip('Low bridge · '+(b.name||'')+' · '+b.height_m+' m'+(b.road?' · '+b.road:''), {direction:'top', className:'stop-tip'})
+      .bindTooltip('Low bridge · '+esc(b.name||'')+' · '+esc(b.height_m)+' m'+(b.road?' · '+esc(b.road):''), {direction:'top', className:'stop-tip'})
       .addTo(bridgeLayer);
   });
   map.addLayer(bridgeLayer);
@@ -1119,7 +1119,7 @@ function buildDimensions(){
   if(state.yearCol && cats.indexOf(state.yearCol)<0) cats.push(state.yearCol);
   var sel=$('dimSel');
   var prev=state.dimension;
-  sel.innerHTML='<option value="">Total only</option>'+cats.map(function(c){var lbl=(c==='__year'?'year (from date)':c); return '<option value="'+c.replace(/"/g,'&quot;')+'">'+lbl+'</option>';}).join('');
+  sel.innerHTML='<option value="">Total only</option>'+cats.map(function(c){var lbl=(c==='__year'?'year (from date)':c); return '<option value="'+esc(c)+'">'+esc(lbl)+'</option>';}).join('');
   // default
   var def = cats.indexOf('severity')>-1?'severity':(cats.indexOf('Severity')>-1?'Severity':(cats[0]||''));
   state.dimension = (prev && cats.indexOf(prev)>-1)?prev:def;
@@ -1167,7 +1167,7 @@ function buildLegend(){
   var entries=Array.from(state.colorMap.entries());
   entries.forEach(function(e){
     var row=document.createElement('div'); row.className='legrow';
-    row.innerHTML='<span class="swatch" style="background:'+e[1]+'"></span><span>'+e[0]+'</span><span class="lct">'+(counts[e[0]]||0)+'</span>';
+    row.innerHTML='<span class="swatch" style="background:'+esc(e[1])+'"></span><span>'+esc(e[0])+'</span><span class="lct">'+(counts[e[0]]||0)+'</span>';
     leg.appendChild(row);
   });
 }
@@ -1252,7 +1252,7 @@ function popupHTML(row){
   var html='<div style="font-family:var(--mono);font-size:11px;line-height:1.6;max-width:230px;color:#E7ECF1">';
   Object.keys(row).forEach(function(k){
     if(k.indexOf('__')===0) return;
-    html+='<div><span style="color:#8C97A4">'+k+':</span> '+(row[k]||'—')+'</div>';
+    html+='<div><span style="color:#8C97A4">'+esc(k)+':</span> '+esc(row[k]||'—')+'</div>';
   });
   return html+'</div>';
 }
@@ -1396,8 +1396,8 @@ function renderLensCard(lens, agg){
     shown.forEach(function(k){
       var c=state.colorMap.get(k)||'#9AA7B2';
       var pct=Math.round(agg.counts[k]/agg.total*100);
-      html+='<div class="bar"><span class="blabel">'+k+'</span><span class="bval">'+agg.counts[k]+' · '+pct+'%</span>'+
-            '<div class="btrack"><div class="bfill" style="width:'+(agg.counts[k]/max*100)+'%;background:'+c+'"></div></div></div>';
+      html+='<div class="bar"><span class="blabel">'+esc(k)+'</span><span class="bval">'+agg.counts[k]+' · '+pct+'%</span>'+
+            '<div class="btrack"><div class="bfill" style="width:'+(agg.counts[k]/max*100)+'%;background:'+esc(c)+'"></div></div></div>';
     });
     html+='</div>';
   }
