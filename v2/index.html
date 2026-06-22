@@ -248,6 +248,12 @@
   #status.err .pulse{background:var(--red-bright)}
   #status.ok .pulse{background:#4FD675}
 
+  /* network-mode top-centre label */
+  #netLabel{top:66px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:8px;
+    background:var(--panel); border:1px solid var(--border-soft); border-radius:20px; backdrop-filter:blur(8px);
+    padding:5px 14px; font-family:var(--mono); font-size:11px; letter-spacing:.04em; color:var(--text); box-shadow:var(--shadow)}
+  #netLabel .ndot{width:7px; height:7px; border-radius:50%; background:#4FD675}
+  @media (max-width:720px){ #netLabel{display:none!important} }
   .empty-state{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; z-index:5; pointer-events:none; max-width:360px}
   .empty-state .es-title{font-family:var(--mono); letter-spacing:.18em; font-size:13px; color:var(--muted); margin-bottom:8px}
   .empty-state .es-body{font-size:13px; color:var(--faint); line-height:1.6}
@@ -273,6 +279,8 @@
   <div class="es-title">ROUTE LENS</div>
   <div class="es-body">Pick a bus route to draw its corridor, then pull live STATS19 collisions from Atlas, load a CSV, or generate sample data. Drag the lens along the route to read the incident profile beneath it.</div>
 </div>
+
+<div class="hud" id="netLabel" style="display:none"><span class="ndot"></span><span id="netLabelText">—</span></div>
 
 <!-- TOP BAR -->
 <div class="hud" id="topbar">
@@ -301,6 +309,7 @@
           <div class="combo-list hidden" id="routeList"></div>
         </div>
       </label>
+      <button class="btn ghost" id="netBtn">◂ Whole network (by operator)</button>
       <label class="fld">
         <span>Direction</span>
         <div class="seg" id="dirSeg">
@@ -556,7 +565,66 @@ document.querySelectorAll('#dirSeg button').forEach(function(b){
 function selectRoute(r){
   state.routeId=r.id; state.routeName=r.name;
   $('cRoute').textContent=r.name;
+  if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the single corridor
+  hideNetLabel();
   fetchRoute();
+}
+
+/* ============================ NETWORK OVERVIEW (all routes by operator) ============================ */
+var networkLayer=L.layerGroup();
+var OP_COLORS=['#DC241F','#36C5F0','#F2A20C','#7ED957','#B388FF','#FF6FB5','#00C2A8','#FFC233','#5B8DEF','#E879F9','#34D399','#9AA7B2'];
+var opColorMap=null;
+function operatorColor(op){
+  if(!opColorMap){
+    opColorMap={}; var ops=[];
+    for(var k in (state.meta||{})){ var o=(state.meta[k]||{}).operator; if(o&&ops.indexOf(o)<0) ops.push(o); }
+    ops.sort(); ops.forEach(function(o,i){ opColorMap[o]=OP_COLORS[i%OP_COLORS.length]; });
+  }
+  return opColorMap[op]||'#9AA7B2';
+}
+function ensureNetworkData(){
+  var jobs=[];
+  if(!state.overview) jobs.push(getJSON(atlasBase()+'/routes-overview').then(function(g){ state.overview=g; }));
+  if(!state.meta)     jobs.push(getJSON(atlasBase()+'/route-meta').then(function(d){ state.meta=(d.routes||d); }));
+  return Promise.all(jobs);
+}
+function showNetLabel(t){ $('netLabelText').textContent=t; $('netLabel').style.display='flex'; }
+function hideNetLabel(){ $('netLabel').style.display='none'; }
+function drawNetwork(){
+  networkLayer.clearLayers(); opColorMap=null;
+  var feats=(state.overview.features||[]); var names={};
+  feats.forEach(function(f){
+    var p=f.properties||{}, name=p.name; if(!f.geometry) return;
+    var op=((state.meta||{})[name]||{}).operator, col=operatorColor(op);
+    var rings = f.geometry.type==='LineString' ? [f.geometry.coordinates]
+              : f.geometry.type==='MultiLineString' ? f.geometry.coordinates : [];
+    rings.forEach(function(seg){
+      var line=L.polyline(seg.map(function(pt){return [pt[1],pt[0]];}),
+        {color:col, weight:1.5, opacity:.7, renderer:ptRenderer});
+      line.on('click', function(){ var r=(state.routes||[]).filter(function(x){return x.name===name;})[0]||{id:p.routeId,name:name}; selectRoute(r); });
+      line.on('mouseover', function(){ line.setStyle({weight:4, opacity:1}); line.bringToFront(); });
+      line.on('mouseout',  function(){ line.setStyle({weight:1.5, opacity:.7}); });
+      line.bindTooltip(name+(op?' · '+op:''), {sticky:true, className:'stop-tip'});
+      line.addTo(networkLayer);
+    });
+    names[name]=1;
+  });
+  map.addLayer(networkLayer);
+  return Object.keys(names).length;
+}
+function showNetwork(){
+  state.routeId=null; state.routeName=null; state.routeSegments=[]; state.routePath=[];
+  routeLayer.clearLayers(); stopLayer.clearLayers();
+  $('cRoute').textContent='—'; $('cLen').textContent='—';
+  $('dossierCard').style.display='none';
+  status('Loading network…');
+  ensureNetworkData().then(function(){
+    var n=drawNetwork();
+    map.fitBounds(L.latLngBounds([[51.28,-0.52],[51.70,0.30]]), {paddingTopLeft:[300,80], paddingBottomRight:[286,30]});
+    $('emptyState').style.display='none';
+    showNetLabel(n+' routes · coloured by operator');
+    status(n+' routes ready', 'ok');
+  }).catch(function(e){ status('Network load failed: '+e.message, 'err'); });
 }
 // Lazy-load the two big DB-backed datasets once, then cache them.
 function ensureRouteData(){
@@ -1267,10 +1335,10 @@ $('tgHeat').addEventListener('change', function(){ setHeat(this.checked); });
     if(heatActive){ if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; } renderHeat(); }
   });
 });
+$('netBtn').addEventListener('click', showNetwork);
 loadRoutes();
 addLens();            // start with Lens A at London centre
-hideStatus();
-
+showNetwork();        // default view: the whole network, coloured by operator
 })();
 </script>
 
