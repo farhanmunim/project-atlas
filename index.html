@@ -1484,8 +1484,13 @@ function sentinelBody(list, data, scopeNote, opts={}){
   const topB=Object.entries(byBorough).sort((a,b)=>b[1]-a[1]).slice(0,3);
   const recent=[...list].sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
   const perKm = opts.km>0 ? tot/opts.km : null;
+  // Network ranking — where this route ranks for collision exposure (route context only).
+  const rankRows = opts.rankName ? (rankLine("Collision rank", rankOf(opts.rankName,"collisions"))
+    + rankLine("Density rank", rankOf(opts.rankName,"collisionDensity"))
+    + rankLine("KSI rank", rankOf(opts.rankName,"ksi"))) : "";
   return metrics([ mcard("Collisions",tot.toLocaleString("en-GB"),scopeNote||"bus-involved"), mcard("KSI",ksi.toLocaleString("en-GB"),tot?`${Math.round(ksi/tot*100)}% killed / serious`:"","color:var(--alert)") ])+
     (perKm!=null?`<div style="margin-top:var(--s3)"><div class="kv"><span class="k">Density</span><span class="v">${perKm.toFixed(1)} <span class="u">/km</span></span></div></div>`:"")+
+    (rankRows?`<div style="margin-top:var(--s3)">${rankRows}</div>`:"")+
     `<div class="pbar" style="margin-top:12px">${seg(["fatal","serious","slight"]).map(k=>`<i style="width:${(by[k]/tot*100).toFixed(1)}%;background:${SEV[k].color}" title="${SEV[k].label}: ${by[k]}"></i>`).join("")}</div>`+
     `<div class="plegend">${seg(["fatal","serious","slight"]).map(k=>`<span><span class="d" style="background:${SEV[k].color}"></span>${SEV[k].label} ${by[k]}</span>`).join("")}</div>`+
     (years.length>=2?`<div class="mnote" style="margin-top:10px;display:flex;justify-content:space-between"><span>By year</span><span style="color:${trend.col}">${trend.txt}</span></div>
@@ -1689,6 +1694,56 @@ function metaOf(r){
     pvr:s.pvr, fleet:s.fleet, lengthKm:s.lengthKm, contractDate:s.contractDate, contractStart:s.contractStart, contractEnd:s.contractEnd, _src:"londonbusroutes.net" };
   return { ...(ROUTE_META[r.name]||{}), ...(COMMERCIAL_SAMPLE[r.name]||{}), _src:"sample" };   // in-file fallback
 }
+
+/* ===========================================================================
+   NETWORK RANKINGS — comparative analysis (what makes Atlas > a fact sheet).
+   Where does this route sit vs the whole network on the metrics that matter:
+   road-collision exposure, schedule drift (EWT/OTP), lost mileage, £/mile.
+   Computed once from the loaded store (rank 1 = WORST on each metric, so the
+   ranks read consistently "high rank number = better"). Invalidated on refresh.
+   =========================================================================== */
+let _ranks=null;
+function invalidateRanks(){ _ranks=null; }
+function ensureRanks(){
+  if(_ranks) return _ranks;
+  if(!routes||!routes.length) return null;
+  const R={};
+  const put=(name,key,o)=>{ (R[name]||(R[name]={}))[key]=o; };
+  const uniq=arr=>{ const m=new Map(); for(const x of arr) if(x&&!m.has(x.name)) m.set(x.name,x); return [...m.values()]; };
+  const rank=(items,key,dir)=>{ const v=uniq(items).filter(x=>x.val!=null&&isFinite(x.val));
+    v.sort((a,b)=> dir==="asc"? a.val-b.val : b.val-a.val); const of=v.length;
+    v.forEach((x,i)=>put(x.name,key,{rank:i+1,of,val:x.val})); };
+  // road-collision exposure (raw count, KSI, and density per km — length-normalised)
+  const acc=store.accidents&&store.accidents.byRoute;
+  if(acc){ const raw=[],ksi=[],dens=[];
+    for(const r of routes){ const a=acc[r.name]; if(!a)continue; const km=metaOf(r).lengthKm;
+      raw.push({name:r.name,val:a.collisions}); ksi.push({name:r.name,val:a.ksi});
+      dens.push({name:r.name,val: km>0? a.collisions/km : null}); }
+    rank(raw,"collisions","desc"); rank(ksi,"ksi","desc"); rank(dens,"collisionDensity","desc"); }
+  // schedule drift — EWT (high-freq) and OTP (low-freq) are separate cohorts; + lost mileage
+  if(store.perf){ const ewt=[],otp=[],mil=[];
+    for(const r of routes){ const p=store.perf[r.name]||store.perf[String(r.name).toUpperCase()]; if(!p)continue;
+      if(p.serviceClass==="high-frequency"&&p.ewtMinutes!=null) ewt.push({name:r.name,val:p.ewtMinutes});
+      else if(p.onTimePercent!=null) otp.push({name:r.name,val:p.onTimePercent});
+      if(p.mileagePercent!=null) mil.push({name:r.name,val:p.mileagePercent}); }
+    rank(ewt,"ewt","desc"); rank(otp,"otp","asc"); rank(mil,"mileage","asc"); }
+  // cost intensity — latest tender £/live mile
+  if(store.tenders){ const cpm=[];
+    for(const r of routes){ const t=store.tenders[r.name]&&store.tenders[r.name][0]; const v=t&&t.costPerMile>0&&t.costPerMile<=200?t.costPerMile:null;
+      if(v!=null) cpm.push({name:r.name,val:v}); }
+    rank(cpm,"cpm","desc"); }
+  _ranks=R; return R;
+}
+function rankOf(name,key){ const R=ensureRanks(); return R&&R[name]&&R[name][key]||null; }
+/* One insight line: "#42 of 675 · worse than 94%", coloured by severity.
+   rank 1 is always the worst, so "worse than" rises toward the worst routes. */
+function rankLine(label,rk,cohort){
+  if(!rk||rk.of<5) return "";
+  const worse = rk.of>1 ? Math.round((rk.of-rk.rank)/(rk.of-1)*100) : 0;
+  const pctile = rk.rank/rk.of;
+  const col = pctile<=0.1?"var(--alert)":pctile<=0.25?"var(--amber)":pctile>=0.75?"var(--green)":"var(--paper-2)";
+  return `<div class="kv" title="rank 1 = worst of ${rk.of}${cohort?" "+cohort:""} routes on this measure"><span class="k">${label}</span><span class="v" style="color:${col}">#${rk.rank}<span class="u"> / ${rk.of}</span> · worse than ${worse}%</span></div>`;
+}
 function applyFilters(list){
   const q=document.getElementById("routeSearch").value.trim().toLowerCase();
   return list.filter(r=>{
@@ -1751,7 +1806,7 @@ function syncMapCtl(){
 async function refreshAll(){
   const btn=document.getElementById("refresh"); if(!reduceMotion()) btn.classList.add("spin"); btn.disabled=true;
   try{
-    store.via=null; store.overviewByRoute=new Map();
+    store.via=null; store.overviewByRoute=new Map(); invalidateRanks();   // network rankings recompute from the fresh store
     store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.manifest=null;
     seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear(); roadIncidents=null;   // drop ALL in-memory caches → genuinely re-pull
     await loadStore();              // routes, geometry, stops, route-meta, tenders, garages
@@ -2028,6 +2083,36 @@ function group(key, title, accent, body, summary=""){
 }
 // the small monospace "→ Tool" cross-link footer used across the dossier.
 const crossLink=(html)=>`<div class="xlink">${html}</div>`;
+/* Compact "worse than X% of the network" insight, coloured by severity (rank 1 = worst). */
+function rankNote(rk){ if(!rk||rk.of<5) return ""; const worse=Math.round((rk.of-rk.rank)/(rk.of-1)*100); const p=rk.rank/rk.of;
+  const c=p<=0.1?"var(--alert)":p<=0.25?"var(--amber)":p>=0.75?"var(--green)":"var(--paper-3)";
+  return ` <span class="u" style="color:${c}" title="rank ${rk.rank} of ${rk.of} — 1 is worst">· worse than ${worse}%</span>`; }
+/* SNAPSHOT — the at-a-glance summary the panel leads with: one hero metric + a few
+   clean colour-coded rows, each carrying its network rank. Detail stays in the groups
+   below (progressive disclosure) so the panel reads instantly without expanding anything. */
+function routeSnapshot(r, meta){
+  const p = store.perf && (store.perf[r.name] || store.perf[String(r.name).toUpperCase()]);
+  const acc = store.accidents && store.accidents.byRoute && store.accidents.byRoute[r.name];
+  const tnd = store.tenders && store.tenders[r.name] && store.tenders[r.name][0];
+  const cpmV = tnd && tnd.costPerMile>0 && tnd.costPerMile<=200 ? tnd.costPerMile : null;
+  let hero="";
+  const heroCard=(v,label,col,sub)=>`<div style="display:flex;align-items:baseline;gap:8px"><div style="font:600 30px/1 var(--mono);color:${col}">${v}</div><div style="font-size:11px;color:var(--paper-3)">${label}</div></div>${sub?`<div style="font-size:10px;color:var(--paper-3);font-family:var(--mono);margin-top:5px">${sub}</div>`:""}`;
+  if(p && p.serviceClass==="high-frequency" && p.ewtMinutes!=null){
+    const bad=p.ewtMps!=null && p.ewtMinutes>p.ewtMps; const rk=rankOf(r.name,"ewt");
+    hero=heroCard(p.ewtMinutes.toFixed(2),"min excess wait",bad?"var(--alert)":"var(--green)",
+      `high-frequency${rk?` · #${rk.rank} of ${rk.of} for drift`:""}${p.ewtMps!=null?` · MPS ≤ ${p.ewtMps.toFixed(2)}`:""}`);
+  } else if(p && p.onTimePercent!=null){
+    const bad=p.otpMps!=null && p.onTimePercent<p.otpMps; const rk=rankOf(r.name,"otp");
+    hero=heroCard(p.onTimePercent.toFixed(1)+"%","on time",bad?"var(--alert)":"var(--green)",
+      `low-frequency${rk?` · #${rk.rank} of ${rk.of} for punctuality`:""}${p.otpMps!=null?` · MPS ≥ ${p.otpMps.toFixed(0)}%`:""}`);
+  }
+  const rows=[];   // operator/type/propulsion already shown as identity pills above — keep the
+                   // snapshot to the comparative insights that aren't visible elsewhere.
+  if(acc) rows.push(kv("Road risk", `${acc.collisions} collisions · ${acc.ksi} KSI${rankNote(rankOf(r.name,"collisions"))}`));
+  if(cpmV!=null) rows.push(kv("Cost", `£${cpmV}<span class="u">/mi</span>${rankNote(rankOf(r.name,"cpm"))}`));
+  if(!hero && !rows.length) return "";
+  return `<div class="metric" style="margin-bottom:var(--s3)">${hero?`<div style="margin-bottom:${rows.length?"12px":"0"}">${hero}</div>`:""}${rows.join("")}</div>`;
+}
 function statusTone(sev){ return sev>=10?{c:"var(--green)",h:"#3fb87a"}:sev>=8?{c:"var(--amber)",h:"#f5a524"}:{c:"var(--alert)",h:"#ff5470"}; }
 function shortOp(o){ return o.replace(" London","").replace("Transport UK London Bus (RATP)","RATP"); }
 function fmtMoney(n){ return n==null ? "—" : "£"+Number(n).toLocaleString("en-GB"); }
@@ -2482,7 +2567,7 @@ function renderContext(){
       : `<div class="metric"><div class="mnote">Low bridges · diversion risk</div><div class="empty" style="padding:7px 0">No low bridges within ${riskRadius} m of this route.</div></div>`;
     return group("risk","Risk & accidents","var(--alert)",
       radCtl
-      + `<div class="metric">${sentinelBody(near,data,`within ${riskRadius} m of this route`,{km})}</div>`
+      + `<div class="metric">${sentinelBody(near,data,`within ${riskRadius} m of this route`,{km,rankName:r.name})}</div>`
       + bridgeBody,
       near.length?`${near.length} · ${ksi} KSI${subDD.length?` · ⚠ ${subDD.length} br`:""}`:(subDD.length?`⚠ ${subDD.length} low br`:(corridor.length?`${corridor.length} br nearby`:"none nearby")));
   })();
@@ -2509,9 +2594,14 @@ function renderContext(){
       cards.push(mcard("Mileage run",`${p.mileagePercent.toFixed(1)}<span class="u">%</span>`, p.mileageMps!=null?`MPS ≥ ${p.mileageMps.toFixed(0)}%`:"scheduled km", breachStyle(bad)));
     }
     if(!cards.length) return "";
+    // Network ranking — where this route sits among its cohort for schedule drift.
+    const drift = isHF ? rankLine("Excess-wait rank", rankOf(r.name,"ewt"), "high-freq")
+                       : rankLine("Punctuality rank", rankOf(r.name,"otp"), "low-freq");
+    const mileRank = rankLine("Lost-mileage rank", rankOf(r.name,"mileage"));
+    const ranks = (drift||mileRank) ? `<div style="margin-top:var(--s3)">${drift}${mileRank}</div>` : "";
     return metricBlock(`Reliability <span class="mono" style="color:var(--paper-4)">${esc(store.perfPeriod||"")}</span>`,
-      metrics(cards)+
-      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} service · actual vs contractual minimum standard (MPS)</div>`+
+      metrics(cards)+ranks+
+      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} service · actual vs contractual minimum standard (MPS) · rank vs network</div>`+
       crossLink("source · TfL Bus Performance (QSI) + per-route MPS"));
   })();
   const servicePatternsBlock = sections.length?metricBlock(`Service patterns <span class="mono">${sections.length}</span>`,
@@ -2534,7 +2624,7 @@ function renderContext(){
        crossLink(meta._src==="londonbusroutes.net"?"source · londonbusroutes.net (operator/garage/fleet/PVR)":"sample — not in the free TfL feed"));
   const liveSummary = trackingOn()?`${liveVehicles.length} live`:(st?esc(st.description):"");
   // ── grouped readout: a handful of collapsible top-level groups ──
-  el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
+  el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + routeSnapshot(r,meta) + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
     group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
     riskGroup+
