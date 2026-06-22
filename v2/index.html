@@ -352,7 +352,7 @@
     <div class="chip"><span class="k">Route</span><span class="v accent" id="cRoute">—</span></div>
     <div class="chip"><span class="k">Corridor</span><span class="v" id="cLen">—</span></div>
     <div class="chip"><span class="k">Incidents</span><span class="v" id="cTotal">0</span></div>
-    <div class="chip"><span class="k">Shown</span><span class="v" id="cVisible">0</span></div>
+    <div class="chip"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
   </div>
   <div class="dstatus">
     <span class="fresh" id="freshBadge" title="Time since the live layers were last pulled"><span class="fdot"></span><span id="freshText">—</span></span>
@@ -547,6 +547,8 @@ var PROP_LBL={electric:'Electric', hydrogen:'Hydrogen', hybrid:'Hybrid', diesel:
 var map = L.map('map', {zoomControl:false, preferCanvas:true, attributionControl:true})
   .setView([51.509, -0.118], 11);
 L.control.zoom({position:'bottomright'}).addTo(map);
+// keep the "In view" topbar count accurate as the user pans/zooms.
+map.on('moveend zoomend', function(){ if(typeof updateStats==='function') updateStats(); });
 
 var baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · route data &copy; TfL',
@@ -1562,7 +1564,11 @@ function popupHTML(row){
 /* ============================ STATS ============================ */
 function updateStats(){
   $('cTotal').textContent=state.points.length;
-  $('cVisible').textContent=visiblePoints().length;
+  // "In view" = points actually within the current map viewport (year-filter applied), not just
+  // the filter count — so it updates as you pan/zoom (wired to moveend/zoomend below).
+  var vp=visiblePoints(), b;
+  try{ b=map.getBounds(); }catch(e){ b=null; }
+  $('cVisible').textContent = b ? vp.filter(function(p){return b.contains(p.latlng);}).length : vp.length;
 }
 
 /* ============================ LENSES ============================ */
