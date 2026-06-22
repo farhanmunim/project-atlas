@@ -123,6 +123,12 @@ Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `
 
 > The history group needs Supabase read credentials configured (see **Historical API
 > setup** below). Without them it returns `503` and the live + current groups still work.
+> **Exception — `history/accidents`:** the full enriched multi-year STATS19 set also ships as
+> the static snapshot, so this endpoint **falls back to filtering `data/accidents.json`** when
+> Supabase is unconfigured or a filter targets a column whose migration is still pending — the
+> documented filters (`severity`, `borough`, `road_type`, `speed_limit`, `day`, `time_band`,
+> `from`/`to`) return enriched rows regardless. Responses carry a `source` field when served from
+> the snapshot.
 
 ### Example
 

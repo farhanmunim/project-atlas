@@ -206,20 +206,52 @@ async function serveLive(req, res, name) {
     return jsonCors(res, 200, { feed: name, capturedAt: new Date().toISOString(), data: await r.json() }); }
   catch (e) { return jsonCors(res, 502, { error: "live feed unreachable" }); }
 }
+// Accidents fallback (mirrors functions/api/v1/history/[[path]].js): the full enriched STATS19
+// set also lives in the static snapshot, so when Supabase can't serve it (unconfigured here, or a
+// filter hits a not-yet-migrated column) we filter the snapshot so the documented filters still work.
+const ACC_SNAP_FILTERS = { from: ["date", "gte"], to: ["date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"], road_type: ["roadType", "eq"], speed_limit: ["speedLimit", "eq"], day: ["day", "eq"], time_band: ["timeBand", "eq"] };
+function accidentsSnapshot(q, limit, order) {
+  let snap;
+  try { const d = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "accidents.json"), "utf8")); snap = Array.isArray(d) ? d : (d && d.accidents) || null; } catch { return null; }
+  if (!Array.isArray(snap)) return null;
+  let rows = snap.filter((a) => {
+    for (const [param, [col, op]] of Object.entries(ACC_SNAP_FILTERS)) {
+      const v = q.get(param); if (v == null || v === "") continue;
+      const cell = a[col] == null ? "" : String(a[col]);
+      if (op === "eq" && cell !== v) return false;
+      if (op === "gte" && !(cell >= v)) return false;
+      if (op === "lte" && !(cell <= v)) return false;
+    }
+    return true;
+  });
+  const desc = !/\.asc$/.test(order);
+  rows.sort((a, b) => desc ? String(b.date).localeCompare(String(a.date)) : String(a.date).localeCompare(String(b.date)));
+  rows = rows.slice(0, limit).map((a) => ({ collision_id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, collision_date: a.date, borough: a.borough, vehicles: a.vehicles, casualties: a.casualties, road_type: a.roadType, speed_limit: a.speedLimit, junction: a.junction, light: a.light, weather: a.weather, road_surface: a.roadSurface, day: a.day, time_band: a.timeBand }));
+  return { dataset: "accidents", table: "accidents", source: "snapshot (data/accidents.json — warehouse migration pending)", count: rows.length, limit, rows };
+}
 async function serveHistory(req, res, name) {
   const ep = HIST_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown history dataset: " + name, available: Object.keys(HIST_EP) });
-  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!base || !key) return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
-  const q = new URL(req.url, "http://x").searchParams; const parts = [];
-  for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
+  const q = new URL(req.url, "http://x").searchParams;
   let limit = parseInt(q.get("limit"), 10); limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
   const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
+  const canSnapshot = name === "accidents";
+  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !key) {
+    if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
+    return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
+  }
+  const parts = [];
+  for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
   parts.push(`order=${order}`, `limit=${limit}`);
   let supaOrigin; try { supaOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "SUPABASE_URL is not a valid URL" }); }
   const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
-  try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } }); if (!r.ok) return jsonCors(res, (r.status >= 400 && r.status < 500) ? r.status : 502, { error: `historical query failed (${r.status})`, detail: (await r.text()).slice(0, 300) });
+  try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (!r.ok) {
+      if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
+      return jsonCors(res, (r.status >= 400 && r.status < 500) ? r.status : 502, { error: `historical query failed (${r.status})`, detail: (await r.text()).slice(0, 300) });
+    }
     const rows = await r.json(); return jsonCors(res, 200, { dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows }); }
-  catch (e) { return jsonCors(res, 502, { error: "historical store unreachable" }); }
+  catch (e) { if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); } return jsonCors(res, 502, { error: "historical store unreachable" }); }
 }
 
 http.createServer(async (req, res) => {
