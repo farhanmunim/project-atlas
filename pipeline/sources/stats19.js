@@ -153,9 +153,12 @@ export async function fetchStats19Year(year, { bbox = LONDON_BBOX, timeoutMs } =
       // decoded collision-context attributes (clean labels; missing/unknown → null)
       roadType: decode(ROAD_TYPE, at("road_type")),
       speedLimit: speedLimit(at("speed_limit")),
-      // use junction_detail_historic (classic 0–9 lookup, present in all years); the newer
-      // junction_detail column switched to an undocumented code scheme we won't guess at.
-      junction: decode(JUNCTION, at("junction_detail_historic")),
+      // junction_detail_historic carries the classic 0–9 lookup (present in all years
+      // 2018–2024). Verified empirically: the newer junction_detail column uses a different
+      // code set (13/16/17/18/19) the classic map can't decode — so prefer _historic, and
+      // only fall back to junction_detail if _historic is ever dropped (an unknown code then
+      // decodes to null, never a wrong label).
+      junction: decode(JUNCTION, at("junction_detail_historic") || at("junction_detail")),
       light: decode(LIGHT, at("light_conditions")),
       weather: decode(WEATHER, at("weather_conditions")),
       roadSurface: decode(SURFACE, at("road_surface_conditions")),

@@ -174,7 +174,9 @@ async function fetchYear(year, timeoutMs) {
       // decoded collision-context attributes (clean labels; missing/unknown -> null)
       roadType: decode(ROAD_TYPE, at('road_type')),
       speedLimit: speedLimit(at('speed_limit')),
-      junction: decode(JUNCTION, at('junction_detail_historic')),  // classic 0–9 lookup
+      // classic 0–9 lookup; the newer junction_detail uses a different code set (13/16/17/
+      // 18/19) — prefer _historic, fall back only if it's dropped (unknown → null, never wrong).
+      junction: decode(JUNCTION, at('junction_detail_historic') || at('junction_detail')),
       light: decode(LIGHT, at('light_conditions')),
       weather: decode(WEATHER, at('weather_conditions')),
       roadSurface: decode(SURFACE, at('road_surface_conditions')),

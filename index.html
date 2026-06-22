@@ -1398,15 +1398,19 @@ function drawAccidents(){
   // collisions group into one circle; the grid shrinks as you zoom in → clusters split apart.
   const cell=(360/(256*Math.pow(2,map.getZoom())))*ACC_GRID_PX;
   const bins=new Map();
+  const topKey=(o)=>{ let bk=null,bv=0; for(const k in o){ if(o[k]>bv){ bv=o[k]; bk=k; } } return bk; };
   list.forEach(a=>{ if(!Number.isFinite(a.lat)||!Number.isFinite(a.lng)) return;
     const k=Math.floor(a.lng/cell)+":"+Math.floor(a.lat/cell);
-    let b=bins.get(k); if(!b){ b={n:0,lat:0,lng:0,fatal:0,serious:0,slight:0}; bins.set(k,b); }
-    b.n++; b.lat+=a.lat; b.lng+=a.lng; b[sevOf(a)]++; });
+    let b=bins.get(k); if(!b){ b={n:0,lat:0,lng:0,fatal:0,serious:0,slight:0,rt:{},sp:{}}; bins.set(k,b); }
+    b.n++; b.lat+=a.lat; b.lng+=a.lng; b[sevOf(a)]++;
+    if(a.roadType) b.rt[a.roadType]=(b.rt[a.roadType]||0)+1;
+    if(a.speedLimit) b.sp[a.speedLimit]=(b.sp[a.speedLimit]||0)+1; });
   let maxN=1; bins.forEach(b=>{ if(b.n>maxN) maxN=b.n; });
   bins.forEach(b=>{ const t=Math.sqrt(b.n/maxN);   // 0..1 density (sqrt → area-proportional)
     const r=ACC_MIN_R+(ACC_MAX_R-ACC_MIN_R)*t, ksi=b.fatal+b.serious;
     L.circleMarker([b.lat/b.n, b.lng/b.n],{ radius:r, color:effectiveTheme()==="light"?"#ffffff":"#0a0e16", weight:1, fillColor:accHeat(t), fillOpacity:0.4+0.45*t })
-      .bindPopup(`<div class="rh-pop"><div class="rh-h">${b.n} collision${b.n>1?"s":""} here</div><div class="rh-sub">${ksi?`<span style="color:var(--alert)">${ksi} killed / serious</span> · `:""}${b.slight} slight</div></div>`)
+      .bindPopup((()=>{ const rt=topKey(b.rt), sp=topKey(b.sp); const ctx=[rt,sp].filter(Boolean).map(esc).join(" · ");
+        return `<div class="rh-pop"><div class="rh-h">${b.n} collision${b.n>1?"s":""} here</div><div class="rh-sub">${ksi?`<span style="color:var(--alert)">${ksi} killed / serious</span> · `:""}${b.slight} slight</div>${ctx?`<div class="rh-sub" style="color:var(--paper-3)">${ctx}</div>`:""}</div>`; })())
       .addTo(accidentLayer); });
 }
 /* Low bridges — discrete clearance-graded markers (red below the 4.4 m double-deck
