@@ -88,7 +88,7 @@
 
   /* Side rails */
   #leftrail{top:62px; left:14px; width:286px}
-  #rightrail{top:62px; right:14px; width:268px}
+  #rightrail{top:62px; right:14px; width:308px}
   #leftrail, #rightrail{
     display:flex; flex-direction:column; gap:10px; pointer-events:auto;
     max-height:calc(100vh - 78px); overflow-y:auto; padding-bottom:8px;
@@ -210,9 +210,9 @@
   /* route dossier card — clean full-width rows with quiet dividers (data from the Atlas API) */
   #dossierBody{padding:2px 0}
   .card.open #dossierBody{display:block}   /* block rows when open; base .card-b display:none hides it when collapsed */
-  #dossierBody .drow{display:flex; justify-content:space-between; gap:16px; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
-  #dossierBody .drow .dk{color:var(--muted); white-space:nowrap}
-  #dossierBody .drow .dv{font-family:var(--mono); color:var(--text); text-align:right; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #dossierBody .drow{display:grid; grid-template-columns:84px 1fr; gap:12px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
+  #dossierBody .drow .dk{color:var(--muted)}
+  #dossierBody .drow .dv{font-family:var(--mono); color:var(--text); text-align:left; word-break:break-word; line-height:1.45}
   #dossierBody .dsec{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); display:flex; gap:6px; align-items:baseline; padding:13px 0 6px; border-bottom:1px solid var(--border-soft)}
   #dossierBody .dsec .da{margin-left:auto; text-transform:none; letter-spacing:.02em}
   #dossierBody > .drow:last-child{border-bottom:none}
@@ -828,11 +828,11 @@ function renderDossier(){
     var fl=(state.fleet||{})[name]||null;
     var html='';
 
-    // Identity — plain rows, propulsion tinted by fuel.
+    // Identity — short labels, value column left-aligned for easy scanning.
     html+=drow('Operator', m.operator);
     html+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
     html+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
-    html+=drow('Peak vehicles (PVR)', m.pvr);
+    html+=drow('PVR', m.pvr);
     html+=drow('Spec', m.fleet);
     html+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
 
@@ -840,30 +840,30 @@ function renderDossier(){
     if(pf){
       html+=dsec('Reliability', pf.serviceClass);
       if(pf.serviceClass==='high-frequency' && pf.ewtMinutes!=null)
-        html+=drow('Excess wait (EWT)', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
-      if(pf.onTimePercent!=null) html+=drow('On-time (OTP)', Math.round(pf.onTimePercent)+'%');
-      if(pf.mileagePercent!=null) html+=drow('Mileage operated', pf.mileagePercent.toFixed(1)+'%');
+        html+=drow('EWT', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
+      if(pf.onTimePercent!=null) html+=drow('OTP', Math.round(pf.onTimePercent)+'%');
+      if(pf.mileagePercent!=null) html+=drow('Mileage', pf.mileagePercent.toFixed(1)+'%');
     }
 
     // Commercial — latest award (joint-bid / awarded vehicle / tranche)
     if(tn.length){
       var a=tn[0], jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary;
       html+=dsec('Commercial', tn.length+' awards');
-      html+=drow('Latest operator', a.operator);
+      html+=drow('Operator', a.operator);
       html+=drow('Awarded', a.awardDate);
-      if(a.costPerMile>0&&a.costPerMile<=200) html+=drow('Cost / mile', '£'+a.costPerMile);
+      if(a.costPerMile>0&&a.costPerMile<=200) html+=drow('£/mile', '£'+a.costPerMile);
       if(a.tranche!=null) html+=drow('Tranche', a.tranche);
       var bid = jb ? ('Joint'+(a.jb.total?' · £'+a.jb.total.toLocaleString('en-GB'):'')+((a.jb.partners&&a.jb.partners.length)?' (with '+a.jb.partners.slice(0,3).join(', ')+(a.jb.partners.length>3?'…':'')+')':'')) : 'Sole';
       html+=drow('Bid', bid, jb?'var(--amber)':null);
-      if(veh) html+=drow('Awarded on', veh, 'var(--cyan)');
+      if(veh) html+=drow('Vehicle', veh, 'var(--cyan)');
     }
 
     // Fleet
     if(fl && (fl.count||fl.avgAgeYears!=null)){
       html+=dsec('Fleet', 'live sample');
-      html+=drow('On the road now', fl.count);
-      if(fl.avgAgeYears!=null) html+=drow('Average age', fl.avgAgeYears+' yrs');
-      if(fl.makes&&fl.makes.length) html+=drow('Top make', fl.makes[0].make+' ('+fl.makes[0].n+')');
+      html+=drow('On road', fl.count);
+      if(fl.avgAgeYears!=null) html+=drow('Avg age', fl.avgAgeYears+' yrs');
+      if(fl.makes&&fl.makes.length) html+=drow('Make', fl.makes[0].make+' ('+fl.makes[0].n+')');
     }
 
     if(!html) html='<div class="dempty">No detail on record for route '+esc(name)+'.</div>';
