@@ -142,7 +142,7 @@
   .card.combo-open{overflow:visible; position:relative; z-index:60}
   .opt{padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--border-soft); display:flex; align-items:baseline; gap:9px}
   .opt:last-child{border-bottom:none}
-  .opt:hover{background:#171C24}
+  .opt:hover, .opt.active{background:#171C24}
   .opt .num{font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text); min-width:38px}
   .opt .od{font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .opt .empty{color:var(--faint); font-style:italic; font-size:12px}
@@ -194,7 +194,7 @@
   .fsec .flbl{font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
   .ychip .yn{color:var(--faint); margin-left:5px}
   .ychip .ysw{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle}
-  .ychip{font-family:var(--mono); font-size:11px; padding:4px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:#0C0F14}
+  .ychip{font-family:var(--mono); font-size:11px; line-height:1.3; padding:4px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:#0C0F14; display:inline-flex; align-items:center}
   .ychip.on{background:rgba(220,36,31,.16); border-color:var(--red); color:var(--text)}
 
   /* legend */
@@ -509,9 +509,23 @@ function naturalCmp(a,b){
 }
 
 /* ============================ COLLAPSIBLE CARDS ============================ */
-document.querySelectorAll('[data-card] .card-h').forEach(function(h){
-  h.addEventListener('click', function(){ h.parentElement.classList.toggle('open'); });
-});
+// Make a card header a real keyboard-operable disclosure button (role/tabindex/
+// aria-expanded + Enter/Space). Reused by the dynamic lens cards too.
+var _cardBodyId=0;
+function wireCardHeader(h){
+  if(h._wired) return; h._wired=true;
+  var card=h.parentElement, body=card.querySelector('.card-b'), chev=h.querySelector('.chev');
+  if(body && !body.id) body.id='cardb-'+(++_cardBodyId);
+  h.setAttribute('role','button'); h.setAttribute('tabindex','0');
+  if(body) h.setAttribute('aria-controls', body.id);
+  if(chev) chev.setAttribute('aria-hidden','true');
+  var sync=function(){ h.setAttribute('aria-expanded', String(card.classList.contains('open'))); };
+  var toggle=function(){ card.classList.toggle('open'); sync(); };
+  sync();
+  h.addEventListener('click', toggle);
+  h.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+}
+document.querySelectorAll('[data-card] .card-h').forEach(wireCardHeader);
 
 /* ============================ LOAD ROUTES ============================ */
 // Route-type → a short context label shown beside each route in the combobox.
@@ -549,19 +563,37 @@ function renderList(filter){
   if(!state.routes.length){ list.innerHTML='<div class="opt"><span class="empty">Loading routes…</span></div>'; return; }
   if(!items.length){ list.innerHTML='<div class="opt"><span class="empty">No match</span></div>'; return; }
   list.innerHTML='';
-  items.forEach(function(r){
-    var o=document.createElement('div'); o.className='opt';
+  items.forEach(function(r,i){
+    var o=document.createElement('div'); o.className='opt'; o.setAttribute('role','option'); o.id='ropt-'+i; o._route=r;
     o.innerHTML='<span class="num">'+esc(r.name)+'</span><span class="od">'+esc(r.od||'')+'</span>';
     o.addEventListener('click', function(){
       search.value=r.name; comboToggle(false); selectRoute(r);
     });
     list.appendChild(o);
   });
+  _comboIdx=-1;
 }
 // show/hide the dropdown AND flag the card so the list can escape its overflow clip.
-function comboToggle(show){ list.classList.toggle('hidden', !show); var card=search.closest('.card'); if(card) card.classList.toggle('combo-open', show); }
+var _comboIdx=-1;
+function comboToggle(show){ list.classList.toggle('hidden', !show); search.setAttribute('aria-expanded', String(show)); var card=search.closest('.card'); if(card) card.classList.toggle('combo-open', show); if(!show) comboHighlight(-1); }
+function comboHighlight(idx){
+  var opts=list.querySelectorAll('.opt[role=option]');
+  _comboIdx = opts.length ? ((idx+opts.length)%opts.length) : -1;
+  opts.forEach(function(o,i){ o.classList.toggle('active', i===_comboIdx); });
+  if(_comboIdx>=0){ opts[_comboIdx].scrollIntoView({block:'nearest'}); search.setAttribute('aria-activedescendant', opts[_comboIdx].id); }
+  else search.removeAttribute('aria-activedescendant');
+}
+search.setAttribute('role','combobox'); search.setAttribute('aria-controls','routeList'); search.setAttribute('aria-autocomplete','list'); search.setAttribute('aria-expanded','false');
+list.setAttribute('role','listbox'); list.setAttribute('aria-label','Bus routes');
 search.addEventListener('focus', function(){ renderList(search.value); comboToggle(true); });
 search.addEventListener('input', function(){ renderList(search.value); comboToggle(true); });
+search.addEventListener('keydown', function(e){
+  if(list.classList.contains('hidden') && (e.key==='ArrowDown'||e.key==='ArrowUp')){ renderList(search.value); comboToggle(true); }
+  if(e.key==='ArrowDown'){ e.preventDefault(); comboHighlight(_comboIdx+1); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); comboHighlight(_comboIdx-1); }
+  else if(e.key==='Enter'){ var opts=list.querySelectorAll('.opt[role=option]'); var o=opts[_comboIdx]||opts[0]; if(o&&o._route){ e.preventDefault(); search.value=o._route.name; comboToggle(false); selectRoute(o._route); search.blur(); } }
+  else if(e.key==='Escape'){ comboToggle(false); }
+});
 document.addEventListener('click', function(e){ if(!e.target.closest('.combo')) comboToggle(false); });
 
 /* direction segmented */
@@ -660,9 +692,9 @@ function routePasses(name){
 }
 function fChip(group,val,label,count,color){
   var on=FILTERS[group].has(val);
-  return '<span class="ychip'+(on?' on':'')+'" data-g="'+group+'" data-v="'+esc(val)+'">'+
-    (color?'<span class="ysw" style="background:'+color+'"></span>':'')+esc(label)+
-    (count!=null?'<span class="yn">'+count+'</span>':'')+'</span>';
+  return '<button type="button" class="ychip'+(on?' on':'')+'" role="button" aria-pressed="'+on+'" data-g="'+group+'" data-v="'+esc(val)+'">'+
+    (color?'<span class="ysw" style="background:'+color+'" aria-hidden="true"></span>':'')+esc(label)+
+    (count!=null?'<span class="yn">'+count+'</span>':'')+'</button>';
 }
 function buildFilterChips(){
   var meta=state.meta||{}, routes=state.routes||[];
@@ -694,8 +726,9 @@ function applyFiltersUI(){
 function onFilterClick(e){
   var c=e.target.closest&&e.target.closest('.ychip'); if(!c||!c.dataset.g) return;
   var g=c.dataset.g, v=c.dataset.v;
-  if(FILTERS[g].has(v)) FILTERS[g].delete(v); else FILTERS[g].add(v);
-  c.classList.toggle('on');
+  var nowOn = !FILTERS[g].has(v);
+  if(nowOn) FILTERS[g].add(v); else FILTERS[g].delete(v);
+  c.classList.toggle('on', nowOn); c.setAttribute('aria-pressed', String(nowOn));
   applyFiltersUI();
 }
 ['fOperator','fType','fPropulsion'].forEach(function(id){ $(id).addEventListener('click', onFilterClick); });
@@ -1224,11 +1257,14 @@ function renderYearChips(){
   box.style.display='flex'; chips.innerHTML='';
   if(!state.activeYears.size) state.activeYears=new Set(state.years);
   state.years.forEach(function(y){
-    var el=document.createElement('div');
+    var el=document.createElement('button'); el.type='button';
     el.className='ychip'+(state.activeYears.has(y)?' on':''); el.textContent=y;
+    el.setAttribute('aria-pressed', String(state.activeYears.has(y)));
+    el.setAttribute('aria-label', 'Year '+y);
     el.addEventListener('click', function(){
-      if(state.activeYears.has(y)) state.activeYears.delete(y); else state.activeYears.add(y);
-      el.classList.toggle('on');
+      var nowOn=!state.activeYears.has(y);
+      if(nowOn) state.activeYears.add(y); else state.activeYears.delete(y);
+      el.classList.toggle('on', nowOn); el.setAttribute('aria-pressed', String(nowOn));
       renderPoints(); buildLegend(); updateAllLenses(); updateStats();
     });
     chips.appendChild(el);
@@ -1380,11 +1416,10 @@ function buildLensCard(lens){
     '<button type="button" class="rm" title="Remove lens" aria-label="Remove lens '+esc(lens.name)+'">&times;</button>'+
     '<span class="chev">▶</span></div>'+
     '<div class="card-b"><div class="lens-body"></div></div>';
-  card.querySelector('.card-h').addEventListener('click', function(e){
-    if(e.target.classList.contains('rm')) return;
-    card.classList.toggle('open');
-  });
-  card.querySelector('.rm').addEventListener('click', function(e){ e.stopPropagation(); removeLens(lens); });
+  var rm=card.querySelector('.rm');
+  rm.addEventListener('click', function(e){ e.stopPropagation(); removeLens(lens); });   // stopPropagation keeps the header from toggling
+  rm.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); e.stopPropagation(); removeLens(lens); } });
+  wireCardHeader(card.querySelector('.card-h'));
   $('rightrail').appendChild(card);
   lens.card=card;
 }
