@@ -217,7 +217,7 @@
   .bar .bfill{height:100%; border-radius:3px; transition:width .12s linear}
   .lens-empty{font-size:11px; color:var(--faint); font-style:italic; padding:4px 0}
   /* route dossier card — clean full-width rows with quiet dividers (data from the Atlas API) */
-  #dossierBody{padding:2px 0}
+  #dossierBody{padding:2px 13px 4px}
   .card.open #dossierBody{display:block}   /* block rows when open; base .card-b display:none hides it when collapsed */
   #dossierBody .drow{display:grid; grid-template-columns:84px 1fr; gap:12px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
   #dossierBody .drow .dk{color:var(--muted)}
@@ -276,10 +276,12 @@
   ::-webkit-scrollbar-track{background:transparent}
 
   @media (max-width:720px){
-    #leftrail{width:calc(100vw - 28px); max-height:42vh}
-    #rightrail{display:none}
+    #leftrail{left:8px; right:8px; width:auto; max-height:38vh}
+    /* right rail becomes a bottom sheet so route info + lens are usable on phones */
+    #rightrail{display:flex; top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46vh}
     .chips{display:none}
     #topbar{height:48px}
+    .leaflet-control-zoom{display:none}   /* pinch-zoom on touch; buttons would sit under the sheet */
   }
 </style>
 </head>
