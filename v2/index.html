@@ -317,18 +317,6 @@
           <button data-dir="inbound">Inbound</button>
         </div>
       </label>
-      <div class="toggle-row">
-        <span>Show stops</span>
-        <label class="sw"><input type="checkbox" id="tgStops"><span class="track"></span></label>
-      </div>
-      <div class="toggle-row">
-        <span>Low bridges &lt;4.4m</span>
-        <label class="sw"><input type="checkbox" id="tgBridges"><span class="track"></span></label>
-      </div>
-      <div class="toggle-row">
-        <span>Basemap</span>
-        <label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label>
-      </div>
     </div>
   </div>
 
@@ -346,54 +334,22 @@
   <div class="card open" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Layers</h2><span class="chev">▶</span></div>
     <div class="card-b">
-      <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Collisions · STATS19</span><label class="sw"><input type="checkbox" id="tgCollisions"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Heatmap</span><label class="sw"><input type="checkbox" id="tgHeat"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Low bridges &lt;4.4m</span><label class="sw"><input type="checkbox" id="tgBridges"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Road incidents · live</span><label class="sw"><input type="checkbox" id="tgRoad"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Live buses · BODS GPS</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
-      <div class="hint">All from the Atlas API. Live buses show the selected route, or the whole network when none is picked — refreshed every ~12s.</div>
-    </div>
-  </div>
-
-  <div class="card open" data-card="">
-    <div class="card-h"><div class="dot"></div><h2>Incidents</h2><span class="chev">▶</span></div>
-    <div class="card-b">
-      <div class="btn-row">
-        <label class="btn primary filelabel">Load CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
-        <button class="btn" id="genBtn">Sample</button>
-      </div>
-      <label class="fld">
-        <span>Atlas base URL</span>
-        <input type="text" id="atlasBase" value="/api/v1" autocomplete="off">
-      </label>
-      <button class="btn" id="atlasBtn">▼ Live STATS19 (Atlas)</button>
-      <div class="hint">Routes load from TfL; STATS19 collisions &amp; low bridges come from the Atlas API (same origin). Filtered to within 3&nbsp;km of the route.</div>
-      <div class="meta" id="dataMeta">No data loaded</div>
-      <div id="mapCols" style="display:none; flex-direction:column; gap:8px">
-        <div class="btn-row">
-          <label class="fld" style="flex:1"><span>Lat column</span><select id="latCol"></select></label>
-          <label class="fld" style="flex:1"><span>Lon column</span><select id="lonCol"></select></label>
-        </div>
-      </div>
-      <button class="btn ghost" id="clearBtn" style="display:none">Clear data</button>
-      <details>
-        <summary class="hint" style="cursor:pointer">CSV format</summary>
-        <div class="hint" style="margin-top:8px">
-          One row per incident. Header row required. Delimiter auto-detected (comma / semicolon / tab).<br><br>
-          <b>Required</b><br>
-          <code>lat</code> <span class="req">•</span> decimal degrees (WGS84)<br>
-          <code>lon</code> <span class="req">•</span> decimal degrees<br>
-          <span class="meta">aliases: latitude, longitude, lng, y / x</span><br><br>
-          <b>Optional</b> — each categorical column becomes a lens dimension:<br>
-          <code>severity</code> e.g. Fatal / Serious / Slight<br>
-          <code>date</code> or <code>year</code> — enables the year filter<br>
-          <code>party</code>, <code>vehicle</code>, <code>cause</code>, <code>period</code>, <code>road_type</code>…
-        </div>
-      </details>
+      <div class="toggle-row"><span>Show stops</span><label class="sw"><input type="checkbox" id="tgStops"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Basemap</span><label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label></div>
+      <div class="meta" id="dataMeta" style="margin-top:2px">No data loaded</div>
     </div>
   </div>
 
   <div class="card open" data-card="" id="lensCfgCard">
     <div class="card-h"><div class="dot"></div><h2>Lens</h2><span class="chev">▶</span></div>
     <div class="card-b">
+      <div class="hint">Turn on <b>Collisions</b> (Layers) to plot STATS19 along the route, then drag the lens to read the density beneath it.</div>
       <label class="fld">
         <span>Aggregate by</span>
         <select id="dimSel"><option value="">—</option></select>
@@ -403,10 +359,6 @@
         <input type="range" id="radius" min="100" max="3000" step="50" value="600">
       </label>
       <button class="btn" id="addLensBtn">+ Add lens (compare)</button>
-      <div class="toggle-row">
-        <span>Heatmap</span>
-        <label class="sw"><input type="checkbox" id="tgHeat"><span class="track"></span></label>
-      </div>
       <div id="sevWeights" style="display:none; flex-direction:column; gap:6px">
         <span style="font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Severity weights · hotspot &amp; heat</span>
         <div class="wrow">
@@ -423,6 +375,23 @@
         <span style="font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)">Legend</span>
         <div class="legend" id="legend"></div>
       </div>
+      <details>
+        <summary class="hint" style="cursor:pointer">Custom data (CSV)</summary>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
+          <div class="btn-row">
+            <label class="btn primary filelabel">Load CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
+            <button class="btn" id="genBtn">Sample</button>
+          </div>
+          <div id="mapCols" style="display:none; flex-direction:column; gap:8px">
+            <div class="btn-row">
+              <label class="fld" style="flex:1"><span>Lat column</span><select id="latCol"></select></label>
+              <label class="fld" style="flex:1"><span>Lon column</span><select id="lonCol"></select></label>
+            </div>
+          </div>
+          <button class="btn ghost" id="clearBtn" style="display:none">Clear data</button>
+          <div class="hint">One row per incident; header row required. Required: <code>lat</code>, <code>lon</code> (decimal degrees). Optional categorical columns (<code>severity</code>, <code>date</code>/<code>year</code>, <code>cause</code>…) become lens dimensions.</div>
+        </div>
+      </details>
     </div>
   </div>
 
@@ -446,8 +415,7 @@
 "use strict";
 
 /* ============================ CONFIG ============================ */
-var TFL = "https://api.tfl.gov.uk";
-var APP_KEY = ""; // optional: paste a TfL app_key here if you hit rate limits
+// Everything flows through OUR API (the middleware) — same-origin /api/v1.
 var ATLAS_DEFAULT = (typeof location!=="undefined" && /^https?:/.test(location.origin)) ? location.origin + "/api/v1" : "https://atlas.farhan.app/api/v1";
 var CORRIDOR_BUFFER_M = 3000; // STATS19 + bridges kept within this of the route; equals the lens max radius, so lens counts stay exact
 var PALETTE = ['#DC241F','#36C5F0','#F2A20C','#7ED957','#B388FF','#FF6FB5','#00C2A8','#FFC233','#9AA7B2','#5B8DEF','#E879F9','#34D399'];
@@ -515,7 +483,6 @@ function incidentStyle(cat){ return INCIDENT_STYLE[cat]||{c:"#9AA7B2",t:cat||"In
 
 /* ============================ HELPERS ============================ */
 function $(id){return document.getElementById(id);}
-function api(path){return TFL+path+(APP_KEY?(path.indexOf('?')>-1?'&':'?')+'app_key='+APP_KEY:'');}
 function status(msg, kind){
   var s=$('status'); s.className='hud show '+(kind||''); $('statusText').textContent=msg;
   if(kind==='ok'){clearTimeout(status._t); status._t=setTimeout(function(){s.className='hud';},2200);}
@@ -823,7 +790,7 @@ function fetchRoute(){
     ensureLensesOnRoute();
     updateAllLenses();
     // re-apply live Atlas layers to the new corridor
-    if(state.atlasAll) loadAtlasAccidents();
+    if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
     if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
@@ -907,19 +874,6 @@ function renderDossier(){
       body.insertAdjacentHTML('afterbegin', drow('Status', sev, good?'#4FD675':'var(--amber)'));
     }).catch(function(){});
   }).catch(function(e){ body.innerHTML='<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>'; });
-}
-function coordsFromLineStrings(lineStrings){
-  var out=[];
-  (lineStrings||[]).forEach(function(s){
-    var arr; try{arr=JSON.parse(s);}catch(e){return;}
-    if(!Array.isArray(arr)||!arr.length) return;
-    if(typeof arr[0][0]==='number'){
-      out.push(arr.map(function(p){return [p[1],p[0]];}));
-    } else {
-      arr.forEach(function(seg){ if(Array.isArray(seg)&&seg.length) out.push(seg.map(function(p){return [p[1],p[0]];})); });
-    }
-  });
-  return out;
 }
 function drawRoute(){
   routeLayer.clearLayers();
@@ -1049,10 +1003,12 @@ function buildPoints(){
   detectYears();
   renderPoints();
   updateStats();
+  // the lens only appears once there's data to profile (no empty lens at boot).
+  if(state.points.length && !state.lenses.length) addLens();
 }
 
 /* ============================ ATLAS (live STATS19 + low bridges) ============================ */
-function atlasBase(){ return ($('atlasBase').value||ATLAS_DEFAULT).trim().replace(/\/+$/,''); }
+function atlasBase(){ var el=$('atlasBase'); return ((el&&el.value)||ATLAS_DEFAULT).trim().replace(/\/+$/,''); }
 function getJSON(url){ return fetch(url,{headers:{Accept:'application/json'}}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }); }
 
 // keep only items whose lat/lng fall within bufferM of the drawn route corridor
@@ -1076,27 +1032,33 @@ function withinCorridor(items, bufferM){
   });
 }
 
+// Collisions layer toggle (Layers card): on → load STATS19 along the corridor; off → clear.
+function toggleCollisions(on){
+  if(!on){ clearCollisionData(); status('Collisions cleared','ok'); return; }
+  if(!state.routeId){ status('Pick a route first — collisions plot along its corridor.','err'); $('tgCollisions').checked=false; return; }
+  loadAtlasAccidents();
+}
 function loadAtlasAccidents(){
-  if(!state.routePath.length){ status('Pick a route first — STATS19 loads along its corridor.', 'err'); return; }
-  var btn=$('atlasBtn'); btn.disabled=true;
-  var done=function(){ btn.disabled=false; };
+  if(!state.routePath.length){ status('Pick a route first — STATS19 loads along its corridor.', 'err'); if($('tgCollisions')) $('tgCollisions').checked=false; return; }
+  var tok=state.routeId+'|'+state.dir;
   var build=function(all){
+    if(tok!==state.routeId+'|'+state.dir) return;   // selection changed mid-load — drop stale result
     var near=withinCorridor(all, CORRIDOR_BUFFER_M);
-    if(!near.length){ status('No STATS19 collisions within '+(CORRIDOR_BUFFER_M/1000)+' km of '+state.routeName+'.', 'ok'); done(); return; }
+    if(!near.length){ status('No STATS19 collisions within '+(CORRIDOR_BUFFER_M/1000)+' km of '+state.routeName+'.', 'ok'); return; }
     var rows=near.map(function(a){ return {
       lat:a.lat, lon:(a.lng!=null?a.lng:a.lon),
       severity:a.severity, date:a.date, vehicles:a.vehicles,
       borough:(GSS_BOROUGH[a.borough]||a.borough)
     }; });
     ingest(['lat','lon','severity','date','vehicles','borough'], rows, 'Atlas STATS19 · '+state.routeName);
+    if($('tgCollisions')) $('tgCollisions').checked=true;
     status('Loaded '+rows.length+' collisions within '+(CORRIDOR_BUFFER_M/1000)+' km of '+state.routeName, 'ok');
-    done();
   };
   if(state.atlasAll){ build(state.atlasAll); return; }
   status('Loading STATS19 collisions from Atlas…');
   getJSON(atlasBase()+'/accidents')
     .then(function(d){ state.atlasAll=(d.accidents||d)||[]; build(state.atlasAll); })
-    .catch(function(e){ status('Atlas load failed ('+e.message+') — likely CORS; point the base URL at your Worker proxy.', 'err'); done(); });
+    .catch(function(e){ status('Collisions load failed — '+e.message, 'err'); if($('tgCollisions')) $('tgCollisions').checked=false; });
 }
 
 function bridgeIcon(){
@@ -1471,20 +1433,24 @@ $('genBtn').addEventListener('click', function(){
 });
 
 /* ============================ CLEAR ============================ */
-$('clearBtn').addEventListener('click', function(){
+function removeAllLenses(){ state.lenses.slice().forEach(removeLens); }
+function clearCollisionData(){
   state.rows=[]; state.points=[]; state.headers=[]; state.dimension=''; state.colorMap=new Map();
   state.yearCol=null; state.years=[]; state.activeYears=new Set();
   ptLayer.clearLayers();
+  if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; } heatActive=false; if($('tgHeat')) $('tgHeat').checked=false;
   $('mapCols').style.display='none'; $('clearBtn').style.display='none';
   $('dataMeta').textContent='No data loaded';
-  $('legendWrap').style.display='none'; $('yearFilter').style.display='none';
+  $('legendWrap').style.display='none'; $('yearFilter').style.display='none'; $('sevWeights').style.display='none';
   $('dimSel').innerHTML='<option value="">—</option>';
-  updateStats(); updateAllLenses();
-  status('Data cleared','ok');
-});
+  if($('tgCollisions')) $('tgCollisions').checked=false;
+  removeAllLenses();
+  updateStats();
+}
+$('clearBtn').addEventListener('click', function(){ clearCollisionData(); status('Data cleared','ok'); });
 
 /* ============================ BOOT ============================ */
-$('atlasBtn').addEventListener('click', loadAtlasAccidents);
+$('tgCollisions').addEventListener('change', function(){ toggleCollisions(this.checked); });
 $('tgBridges').addEventListener('change', function(){ renderBridges(this.checked); });
 $('tgHeat').addEventListener('change', function(){ setHeat(this.checked); });
 ['wFatal','wSerious','wSlight'].forEach(function(id){
@@ -1499,7 +1465,6 @@ $('tgGarages').addEventListener('change', function(){ toggleGarages(this.checked
 $('tgRoad').addEventListener('change', function(){ toggleRoad(this.checked); });
 $('tgBuses').addEventListener('change', function(){ toggleBuses(this.checked); });
 loadRoutes();
-addLens();            // start with Lens A at London centre
 showNetwork();        // default view: the whole network, coloured by operator
 })();
 </script>
