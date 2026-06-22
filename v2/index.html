@@ -434,6 +434,8 @@ var state = {
   lenses:[],             // {id,name,color,latlng,marker,circle,card}
   atlasAll:null,         // cached full STATS19 set (filtered to the corridor on use)
   bridges:null,          // cached full bridge set
+  overview:null,         // cached routes-overview.geojson (DB-backed route geometry)
+  stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
 
@@ -473,26 +475,25 @@ document.querySelectorAll('[data-card] .card-h').forEach(function(h){
 });
 
 /* ============================ LOAD ROUTES ============================ */
+// Route-type → a short context label shown beside each route in the combobox.
+var TYPE_LABEL = {night:'Night', twentyfour:'24-hour', school:'School', prefix:'Lettered', day:''};
+// All route + corridor data now flows through the Atlas API (the middleware,
+// fed by our warehouse) — no direct TfL calls. See atlasBase().
 function loadRoutes(){
-  status('Loading bus routes from TfL…');
-  fetch(api('/Line/Mode/bus/Route'))
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(lines){
+  status('Loading bus routes from Atlas…');
+  getJSON(atlasBase()+'/routes')
+    .then(function(list){
+      if(!Array.isArray(list)) throw new Error('unexpected /routes shape');
       var seen={};
-      state.routes = lines.filter(function(l){
-        if(seen[l.id]) return false; seen[l.id]=1; return true;
+      state.routes = list.filter(function(l){
+        if(!l || seen[l.id]) return false; seen[l.id]=1; return true;
       }).map(function(l){
-        var od='';
-        if(l.routeSections && l.routeSections.length){
-          var s=l.routeSections[0];
-          od=(s.originationName||'')+' → '+(s.destinationName||'');
-        }
-        return {id:l.id, name:l.name||l.id, od:od};
+        return {id:l.id, name:l.name||l.id, type:l.type||'day', od:(TYPE_LABEL[l.type]||'')};
       }).sort(function(a,b){return naturalCmp(a.name,b.name);});
       status(state.routes.length+' routes ready', 'ok');
     })
     .catch(function(e){
-      status('Could not load routes — check connection. '+e.message, 'err');
+      status('Could not load routes from Atlas — '+e.message, 'err');
     });
 }
 
@@ -536,35 +537,51 @@ function selectRoute(r){
   $('cRoute').textContent=r.name;
   fetchRoute();
 }
+// Lazy-load the two big DB-backed datasets once, then cache them.
+function ensureRouteData(){
+  var jobs=[];
+  if(!state.overview) jobs.push(getJSON(atlasBase()+'/routes-overview').then(function(g){ state.overview=g; }));
+  if(!state.stopsAll) jobs.push(getJSON(atlasBase()+'/route-stops').then(function(s){ state.stopsAll=(s.routes||s); }));
+  return Promise.all(jobs);
+}
 function fetchRoute(){
   status('Loading route '+state.routeName+' ('+state.dir+')…');
-  fetch(api('/Line/'+encodeURIComponent(state.routeId)+'/Route/Sequence/'+state.dir+'?serviceTypes=Regular'))
-    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(function(d){
-      var segs = coordsFromLineStrings(d.lineStrings);
-      if(!segs.length){ status('No '+state.dir+' geometry — try the other direction.', 'err'); return; }
-      state.routeSegments=segs;
-      drawRoute();
-      // stops
-      stopLayer.clearLayers();
-      state._stops=[];
-      (d.stopPointSequences||[]).forEach(function(sq){
-        (sq.stopPoint||[]).forEach(function(sp){
-          if(sp.lat&&sp.lon) state._stops.push(sp);
-        });
-      });
-      renderStops();
-      $('emptyState').style.display='none';
-      var km=state.routeLenKm.toFixed(1);
-      status('Route '+state.routeName+' · '+km+' km · '+(state._stops.length)+' stops', 'ok');
-      // move lenses onto the corridor if they aren't placed yet
-      ensureLensesOnRoute();
-      updateAllLenses();
-      // re-apply live Atlas layers to the new corridor
-      if(state.atlasAll) loadAtlasAccidents();
-      if($('tgBridges').checked) renderBridges(true);
-    })
-    .catch(function(e){ status('Route load failed: '+e.message,'err'); });
+  ensureRouteData().then(function(){
+    var feats=(state.overview.features||[]).filter(function(f){
+      var p=f.properties||{}; return String(p.routeId)===String(state.routeId) || String(p.name)===String(state.routeName);
+    });
+    if(!feats.length){ status('No geometry on record for '+state.routeName+'.', 'err'); return; }
+    // direction: map outbound → the first GSS direction, inbound → the second (if any).
+    var dirs=[]; feats.forEach(function(f){ var d=(f.properties||{}).direction; if(dirs.indexOf(d)<0) dirs.push(d); }); dirs.sort();
+    var want = (state.dir==='inbound' && dirs.length>1) ? dirs[1] : dirs[0];
+    var dirFeats=feats.filter(function(f){ return (f.properties||{}).direction===want; });
+    if(!dirFeats.length) dirFeats=feats;
+    var segs=[];
+    dirFeats.forEach(function(f){
+      var g=f.geometry; if(!g) return;
+      if(g.type==='LineString'){ segs.push(g.coordinates.map(function(p){return [p[1],p[0]];})); }
+      else if(g.type==='MultiLineString'){ g.coordinates.forEach(function(seg){ segs.push(seg.map(function(p){return [p[1],p[0]];})); }); }
+    });
+    segs=segs.filter(function(s){return s.length;});
+    if(!segs.length){ status('No '+state.dir+' geometry for '+state.routeName+'.', 'err'); return; }
+    state.routeSegments=segs;
+    drawRoute();
+    // stops (DB-backed, directional)
+    stopLayer.clearLayers(); state._stops=[];
+    var sd=state.stopsAll && state.stopsAll[state.routeName];
+    var slist = sd ? (sd[state.dir] || sd.outbound || sd.inbound || []) : [];
+    slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) state._stops.push({lat:s.lat, lon:s.lng, name:s.name}); });
+    renderStops();
+    $('emptyState').style.display='none';
+    var km=state.routeLenKm.toFixed(1);
+    status('Route '+state.routeName+' · '+km+' km · '+(state._stops.length)+' stops', 'ok');
+    // move lenses onto the corridor if they aren't placed yet
+    ensureLensesOnRoute();
+    updateAllLenses();
+    // re-apply live Atlas layers to the new corridor
+    if(state.atlasAll) loadAtlasAccidents();
+    if($('tgBridges').checked) renderBridges(true);
+  }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
 }
 function coordsFromLineStrings(lineStrings){
   var out=[];
