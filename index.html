@@ -839,14 +839,14 @@ const PROP_DEFS = { electric:"Electric", hydrogen:"Hydrogen", hybrid:"Hybrid", d
 /* COMMERCIAL_SAMPLE — illustrative tender/fleet detail for flagship routes.
    SAMPLE ONLY → swaps to Mandate (Find-a-Tender OCDS) + Cohort (fleet) data. */
 const COMMERCIAL_SAMPLE = {
-  "73":{garage:"Tottenham (AR)",pvr:30,contractStart:"2021-06",contractEnd:"2028-06",fleet:"Wright Eclipse Gemini 3"},
-  "24":{garage:"Camberwell (Q)",pvr:24,contractStart:"2019-11",contractEnd:"2026-11",fleet:"BYD/ADL Enviro400EV"},
-  "38":{garage:"Clapton (CT)",pvr:36,contractStart:"2022-09",contractEnd:"2029-09",fleet:"ADL Enviro400H"},
-  "86":{garage:"North Street (NS)",pvr:31,contractStart:"2020-04",contractEnd:"2027-04",fleet:"ADL Enviro400 MMC"},
-  "159":{garage:"Brixton (BN)",pvr:27,contractStart:"2021-01",contractEnd:"2028-01",fleet:"ADL Enviro400H"},
-  "148":{garage:"Shepherd's Bush (S)",pvr:29,contractStart:"2023-02",contractEnd:"2030-02",fleet:"Wright Gemini 3"},
-  "1":{garage:"New Cross (NX)",pvr:22,contractStart:"2022-06",contractEnd:"2029-06",fleet:"BYD/ADL Enviro400EV City"},
-  "7":{garage:"Perivale (PV)",pvr:21,contractStart:"2021-08",contractEnd:"2028-08",fleet:"Wrightbus Hydrogen StreetDeck"},
+  "73":{garage:"Tottenham (AR)",pvr:30,contractDate:"30/08/25",fleet:"Wright Eclipse Gemini 3"},
+  "24":{garage:"Camberwell (Q)",pvr:24,contractDate:"09/11/19",fleet:"BYD/ADL Enviro400EV"},
+  "38":{garage:"Clapton (CT)",pvr:36,contractDate:"11/11/23",fleet:"ADL Enviro400H"},
+  "86":{garage:"North Street (NS)",pvr:31,contractDate:"15/07/23",fleet:"ADL Enviro400 MMC"},
+  "159":{garage:"Brixton (BN)",pvr:27,contractDate:"06/12/25",fleet:"ADL Enviro400H"},
+  "148":{garage:"Shepherd's Bush (S)",pvr:29,contractDate:"05/10/24",fleet:"Wright Gemini 3"},
+  "1":{garage:"New Cross (NX)",pvr:22,contractDate:"30/09/23",fleet:"BYD/ADL Enviro400EV City"},
+  "7":{garage:"Perivale (PV)",pvr:21,contractDate:"19/06/21",fleet:"Wrightbus Hydrogen StreetDeck"},
 };
 
 /* ===========================================================================
@@ -1776,7 +1776,7 @@ function renderTable(){
     const prop=m.prop?PROP_DEFS[m.prop]:null;
     const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
     const rel = pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)}<span class="u">EWT</span>` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}<span class="u">%OTP</span>` : "—") : "—";
-    const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?esc(fmtDate(m.contractDate)):"—");
+    const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?"from "+esc(fmtDate(m.contractDate)):"—");
     return `<tr data-id="${esc(r.id)}"><td class="rno">${esc(r.name)}</td>
       <td><span class="tdot" style="background:${d.color}"></span>${d.label}</td>
       <td>${esc(m.op?shortOp(m.op):"—")}</td><td>${esc(m.garage||"—")}</td>
@@ -2520,7 +2520,7 @@ function renderContext(){
          kv("Garage",meta.garage?(garageByCode(meta.garage)?`<button type="button" class="vlink" data-garage="${esc(meta.garage)}">${esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))} ›</button>`:esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))):"—")+
          kv("PVR",meta.pvr||"—")+
          (meta.lengthKm?kv("Route length",distVU(meta.lengthKm)):"")+
-         kv("Contract",meta.contractStart?`${fmtMonth(meta.contractStart)} → ${meta.contractEnd?fmtMonth(meta.contractEnd):"?"}`:(meta.contractDate?esc(fmtDate(meta.contractDate)):"—"))+
+         kv("Contract",meta.contractStart?`${fmtMonth(meta.contractStart)} → ${meta.contractEnd?fmtMonth(meta.contractEnd):"?"}`:(meta.contractDate?"from "+esc(fmtDate(meta.contractDate)):"—"))+
          kv("Propulsion",prop||"—")+
          kv("Fleet",`<span class="vc">${esc(meta.fleet)||"—"}</span>`,meta.fleet||"")
         : `<div class="empty" style="padding:var(--s3) 0">No operator/fleet record for this route yet.</div>`)+
@@ -2566,7 +2566,7 @@ function exportCurrent(){
         const rel=pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)} EWT` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}% OTP` : "") : "";
         return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"",
           m.lengthKm||"", m.prop?PROP_DEFS[m.prop]:"", rel,
-          m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""), m.fleet||""]; })];
+          m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate?"from "+m.contractDate:""), m.fleet||""]; })];
     fname=`atlas_routes_${todayStamp()}.csv`;
   }
   downloadCSV(fname,rows); toast("Exported "+fname);

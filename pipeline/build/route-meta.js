@@ -33,12 +33,11 @@ function propFromVehicle(v) {
   return "diesel";
 }
 
-/* Contract windows for flagship routes — until the Find-a-Tender OCDS ingester. */
-const CONTRACT = {
-  "73":["2021-06","2028-06"], "24":["2019-11","2026-11"], "38":["2022-09","2029-09"],
-  "86":["2020-04","2027-04"], "159":["2021-01","2028-01"], "148":["2023-02","2030-02"],
-  "1":["2022-06","2029-06"], "7":["2021-08","2028-08"],
-};
+/* Contract commencement is the REAL scraped `contractDate` (londonbusroutes details.htm),
+ * cross-checked against TfL's LBSL tendering programme. We deliberately DO NOT synthesise
+ * contract-end windows: London terms are 5yr + up-to-2yr extension, so an end can't be
+ * derived from the start without knowing the extension — better to show the true start
+ * alone than a fabricated expiry. (Prior hardcoded windows were stale/untrue and removed.) */
 
 export async function build(ctx) {
   const { sink, log } = ctx;
@@ -58,7 +57,6 @@ export async function build(ctx) {
   for (const rt of allRoutes) {
     const g = garages[rt] || {};
     const d = detailByRoute[rt] || {};
-    const [cs, ce] = CONTRACT[rt] || [];
     const ov = overrideFor(rt);
     meta[rt] = {
       type: ov.type || deriveType(rt),         // regular | night | twentyfour | school
@@ -70,9 +68,9 @@ export async function build(ctx) {
       pvr: d.pvr ?? null,
       fleet: d.vehicleType || null,
       lengthKm: d.lengthKm ?? null,
-      contractDate: d.contractDate || null,
-      contractStart: cs || null,
-      contractEnd: ce || null,
+      contractDate: d.contractDate || null,   // real commencement date (the contract start)
+      contractStart: null,                     // windows not synthesised — see note above
+      contractEnd: null,
       source: "londonbusroutes.net",
     };
     // manual overrides win over every source (operator/garage/fleet/pvr/… corrections)
