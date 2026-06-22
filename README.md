@@ -113,6 +113,7 @@ Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
 | `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |
 | `GET /api/v1/history/vehicle-sightings?route=25` | Vehicle-on-route sightings over time |
+| `GET /api/v1/history/accidents?from=2024-01-01&to=2024-12-31` *(also `severity=`, `borough=`)* | STATS19 bus collisions over time — the temporal source behind the `/api/v1/accidents` snapshot |
 
 > The history group needs Supabase read credentials configured (see **Historical API
 > setup** below). Without them it returns `503` and the live + current groups still work.

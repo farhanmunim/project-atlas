@@ -222,7 +222,7 @@ prod as follows — keep both in sync:
     road-disruptions) ([`functions/api/v1/live/[[path]].js`]), keyless, edge-cached.
     Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
   - **history** — `/api/v1/history/*` serves the Supabase time-series (reliability-daily ·
-    performance-history · schedule · tender-programme · vehicle-sightings)
+    performance-history · schedule · tender-programme · vehicle-sightings · accidents)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
     filters + capped page size); `SUPABASE_URL` + `SUPABASE_KEY` (anon key + RLS read
     policies) are server-side Cloudflare secrets, never shipped. See README "Historical

@@ -171,6 +171,7 @@ const HIST_EP = {
   "schedule":            { table: "route_schedule", filters: { route: ["route_id", "eq"], from: ["snapshot_date", "gte"], to: ["snapshot_date", "lte"] }, defaultOrder: "snapshot_date.desc", desc: "Scheduled service per route over time." },
   "tender-programme":    { table: "tender_programme", filters: { route: ["route_id", "eq"], year: ["programme_year", "eq"] }, defaultOrder: "contract_start_date.asc", desc: "TfL forward tendering programme per route." },
   "vehicle-sightings":   { table: "route_vehicle_observations", filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] }, defaultOrder: "observed_at.desc", desc: "Vehicle-on-route observations over time (months of history)." },
+  "accidents":           { table: "accidents", filters: { from: ["collision_date", "gte"], to: ["collision_date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"] }, defaultOrder: "collision_date.desc", desc: "STATS19 bus collisions over time — filter by from/to date, severity, borough." },
 };
 function liveDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
   return { group: "live", version: "v1", description: "Live bus + road feeds proxied from the TfL Unified API, edge-cached. Read-only, CORS-open.",

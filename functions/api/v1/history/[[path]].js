@@ -47,6 +47,12 @@ const ENDPOINTS = {
     defaultOrder: "observed_at.desc",
     desc: "Vehicle-on-route observations over time (reg ↔ route ↔ timestamp) — months of history; the basis for fleet movement analysis.",
   },
+  "accidents": {
+    table: "accidents",
+    filters: { from: ["collision_date", "gte"], to: ["collision_date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"] },
+    defaultOrder: "collision_date.desc",
+    desc: "STATS19 bus/coach-involved collisions over time — lat/lng, severity, date, borough (ONS code), vehicle count. Filter by from/to date, severity, borough. The temporal source behind the /api/v1/accidents snapshot.",
+  },
 };
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS", "Access-Control-Allow-Headers": "*" };
