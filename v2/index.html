@@ -348,6 +348,16 @@
   </div>
 
   <div class="card open" data-card="">
+    <div class="card-h"><div class="dot"></div><h2>Layers</h2><span class="chev">▶</span></div>
+    <div class="card-b">
+      <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Road incidents · live</span><label class="sw"><input type="checkbox" id="tgRoad"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Live buses · route</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
+      <div class="hint">Garages &amp; incidents from the Atlas API. Live buses (BODS GPS) need a selected route.</div>
+    </div>
+  </div>
+
+  <div class="card open" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Incidents</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <div class="btn-row">
@@ -478,7 +488,7 @@ var state = {
   bridges:null,          // cached full bridge set
   overview:null,         // cached routes-overview.geojson (DB-backed route geometry)
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
-  meta:null, perf:null, tenders:null, fleet:null,   // cached dossier datasets (Atlas API)
+  meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
 var PROP_COL={electric:'#7ED957', hydrogen:'#36C5F0', hybrid:'#F2A20C', diesel:'#9AA7B2'};
@@ -499,7 +509,13 @@ var routeLayer = L.layerGroup().addTo(map);
 var stopLayer  = L.layerGroup();
 var ptLayer    = L.layerGroup().addTo(map);
 var bridgeLayer= L.layerGroup();
+var garageLayer= L.layerGroup();
+var roadLayer  = L.layerGroup();
+var busLayer   = L.layerGroup();
+var busTimer   = null;
 var heatLayer=null, heatActive=false;
+var INCIDENT_STYLE={"Collisions":{c:"#ff5470",t:"Collision"},"Breakdowns":{c:"#F2A20C",t:"Breakdown"},"Network delays":{c:"#F2A20C",t:"Delay"},"Asset issues":{c:"#B388FF",t:"Asset issue"},"Planned events":{c:"#36C5F0",t:"Event"},"Works":{c:"#36C5F0",t:"Works"}};
+function incidentStyle(cat){ return INCIDENT_STYLE[cat]||{c:"#9AA7B2",t:cat||"Incident"}; }
 
 /* ============================ HELPERS ============================ */
 function $(id){return document.getElementById(id);}
@@ -705,6 +721,55 @@ function onFilterClick(e){
 }
 ['fOperator','fType','fPropulsion'].forEach(function(id){ $(id).addEventListener('click', onFilterClick); });
 $('fClear').addEventListener('click', function(){ FILTERS.operator.clear(); FILTERS.type.clear(); FILTERS.propulsion.clear(); buildFilterChips(); applyFiltersUI(); });
+
+/* ============================ LIVE / EXTRA LAYERS (Atlas API) ============================ */
+// Garages — operator-coloured markers from /api/v1/garages.
+function drawGarages(){ garageLayer.clearLayers(); (state.garages||[]).forEach(function(g){
+  if(g.lat==null||g.lng==null) return;
+  L.circleMarker([g.lat,g.lng],{radius:5,color:'#0A0C10',weight:1.5,fillColor:operatorColor(g.operator),fillOpacity:.95,renderer:ptRenderer})
+    .bindPopup('<div style="font-family:var(--mono);font-size:11.5px;line-height:1.5"><b style="font-size:12.5px">'+esc(g.name||g.code)+'</b> garage<br>'+esc(g.operator||'—')+' · '+esc(g.code||'')+'<br>PVR '+(g.pvr||'—')+' · cap '+(g.capacity||'—')+(g.utilisation!=null?' · '+Math.round(g.utilisation*100)+'% util':'')+'<br>'+((g.routes||[]).length)+' routes</div>')
+    .addTo(garageLayer); });
+  map.addLayer(garageLayer);
+}
+function toggleGarages(on){
+  if(!on){ map.removeLayer(garageLayer); return; }
+  if(state.garages){ drawGarages(); return; }
+  status('Loading garages…');
+  getJSON(atlasBase()+'/garages').then(function(d){ state.garages=(d.garages||d); drawGarages(); status((state.garages.length)+' garages','ok'); })
+    .catch(function(e){ status('Garages failed: '+e.message,'err'); $('tgGarages').checked=false; });
+}
+// Live road incidents — TfL control-centre feed via /api/v1/live/road-disruptions.
+function toggleRoad(on){
+  if(!on){ map.removeLayer(roadLayer); return; }
+  status('Loading live road incidents…');
+  getJSON(atlasBase()+'/live/road-disruptions').then(function(j){
+    var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]); roadLayer.clearLayers(); var n=0;
+    arr.forEach(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); if(!m||m.length<2) return; var lng=+m[0],lat=+m[1];
+      var st=incidentStyle(d.category);
+      L.circleMarker([lat,lng],{radius:5,color:'#0A0C10',weight:1.5,fillColor:st.c,fillOpacity:.95,renderer:ptRenderer})
+        .bindPopup('<div style="font-size:12px;max-width:230px"><b style="color:'+st.c+'">'+esc(st.t)+'</b>'+(d.severity?' · '+esc(d.severity):'')+'<br>'+esc(d.location||'')+((d.comments||d.currentUpdate)?'<br><span style="color:var(--muted)">'+esc(String(d.comments||d.currentUpdate).slice(0,180))+'</span>':'')+'</div>')
+        .addTo(roadLayer); n++; });
+    map.addLayer(roadLayer); status(n+' live road incidents','ok');
+  }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
+}
+// Live buses — BODS SIRI-VM GPS via the keyed /api/live/vehicles proxy (route-scoped).
+function busIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:12px;height:12px;border-radius:50%;background:#4FD675;border:2px solid #0A0C10;box-shadow:0 0 7px rgba(79,214,117,.85)"></div>'}); }
+function refreshBuses(){
+  if(!$('tgBuses').checked || !state.routeId) return;
+  fetch('/api/live/vehicles?line='+encodeURIComponent(state.routeId),{cache:'no-store'})
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(arr){ arr=Array.isArray(arr)?arr:(arr&&arr.data)||[]; busLayer.clearLayers();
+      arr.forEach(function(v){ if(Number.isFinite(v.lat)&&Number.isFinite(v.lng)) L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip((v.reg||'bus')+' · route '+(v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); });
+      map.addLayer(busLayer);
+      status(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now'),'ok');
+    }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
+}
+function toggleBuses(on){
+  if(busTimer){ clearInterval(busTimer); busTimer=null; }
+  if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); return; }
+  if(!state.routeId){ status('Pick a route to see its live buses.','err'); $('tgBuses').checked=false; return; }
+  refreshBuses(); busTimer=setInterval(refreshBuses, 15000);
+}
 // Lazy-load the two big DB-backed datasets once, then cache them.
 function ensureRouteData(){
   var jobs=[];
@@ -749,6 +814,7 @@ function fetchRoute(){
     // re-apply live Atlas layers to the new corridor
     if(state.atlasAll) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
+    if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
   renderDossier();
 }
@@ -826,6 +892,14 @@ function renderDossier(){
 
     if(!html) html='<div class="dempty">No detail on record for route '+esc(name)+'.</div>';
     body.innerHTML=html;
+    // live line status (non-cached, prepended when it arrives)
+    getJSON(atlasBase()+'/live/status?route='+encodeURIComponent(name)).then(function(j){
+      if(state.routeName!==name) return;
+      var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]); var ln=arr[0];
+      var s=ln&&ln.lineStatuses&&ln.lineStatuses[0]; var sev=s&&s.statusSeverityDescription;
+      if(!sev) return; var good=/good service/i.test(sev);
+      body.insertAdjacentHTML('afterbegin','<div class="dpills" style="margin-bottom:7px"><span class="dpill" style="border-color:'+(good?'rgba(79,214,117,.5)':'rgba(242,162,12,.5)')+';color:'+(good?'#4FD675':'#F2A20C')+'">● '+esc(sev)+'</span></div>');
+    }).catch(function(){});
   }).catch(function(e){ body.innerHTML='<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>'; });
 }
 function coordsFromLineStrings(lineStrings){
@@ -1415,6 +1489,9 @@ $('tgHeat').addEventListener('change', function(){ setHeat(this.checked); });
   });
 });
 $('netBtn').addEventListener('click', showNetwork);
+$('tgGarages').addEventListener('change', function(){ toggleGarages(this.checked); });
+$('tgRoad').addEventListener('change', function(){ toggleRoad(this.checked); });
+$('tgBuses').addEventListener('change', function(){ toggleBuses(this.checked); });
 loadRoutes();
 addLens();            // start with Lens A at London centre
 showNetwork();        // default view: the whole network, coloured by operator
