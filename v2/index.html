@@ -508,6 +508,19 @@ var state = {
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
+// ---- shared cross-tool settings (same storage key + shape as the / app) ----
+// v2 reads units (km/mi) + clock (24h/12h) so a preference set in any Atlas tool carries here.
+var APP_SETTINGS = (function(){ try{ return JSON.parse(localStorage.getItem('transit-instruments:settings')||'{}')||{}; }catch(e){ return {}; } })();
+var USE_MILES = APP_SETTINGS.units==='mi', USE_12H = APP_SETTINGS.clock==='12h';
+var MI_PER_KM=0.621371;
+function fmtKm(km, dp){ dp=(dp==null)?1:dp; return USE_MILES ? (km*MI_PER_KM).toFixed(dp)+' mi' : km.toFixed(dp)+' km'; }
+function fmtRadius(m){ if(USE_MILES){ var mi=(m/1000)*MI_PER_KM; return mi<0.1 ? Math.round(m*1.09361)+' yd' : mi.toFixed(mi<1?2:1)+' mi'; }
+  return m>=1000 ? (m/1000).toFixed(m%1000?1:0)+' km' : m+' m'; }
+function areaUnit(){ return USE_MILES?'/ mi²':'/ km²'; }
+function densityVal(total, m){ var aKm2=Math.PI*Math.pow(m/1000,2); var a=USE_MILES?aKm2*0.386102:aKm2; return a>0?total/a:0; }
+function fmtClock(d){ if(USE_12H){ var h=d.getHours(), ap=h<12?'AM':'PM', h12=h%12||12;
+  return (h12<10?'0'+h12:h12)+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+' '+ap; }
+  return d.toTimeString().slice(0,8); }
 var PROP_COL={electric:'#7ED957', hydrogen:'#36C5F0', hybrid:'#F2A20C', diesel:'#9AA7B2'};
 var PROP_LBL={electric:'Electric', hydrogen:'Hydrogen', hybrid:'Hybrid', diesel:'Diesel'};
 
@@ -901,8 +914,7 @@ function fetchRoute(){
     slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) state._stops.push({lat:s.lat, lon:s.lng, name:s.name}); });
     renderStops();
     $('emptyState').style.display='none';
-    var km=state.routeLenKm.toFixed(1);
-    status('Route '+state.routeName+' · '+km+' km · '+(state._stops.length)+' stops', 'ok');
+    status('Route '+state.routeName+' · '+fmtKm(state.routeLenKm)+' · '+(state._stops.length)+' stops', 'ok');
     // move lenses onto the corridor if they aren't placed yet
     ensureLensesOnRoute();
     updateAllLenses();
@@ -1015,7 +1027,7 @@ function drawRoute(){
   var km=0;
   for(var i=1;i<all.length;i++){ km+=map.distance(all[i-1],all[i]); }
   state.routeLenKm=km/1000;
-  $('cLen').textContent=state.routeLenKm.toFixed(1)+' km';
+  $('cLen').textContent=fmtKm(state.routeLenKm);
   var b=L.latLngBounds(all);
   map.fitBounds(b, {paddingTopLeft:[300,70], paddingBottomRight:[286,30]});
 }
@@ -1180,7 +1192,7 @@ function loadAtlasAccidents(){
   var build=function(all){
     if(tok!==state.routeId+'|'+state.dir) return;   // selection changed mid-load — drop stale result
     var near=withinCorridor(all, CORRIDOR_BUFFER_M);
-    if(!near.length){ status('No STATS19 collisions within '+(CORRIDOR_BUFFER_M/1000)+' km of '+state.routeName+'.', 'ok'); return; }
+    if(!near.length){ status('No STATS19 collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName+'.', 'ok'); return; }
     var rows=near.map(function(a){ return {
       lat:a.lat, lon:(a.lng!=null?a.lng:a.lon),
       severity:a.severity, date:a.date, vehicles:a.vehicles,
@@ -1188,7 +1200,7 @@ function loadAtlasAccidents(){
     }; });
     ingest(['lat','lon','severity','date','vehicles','borough'], rows, 'Atlas STATS19 · '+state.routeName);
     if($('tgCollisions')) $('tgCollisions').checked=true;
-    status('Loaded '+rows.length+' collisions within '+(CORRIDOR_BUFFER_M/1000)+' km of '+state.routeName, 'ok');
+    status('Loaded '+rows.length+' collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName, 'ok');
   };
   if(state.atlasAll){ build(state.atlasAll); return; }
   status('Loading STATS19 collisions from Atlas…');
@@ -1478,7 +1490,7 @@ function updateAllLenses(){ state.lenses.forEach(updateLens); }
 /* radius */
 $('radius').addEventListener('input', function(){
   state.radius=+this.value;
-  $('radLabel').textContent = state.radius>=1000 ? (state.radius/1000).toFixed(state.radius%1000?1:0)+' km' : state.radius+' m';
+  $('radLabel').textContent = fmtRadius(state.radius);
   updateAllLenses();
 });
 $('addLensBtn').addEventListener('click', function(){ var l=addLens(); if(l){ l._placed=true; } });
@@ -1502,19 +1514,18 @@ function buildLensCard(lens){
 }
 function renderLensCard(lens, agg){
   var body=lens.card && lens.card.querySelector('.lens-body'); if(!body) return;
-  var rLbl = state.radius>=1000 ? (state.radius/1000).toFixed(state.radius%1000?1:0)+' km' : state.radius+' m';
-  var areaKm2 = Math.PI*Math.pow(state.radius/1000,2);
-  var density = areaKm2>0 ? (agg.total/areaKm2) : 0;
+  var rLbl = fmtRadius(state.radius);
+  var density = densityVal(agg.total, state.radius);
   var html;
   if(agg.sev){
     html =
       '<div class="lens-meta"><span class="lens-count">'+agg.score+'<small> hotspot score</small></span></div>'+
-      '<div class="lens-sub">'+agg.total+' incidents · r '+rLbl+' · '+density.toFixed(1)+' / km²</div>'+
+      '<div class="lens-sub">'+agg.total+' incidents · r '+rLbl+' · '+density.toFixed(1)+' '+areaUnit()+'</div>'+
       '<div class="sevline"><span class="sv f">'+agg.sev.fatal+' fatal</span><span class="sv s">'+agg.sev.serious+' serious</span><span class="sv l">'+agg.sev.slight+' slight</span></div>';
   } else {
     html =
       '<div class="lens-meta"><span class="lens-count">'+agg.total+'<small> incidents</small></span></div>'+
-      '<div class="lens-sub">r '+rLbl+' · '+density.toFixed(1)+' / km²</div>';
+      '<div class="lens-sub">r '+rLbl+' · '+density.toFixed(1)+' '+areaUnit()+'</div>';
   }
   var keys=Object.keys(agg.counts);
   if(!state.points.length){
@@ -1624,7 +1635,7 @@ document.querySelectorAll('.toggle-row').forEach(function(row){
   if(inp&&txt&&!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', txt.textContent.trim());
 });
 // ---- topbar data-status cluster: live clock · freshness badge · manual refresh ----
-function tickClock(){ var c=$('clock'); if(c) c.textContent=new Date().toTimeString().slice(0,8); }   // HH:MM:SS, 24h
+function tickClock(){ var c=$('clock'); if(c) c.textContent=fmtClock(new Date()); }   // 24h or 12h per shared settings
 function markFresh(){ state.lastRefresh=Date.now(); paintFresh(); }
 function paintFresh(){
   var b=$('freshBadge'), t=$('freshText'); if(!b||!t) return;
@@ -1644,6 +1655,7 @@ function refresh(){
 }
 $('refreshBtn').addEventListener('click', refresh);
 tickClock(); paintFresh();
+$('radLabel').textContent=fmtRadius(state.radius);   // honour km/mi from the shared settings on first paint
 setInterval(function(){ tickClock(); paintFresh(); }, 1000);
 
 loadRoutes().then(markFresh, markFresh);   // → restoreFromURL() (deep-linked route) or showNetwork(); seed the freshness badge
