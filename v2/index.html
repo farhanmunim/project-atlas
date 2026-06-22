@@ -804,6 +804,7 @@ function applyFiltersUI(){
   var total=(state.routes||[]).length;
   var shown=(state.routes||[]).filter(function(r){return routePasses(r.name);}).length;
   $('fShowing').textContent = filtersActive()? (shown+' of '+total+' routes') : 'All routes';
+  if(!state.routeId && $('tgBuses') && $('tgBuses').checked) refreshBuses();   // re-scope network live buses to the filtered routes now, not at the next poll
 }
 function onFilterClick(e){
   var c=e.target.closest&&e.target.closest('.ychip'); if(!c||!c.dataset.g) return;
@@ -870,13 +871,20 @@ function refreshBuses(){
     if(!$('tgBuses').checked) return;                 // toggled off mid-flight
     if((state.routeId||'__net')!==tok) return;        // selection changed mid-flight — drop stale buses
     var arr=(j.data||j.vehicles||[]); busLayer.clearLayers();
+    // in network view, scope live buses to the same routes the filters leave on screen,
+    // so the dots match the visible network instead of showing the whole fleet.
+    var filtered=network && (FILTERS.operator.size||FILTERS.propulsion.size||FILTERS.type.size);
+    var drawn=0;
     arr.forEach(function(v){ if(!Number.isFinite(v.lat)||!Number.isFinite(v.lng)) return;
-      if(network){ L.circleMarker([v.lat,v.lng],{radius:2.5,weight:0,fillColor:'#4FD675',fillOpacity:.85,renderer:ptRenderer}).addTo(busLayer); }
-      else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip(esc(v.reg||'bus')+' · route '+esc(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); }
+      if(network){
+        if(filtered && !routePasses(v.publishedLine||v.line||'')) return;
+        L.circleMarker([v.lat,v.lng],{radius:2.5,weight:0,fillColor:'#4FD675',fillOpacity:.85,renderer:ptRenderer}).addTo(busLayer); drawn++;
+      }
+      else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip(esc(v.reg||'bus')+' · route '+esc(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); drawn++; }
     });
     map.addLayer(busLayer);
     if(typeof markFresh==='function') markFresh();   // live GPS just pulled — badge reflects it
-    status(network?(arr.length+' live buses · whole network'):(arr.length?(arr.length+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
+    status(network?(drawn+' live buses · '+(filtered?'filtered routes':'whole network')):(drawn?(drawn+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
   }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
 }
 function toggleBuses(on){
