@@ -13,7 +13,11 @@
  *
  * Output shape:
  *   { generatedAt, source, sample, period, count, bbox:[minLng,minLat,maxLng,maxLat],
- *     accidents:[ { id, lat, lng, severity, date, borough, vehicles } ] }
+ *     accidents:[ { id, lat, lng, severity, date, borough, vehicles,
+ *                   roadType, speedLimit, junction, light, weather, roadSurface } ] }
+ *   The trailing six are decoded STATS19 collision-context attributes (clean labels;
+ *   missing/unknown → null). They flow straight through to /api/v1/accidents and become
+ *   "aggregate by" lens dimensions in the app.
  */
 
 import { fetchStats19, LONDON_BBOX } from "../sources/stats19.js";
@@ -143,6 +147,15 @@ function synthSample() {
 
   const [minLng, minLat, maxLng, maxLat] = LONDON_BBOX;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  // plausible categorical spreads so the sample carries the same shape (and lens dimensions)
+  // as live STATS19 — labels mirror sources/stats19.js decode maps.
+  const ROAD_TYPES = ["Single carriageway", "Single carriageway", "Dual carriageway", "Roundabout", "One-way street"];
+  const JUNCTIONS = ["Not at junction", "T/staggered", "Crossroads", "Roundabout", "Multi-arm", "Other junction"];
+  const LIGHTS = ["Daylight", "Daylight", "Dark — lit", "Dark — unlit"];
+  const WEATHERS = ["Fine", "Fine", "Fine", "Raining", "Fog/mist"];
+  const SURFACES = ["Dry", "Dry", "Wet/damp", "Frost/ice"];
+  const SPEEDS = ["20 mph", "30 mph", "30 mph", "40 mph"];
 
   const out = [];
   const now = new Date("2026-06-18T00:00:00Z").getTime();
@@ -170,6 +183,12 @@ function synthSample() {
       date,
       borough: BOROUGHS[Math.floor(rnd() * BOROUGHS.length)],
       vehicles,
+      roadType: pick(ROAD_TYPES),
+      speedLimit: pick(SPEEDS),
+      junction: pick(JUNCTIONS),
+      light: pick(LIGHTS),
+      weather: pick(WEATHERS),
+      roadSurface: pick(SURFACES),
     });
   }
   return out;

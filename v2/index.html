@@ -516,8 +516,8 @@ var APP_SETTINGS = (function(){ try{ return JSON.parse(localStorage.getItem('tra
 var USE_MILES = APP_SETTINGS.units==='mi', USE_12H = APP_SETTINGS.clock==='12h';
 var MI_PER_KM=0.621371;
 function fmtKm(km, dp){ dp=(dp==null)?1:dp; return USE_MILES ? (km*MI_PER_KM).toFixed(dp)+' mi' : km.toFixed(dp)+' km'; }
-function fmtRadius(m){ if(USE_MILES){ var mi=(m/1000)*MI_PER_KM; return mi<0.1 ? Math.round(m*1.09361)+' yd' : mi.toFixed(mi<1?2:1)+' mi'; }
-  return m>=1000 ? (m/1000).toFixed(m%1000?1:0)+' km' : m+' m'; }
+function fmtRadius(m){ if(USE_MILES){ var mi=(m/1000)*MI_PER_KM; return mi<0.1 ? Math.round(m*1.09361)+' yd' : mi.toFixed(2).replace(/\.?0+$/,'')+' mi'; }
+  return m<1000 ? m+' m' : (m/1000).toFixed(2).replace(/\.?0+$/,'')+' km'; }   // exact: 1050→"1.05 km", 1500→"1.5 km", 2000→"2 km"
 function areaUnit(){ return USE_MILES?'/ mi²':'/ km²'; }
 function densityVal(total, m){ var aKm2=Math.PI*Math.pow(m/1000,2); var a=USE_MILES?aKm2*0.386102:aKm2; return a>0?total/a:0; }
 function fmtClock(d){ if(USE_12H){ var h=d.getHours(), ap=h<12?'AM':'PM', h12=h%12||12;
@@ -1216,9 +1216,12 @@ function loadAtlasAccidents(){
     var rows=near.map(function(a){ return {
       lat:a.lat, lon:(a.lng!=null?a.lng:a.lon),
       severity:a.severity, date:a.date, vehicles:a.vehicles,
-      borough:(GSS_BOROUGH[a.borough]|| (/^E0\d/.test(a.borough||'')?'Outside Greater London':a.borough))
+      borough:(GSS_BOROUGH[a.borough]|| (/^E0\d/.test(a.borough||'')?'Outside Greater London':a.borough)),
+      // decoded STATS19 collision-context — each becomes an "aggregate by" lens dimension
+      roadType:a.roadType||'', speedLimit:a.speedLimit||'', junction:a.junction||'',
+      light:a.light||'', weather:a.weather||'', roadSurface:a.roadSurface||''
     }; });
-    ingest(['lat','lon','severity','date','vehicles','borough'], rows, 'Atlas STATS19 · '+state.routeName);
+    ingest(['lat','lon','severity','date','vehicles','borough','roadType','speedLimit','junction','light','weather','roadSurface'], rows, 'Atlas STATS19 · '+state.routeName);
     if($('tgCollisions')) $('tgCollisions').checked=true;
     status('Loaded '+rows.length+' collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName, 'ok');
   };
@@ -1381,7 +1384,9 @@ function renderYearChips(){
 }
 function visiblePoints(){
   if(!state.yearCol || state.activeYears.size===state.years.length || !state.years.length) return state.points;
-  return state.points.filter(function(p){ return state.activeYears.has(p.row[state.yearCol]); });
+  // rows with no parseable year are "unknown" — a year filter can't judge them, so keep them
+  // visible regardless (rather than silently vanishing only when the filter is partial).
+  return state.points.filter(function(p){ var y=p.row[state.yearCol]; return !y || state.activeYears.has(y); });
 }
 
 /* ============================ POINT RENDERING ============================ */

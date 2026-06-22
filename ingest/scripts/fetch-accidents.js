@@ -23,7 +23,9 @@
  *
  * Output: data/source/accidents.json (sticky cache, force-committed across runs)
  *   { generatedAt, source, sample, years, bbox, count, accidents: [
- *       { id, lat, lng, severity, date(YYYY-MM-DD), borough, vehicles } ] }
+ *       { id, lat, lng, severity, date(YYYY-MM-DD), borough, vehicles,
+ *         roadType, speedLimit, junction, light, weather, roadSurface } ] }
+ *   The trailing six are decoded STATS19 collision-context attributes (clean labels).
  *
  * Run: npm run fetch-accidents
  */
@@ -46,6 +48,17 @@ const SCRIPT = 'accidents';
 const LONDON_BBOX = [-0.55, 51.25, 0.30, 51.71];
 const BUS_TYPES   = new Set(['10', '11']);              // 10 = minibus, 11 = bus/coach
 const SEVERITY    = { '1': 'fatal', '2': 'serious', '3': 'slight' };
+
+// STATS19 lookup-code -> clean label (DfT Road-Safety Open Dataset guide). Decoded at
+// the boundary so the warehouse lands human-readable values. Missing/unknown -> null.
+// Mirrors pipeline/sources/stats19.js — keep the two in sync.
+const ROAD_TYPE = { '1': 'Roundabout', '2': 'One-way street', '3': 'Dual carriageway', '6': 'Single carriageway', '7': 'Slip road', '12': 'One-way/slip' };
+const JUNCTION  = { '0': 'Not at junction', '1': 'Roundabout', '2': 'Mini-roundabout', '3': 'T/staggered', '5': 'Slip road', '6': 'Crossroads', '7': 'Multi-arm', '8': 'Private drive', '9': 'Other junction' };
+const LIGHT     = { '1': 'Daylight', '4': 'Dark — lit', '5': 'Dark — unlit', '6': 'Dark — no lighting', '7': 'Dark — unknown' };
+const WEATHER   = { '1': 'Fine', '2': 'Raining', '3': 'Snowing', '4': 'Fine + winds', '5': 'Raining + winds', '6': 'Snowing + winds', '7': 'Fog/mist', '8': 'Other' };
+const SURFACE   = { '1': 'Dry', '2': 'Wet/damp', '3': 'Snow', '4': 'Frost/ice', '5': 'Flood', '6': 'Oil/diesel', '7': 'Mud' };
+const decode = (map, v) => map[(v == null ? '' : String(v)).trim()] || null;
+const speedLimit = (v) => { const n = parseInt(v, 10); return n >= 20 && n <= 70 ? `${n} mph` : null; };
 
 // Most recent three published years (newest first). currentYear-2 is the
 // newest DfT normally has; we ask for a small window so a single late-publishing
@@ -148,6 +161,7 @@ async function fetchYear(year, timeoutMs) {
     const nv = parseInt(f[idx.number_of_vehicles], 10);
     const lad = idx.local_authority_ons_district != null
       ? (f[idx.local_authority_ons_district] || '').trim() : '';
+    const at = (col) => (idx[col] != null ? f[idx[col]] : '');
     accidents.push({
       id,
       lat: Math.round(lat * 1e6) / 1e6,
@@ -156,6 +170,13 @@ async function fetchYear(year, timeoutMs) {
       date: isoDate(f[idx.date]),
       borough: lad && lad !== '-1' ? lad : null,
       vehicles: Number.isFinite(nv) && nv > 0 ? nv : null,
+      // decoded collision-context attributes (clean labels; missing/unknown -> null)
+      roadType: decode(ROAD_TYPE, at('road_type')),
+      speedLimit: speedLimit(at('speed_limit')),
+      junction: decode(JUNCTION, at('junction_detail_historic')),  // classic 0–9 lookup
+      light: decode(LIGHT, at('light_conditions')),
+      weather: decode(WEATHER, at('weather_conditions')),
+      roadSurface: decode(SURFACE, at('road_surface_conditions')),
     });
   }, { timeoutMs });
 

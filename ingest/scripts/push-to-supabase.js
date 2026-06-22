@@ -609,6 +609,13 @@ async function pushAccidents() {
       collision_date: a.date ?? null,
       borough:        a.borough ?? null,
       vehicles:       Number.isFinite(a.vehicles) ? a.vehicles : null,
+      // decoded STATS19 collision-context (migration 0017) — clean labels, nullable
+      road_type:      a.roadType ?? null,
+      speed_limit:    a.speedLimit ?? null,
+      junction:       a.junction ?? null,
+      light:          a.light ?? null,
+      weather:        a.weather ?? null,
+      road_surface:   a.roadSurface ?? null,
       extracted_at:   extractedAt,
     }));
   await upsertInBatches('accidents', rows, 'collision_id');

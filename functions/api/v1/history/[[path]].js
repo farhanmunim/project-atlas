@@ -49,9 +49,9 @@ const ENDPOINTS = {
   },
   "accidents": {
     table: "accidents",
-    filters: { from: ["collision_date", "gte"], to: ["collision_date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"] },
+    filters: { from: ["collision_date", "gte"], to: ["collision_date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"], road_type: ["road_type", "eq"], speed_limit: ["speed_limit", "eq"] },
     defaultOrder: "collision_date.desc",
-    desc: "STATS19 bus/coach-involved collisions over time — lat/lng, severity, date, borough (ONS code), vehicle count. Filter by from/to date, severity, borough. The temporal source behind the /api/v1/accidents snapshot.",
+    desc: "STATS19 bus/coach-involved collisions over time — lat/lng, severity, date, borough (ONS code), vehicle count, plus decoded context: road_type, speed_limit, junction, light, weather, road_surface. Filter by from/to date, severity, borough, road_type, speed_limit. The temporal source behind the /api/v1/accidents snapshot.",
   },
 };
 

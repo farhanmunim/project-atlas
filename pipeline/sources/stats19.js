@@ -31,6 +31,18 @@ export const LONDON_BBOX = [-0.55, 51.25, 0.30, 51.71]; // [minLng, minLat, maxL
 const BUS_TYPES = new Set(["10", "11"]); // 10 = minibus, 11 = bus/coach
 const SEVERITY = { "1": "fatal", "2": "serious", "3": "slight" };
 
+// STATS19 lookup-code → clean label maps (DfT "Road Safety Open Dataset" guide).
+// We decode at the boundary so the warehouse lands human-readable values, not raw codes
+// (per the pipeline "clean before it lands" rule). Missing/unknown (-1, 9, blank) → null
+// so they don't pollute the app's lens dimensions.
+const ROAD_TYPE = { "1": "Roundabout", "2": "One-way street", "3": "Dual carriageway", "6": "Single carriageway", "7": "Slip road", "12": "One-way/slip" };
+const JUNCTION = { "0": "Not at junction", "1": "Roundabout", "2": "Mini-roundabout", "3": "T/staggered", "5": "Slip road", "6": "Crossroads", "7": "Multi-arm", "8": "Private drive", "9": "Other junction" };
+const LIGHT = { "1": "Daylight", "4": "Dark — lit", "5": "Dark — unlit", "6": "Dark — no lighting", "7": "Dark — unknown" };
+const WEATHER = { "1": "Fine", "2": "Raining", "3": "Snowing", "4": "Fine + winds", "5": "Raining + winds", "6": "Snowing + winds", "7": "Fog/mist", "8": "Other" };
+const SURFACE = { "1": "Dry", "2": "Wet/damp", "3": "Snow", "4": "Frost/ice", "5": "Flood", "6": "Oil/diesel", "7": "Mud" };
+const decode = (map, v) => map[(v == null ? "" : String(v)).trim()] || null;
+const speedLimit = (v) => { const n = parseInt(v, 10); return n >= 20 && n <= 70 ? `${n} mph` : null; };
+
 const DEFAULT_TIMEOUT_MS = 120_000; // these CSVs are multi-MB; allow a slow stream
 
 /* ── minimal CSV field splitter (handles quoted fields with commas) ── */
@@ -129,6 +141,7 @@ export async function fetchStats19Year(year, { bbox = LONDON_BBOX, timeoutMs } =
     if (!sev) return;
     const nv = parseInt(f[idx.number_of_vehicles], 10);
     const lad = idx.local_authority_ons_district != null ? (f[idx.local_authority_ons_district] || "").trim() : "";
+    const at = (col) => (idx[col] != null ? f[idx[col]] : "");
     accidents.push({
       id,
       lat: Math.round(lat * 1e6) / 1e6,
@@ -137,6 +150,15 @@ export async function fetchStats19Year(year, { bbox = LONDON_BBOX, timeoutMs } =
       date: isoDate(f[idx.date]),
       borough: lad && lad !== "-1" ? lad : null,
       vehicles: Number.isFinite(nv) && nv > 0 ? nv : null,
+      // decoded collision-context attributes (clean labels; missing/unknown → null)
+      roadType: decode(ROAD_TYPE, at("road_type")),
+      speedLimit: speedLimit(at("speed_limit")),
+      // use junction_detail_historic (classic 0–9 lookup, present in all years); the newer
+      // junction_detail column switched to an undocumented code scheme we won't guess at.
+      junction: decode(JUNCTION, at("junction_detail_historic")),
+      light: decode(LIGHT, at("light_conditions")),
+      weather: decode(WEATHER, at("weather_conditions")),
+      roadSurface: decode(SURFACE, at("road_surface_conditions")),
     });
   }, { timeoutMs });
 

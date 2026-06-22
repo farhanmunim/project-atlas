@@ -278,7 +278,9 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   map → analysis all reachable); map `invalidateSize` on resize.
 - **Atlas data files** (seam-read): routes, route-meta, route-stops, garages, fleet,
   vehicles, tenders, routes-overview.geojson, **route-performance.json** (EWT/OTP/MPS,
-  `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`).
+  `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`
+  — per collision: severity/date/borough/vehicles **plus decoded context** roadType/speedLimit/
+  junction/light/weather/roadSurface, which surface as the lens "aggregate by" dimensions).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
@@ -317,8 +319,11 @@ can never block the Cloudflare site.
   migrations to run once in Supabase SQL Editor:** `0014_accidents.sql`,
   `0015_live_reliability.sql`, `0016_tender_awarded_deck.sql` (adds the awarded
   `deck` to the per-award `tenders` table — `push-to-supabase.js` derives it from
-  the notes, mirroring the app's `tender-parse.js`). The rest pre-existed. Don't
-  reshape existing tables; add a migration for anything new.
+  the notes, mirroring the app's `tender-parse.js`), `0017_accidents_context.sql`
+  (adds decoded STATS19 collision-context columns `road_type`/`speed_limit`/`junction`/
+  `light`/`weather`/`road_surface` to `accidents` — decoded at the fetch boundary in
+  `fetch-accidents.js`, mirrored in `pipeline/sources/stats19.js`). The rest pre-existed.
+  Don't reshape existing tables; add a migration for anything new.
 - **Workflows** (all `permissions: contents: read` — Supabase-only, no
   commit-back):
   - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.

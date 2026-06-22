@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-21T08:10:57.812Z",
+  "generatedAt": "2026-06-22T11:57:59.436Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -105,14 +105,14 @@
     },
     "accidents": {
       "source": "DfT STATS19 road safety data (collision + vehicle tables, bus/coach-involved)",
-      "fetchedAt": "2026-06-18T23:24:52.785Z",
+      "fetchedAt": "2026-06-22T11:57:59.435Z",
       "status": "ok",
-      "rows": 4515,
+      "rows": 7118,
       "files": [
         "data/accidents.json"
       ],
       "cadence": "annual · DfT STATS19",
-      "note": "4515 collisions · live · 2021–2023 · fatal=25 serious=787 slight=3703"
+      "note": "7118 collisions · live · 2020–2024 · fatal=49 serious=1220 slight=5849"
     },
     "bridges": {
       "source": "TfL / London Datastore — Bridges, Tunnels, Road Barriers & Height Restrictions (EPOWR)",
