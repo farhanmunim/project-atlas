@@ -1498,7 +1498,7 @@ function aggregate(latlng){
   for(var i=0;i<pts.length;i++){
     if(map.distance(latlng, pts[i].latlng)<=r){
       inside.push(pts[i]);
-      if(state.dimension){ var v=pts[i].row[state.dimension]||'(blank)'; counts[v]=(counts[v]||0)+1; }
+      if(state.dimension){ var v=pts[i].row[state.dimension]||'(no data)'; counts[v]=(counts[v]||0)+1; }
       if(sevCol){ var sv=String(pts[i].row[sevCol]||'').toLowerCase(); if(sev[sv]!==undefined) sev[sv]++; }
     }
   }
@@ -1566,9 +1566,11 @@ function renderLensCard(lens, agg){
     html+='<div class="lsec">By '+esc(state.dimension==='__year'?'year':state.dimension)+'</div>';
     html+='<div class="bars">';
     shown.forEach(function(k){
-      var c=state.colorMap.get(k)||'#9AA7B2';
+      // missing-data bucket gets a distinct dim slate so it can't be mistaken for a real grey category
+      var blank=(k==='(no data)');
+      var c=blank ? '#3C4654' : (state.colorMap.get(k)||'#9AA7B2');
       var pct=Math.round(agg.counts[k]/agg.total*100);
-      html+='<div class="bar"><span class="blabel">'+esc(k)+'</span><span class="bval">'+agg.counts[k]+' · '+pct+'%</span>'+
+      html+='<div class="bar"><span class="blabel"'+(blank?' style="color:var(--faint);font-style:italic"':'')+'>'+esc(k)+'</span><span class="bval">'+agg.counts[k]+' · '+pct+'%</span>'+
             '<div class="btrack"><div class="bfill" style="width:'+(agg.counts[k]/max*100)+'%;background:'+esc(c)+'"></div></div></div>';
     });
     html+='</div>';

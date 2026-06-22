@@ -60,10 +60,11 @@ const SURFACE   = { '1': 'Dry', '2': 'Wet/damp', '3': 'Snow', '4': 'Frost/ice', 
 const decode = (map, v) => map[(v == null ? '' : String(v)).trim()] || null;
 const speedLimit = (v) => { const n = parseInt(v, 10); return n >= 20 && n <= 70 ? `${n} mph` : null; };
 
-// Most recent three published years (newest first). currentYear-2 is the
-// newest DfT normally has; we ask for a small window so a single late-publishing
-// year doesn't sink the pull.
-const YEARS = [2023, 2022, 2021];
+// Deep window (newest first), matching pipeline/build/accidents.js so the Supabase
+// warehouse holds the same population as the static data/accidents.json (system of
+// record can't be shallower than the read layer). It's a sticky cache — unchanged
+// years just re-confirm — and a year not yet published simply 404s and is skipped.
+const YEARS = [2024, 2023, 2022, 2021, 2020, 2019, 2018];
 
 const DEFAULT_TIMEOUT_MS = 120_000;                     // multi-MB streams; allow slow
 

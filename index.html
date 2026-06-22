@@ -1473,8 +1473,12 @@ function drawIncidents(){
 function sentinelBody(list, data, scopeNote, opts={}){
   if(!list || !list.length) return `<div class="empty" style="padding:7px 0">No bus collisions recorded ${esc(scopeNote||"")}.</div>`;
   const by={fatal:0,serious:0,slight:0}, byYear={}, byBorough={};
+  // decoded STATS19 collision-context dimensions (roll up the most common value per dimension)
+  const CTX=[["Road type","roadType"],["Speed","speedLimit"],["Junction","junction"],["Light","light"],["Weather","weather"],["Surface","roadSurface"]];
+  const ctx={}; CTX.forEach(([,k])=>ctx[k]={});
   list.forEach(a=>{ by[sevOf(a)]++; const y=String(a.date||"").slice(0,4); if(/^\d{4}$/.test(y)) byYear[y]=(byYear[y]||0)+1;
-    const bn=boroughName(a.borough); if(bn&&bn!=="—"&&bn!=="Outside London") byBorough[bn]=(byBorough[bn]||0)+1; });
+    const bn=boroughName(a.borough); if(bn&&bn!=="—"&&bn!=="Outside London") byBorough[bn]=(byBorough[bn]||0)+1;
+    CTX.forEach(([,k])=>{ const v=a[k]; if(v) ctx[k][v]=(ctx[k][v]||0)+1; }); });
   const tot=list.length, ksi=by.fatal+by.serious;
   const seg=ks=>ks.filter(k=>by[k]);
   const years=Object.keys(byYear).sort(), ymax=Math.max(1,...years.map(y=>byYear[y]));
@@ -1490,6 +1494,10 @@ function sentinelBody(list, data, scopeNote, opts={}){
     (years.length>=2?`<div class="mnote" style="margin-top:10px;display:flex;justify-content:space-between"><span>By year</span><span style="color:${trend.col}">${trend.txt}</span></div>
       <div style="display:flex;align-items:flex-end;gap:5px;height:30px;margin-top:5px">${years.map(y=>`<div title="${y}: ${byYear[y]}" style="flex:1;display:flex;flex-direction:column-reverse;align-items:center;gap:3px"><span style="font-size:8px;color:var(--paper-4);font-family:var(--mono)">${y.slice(2)}</span><div style="width:100%;height:${Math.max(2,Math.round(byYear[y]/ymax*22))}px;background:var(--cyan);border-radius:2px"></div></div>`).join("")}</div>`:"")+
     (topB.length>1?`<div class="mnote" style="margin-top:10px">Hotspot boroughs</div>`+topB.map(([b,n])=>`<div class="kv"><span class="k kc">${esc(b)}</span><span class="v">${n.toLocaleString("en-GB")}</span></div>`).join(""):"")+
+    (()=>{ const rows=CTX.map(([label,k])=>{ const ent=Object.entries(ctx[k]).sort((x,y)=>y[1]-x[1]); if(!ent.length) return "";
+        const n=ent.reduce((s,e)=>s+e[1],0), tv=ent[0][0], tc=ent[0][1];
+        return `<div class="kv"><span class="k kc">${esc(label)}</span><span class="v">${esc(tv)} <span class="u">${Math.round(tc/n*100)}%</span></span></div>`; }).filter(Boolean).join("");
+      return rows ? `<div class="mnote" style="margin-top:10px">Collision context <span class="mono" style="color:var(--paper-4)">most common</span></div>`+rows : ""; })()+
     `<div class="mnote" style="margin-top:10px">Most recent</div>`+
     recent.map(a=>`<div class="kv"><span class="k kc"><span style="color:${SEV[sevOf(a)].color}">●</span> ${esc(boroughName(a.borough))}</span><span class="v">${esc(fmtDate(a.date))}</span></div>`).join("")+
     crossLink(`source · ${esc(data.source||"DfT STATS19")}${data.sample?" · sample data":""}`);
