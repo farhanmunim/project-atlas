@@ -316,6 +316,7 @@
     /* right rail becomes a bottom sheet so route info + lens are usable on phones */
     #rightrail{display:flex; top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:46vh}
     .chips{display:none}
+    .brand small{display:none}   /* drop the wide subheading on phones so the topbar can't overflow (320px) */
     .fresh #freshText{display:none}   /* keep the dot, drop the text so the topbar never overflows */
     #topbar{height:48px}
     .leaflet-control-zoom{display:none}   /* pinch-zoom on touch; buttons would sit under the sheet */
@@ -351,7 +352,7 @@
     <div class="chip"><span class="k">Route</span><span class="v accent" id="cRoute">—</span></div>
     <div class="chip"><span class="k">Corridor</span><span class="v" id="cLen">—</span></div>
     <div class="chip"><span class="k">Incidents</span><span class="v" id="cTotal">0</span></div>
-    <div class="chip"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
+    <div class="chip"><span class="k">Shown</span><span class="v" id="cVisible">0</span></div>
   </div>
   <div class="dstatus">
     <span class="fresh" id="freshBadge" title="Time since the live layers were last pulled"><span class="fdot"></span><span id="freshText">—</span></span>
@@ -1329,9 +1330,9 @@ function toggleCollisions(on){
 }
 function loadAtlasAccidents(){
   if(!state.routePath.length){ status('Pick a route first — STATS19 loads along its corridor.', 'err'); if($('tgCollisions')) $('tgCollisions').checked=false; return; }
-  var tok=state.routeId+'|'+state.dir;
+  var tok=selectedLineParam()+'|'+state.dir;   // full selection signature (multi-aware), not just the primary
   var build=function(all){
-    if(tok!==state.routeId+'|'+state.dir) return;   // selection changed mid-load — drop stale result
+    if(tok!==selectedLineParam()+'|'+state.dir) return;   // selection changed mid-load — drop stale result
     var near=withinCorridor(all, CORRIDOR_BUFFER_M);
     if(!near.length){ status('No STATS19 collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName+'.', 'ok'); return; }
     var rows=near.map(function(a){ return {

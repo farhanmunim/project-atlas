@@ -24,7 +24,7 @@ const DATASETS = {
   "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
   "tenders":           { file: "tenders.json",            desc: "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles, plus derived joint-bid (partner routes + total), awarded vehicle (deck/propulsion/basis) and tranche." },
   "route-performance": { file: "route-performance.json",  desc: "Reliability per route — EWT/OTP vs the MPS benchmark, % mileage operated." },
-  "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough." },
+  "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, casualties, plus decoded context: roadType, speedLimit, junction, light, weather, roadSurface, day, timeBand." },
   "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
   "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };

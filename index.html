@@ -256,8 +256,12 @@ svg:not([width]){width:1em;height:1em;flex:none}
 /* table view (canvas Map ⇄ Table toggle) */
 .tableview{position:absolute;inset:0;z-index:460;overflow:auto;background:var(--ink-2);padding:0}
 .tableview table{width:100%;border-collapse:collapse;font-size:var(--fz-sm)}
-.tableview thead th{position:sticky;top:0;background:var(--panel);text-align:left;padding:9px var(--s4);
+.tableview thead th{position:sticky;top:43px;background:var(--panel);text-align:left;padding:9px var(--s4);
   font-size:var(--fz-xs);text-transform:uppercase;letter-spacing:.06em;color:var(--paper-3);font-weight:600;border-bottom:1px solid var(--line);white-space:nowrap}
+.tableview .tbl-modes{position:sticky;top:0;z-index:3;height:43px;box-sizing:border-box;display:flex;gap:6px;align-items:center;padding:0 var(--s4);background:var(--ink-2);border-bottom:1px solid var(--line)}
+.tableview .tbl-modes button{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--paper-2);cursor:pointer}
+.tableview .tbl-modes button[aria-pressed=true]{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+.tableview .tbl-empty{padding:28px var(--s4);color:var(--paper-3);text-align:center;font-size:13px;line-height:1.5}
 .tableview th.num,.tableview td.num{text-align:right;font-family:var(--mono)}
 .tableview tbody td{padding:8px var(--s4);border-bottom:1px solid var(--line);color:var(--paper-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
 .tableview tbody tr{cursor:pointer;transition:background .1s var(--ease)}
@@ -1798,7 +1802,44 @@ function setCanvasView(v){
   if(v==="table") renderTable();
   else if(mapOK) setTimeout(()=>map.invalidateSize(),0);
 }
+// nearby bus collisions for a route (same geometry + alert-proximity the dossier/CSV use).
+function routeCollisions(r0){
+  const data=accidentsData();
+  const cs=(r0&&r0._seq&&r0._seq.coords&&r0._seq.coords.length)?r0._seq.coords:(r0?storeCoordsFor(r0.id):null);
+  if(!data||!cs||!cs.length) return { data, rows:[] };
+  const RR=riskRadius/1000;
+  const rows=(data.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<RR; })
+    .sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  return { data, rows };
+}
+let tableMode="routes";   // routes | collisions
 function renderTable(){
+  const tv=document.getElementById("tableView");
+  const single = selected.length===1 ? selected[0] : null;
+  const colN = single ? routeCollisions(single).rows.length : 0;
+  const seg=`<div class="tbl-modes" role="group" aria-label="Table contents">
+    <button type="button" data-tm="routes" aria-pressed="${tableMode==='routes'}">Routes</button>
+    <button type="button" data-tm="collisions" aria-pressed="${tableMode==='collisions'}"${single?'':' title="select a single route to list its collisions"'}>Collisions${single?` · ${colN}`:''}</button>
+  </div>`;
+  tv.innerHTML = seg + (tableMode==='collisions' ? collisionsTableHTML(single) : routesTableHTML());
+  tv.querySelectorAll('.tbl-modes button').forEach(b=>b.addEventListener('click',()=>{ tableMode=b.dataset.tm; renderTable(); }));
+  if(tableMode!=='collisions') tv.querySelectorAll("tbody tr[data-id]").forEach(tr=>tr.addEventListener("click",()=>{
+    const r=routes.find(x=>x.id===tr.dataset.id); if(r){ setCanvasView("map"); toggleRoute(r); }
+  }));
+}
+function collisionsTableHTML(single){
+  if(!single) return `<div class="tbl-empty">Select a single route to list the bus collisions along its corridor (within the alert proximity). The dossier's Risk &amp; accidents readout and the CSV export use the same data.</div>`;
+  const { data, rows } = routeCollisions(single);
+  if(!rows.length) return `<div class="tbl-empty">No bus collisions within ${riskRadius} m of route ${esc(single.name)}${data&&data.sample?" (sample data)":""}.</div>`;
+  const body = rows.map(a=>`<tr><td class="num" style="font-size:10px">${esc(fmtDate(a.date))}</td>
+    <td><span class="tdot" style="background:${SEV[sevOf(a)].color}"></span>${SEV[sevOf(a)].label}</td>
+    <td>${esc(boroughName(a.borough))}</td><td class="num">${a.casualties||"—"}</td><td class="num">${a.vehicles||"—"}</td>
+    <td>${esc(a.roadType||"—")}</td><td class="num">${esc(a.speedLimit||"—")}</td><td>${esc(a.junction||"—")}</td>
+    <td>${esc(a.light||"—")}</td><td>${esc(a.weather||"—")}</td><td>${esc(a.roadSurface||"—")}</td>
+    <td>${esc(a.day||"—")}</td><td>${esc(a.timeBand||"—")}</td></tr>`).join("");
+  return `<table><thead><tr><th class="num">Date</th><th>Severity</th><th>Borough</th><th class="num" title="people injured">Casualties</th><th class="num">Vehicles</th><th>Road type</th><th class="num">Speed</th><th>Junction</th><th>Light</th><th>Weather</th><th>Surface</th><th>Day</th><th>Time</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+function routesTableHTML(){
   const list=applyFilters(routes);
   const rows=list.map(r=>{ const m=metaOf(r), t=typeOf(r), d=TYPE_DEFS[t];
     const prop=m.prop?PROP_DEFS[m.prop]:null;
@@ -1821,12 +1862,8 @@ function renderTable(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  document.getElementById("tableView").innerHTML =
-    `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
      <tbody>${rows||'<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
-  document.getElementById("tableView").querySelectorAll("tbody tr[data-id]").forEach(tr=>tr.addEventListener("click",()=>{
-    const r=routes.find(x=>x.id===tr.dataset.id); if(r){ setCanvasView("map"); toggleRoute(r); }
-  }));
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2621,9 +2658,11 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
         return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
+          (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",
           lt?(isJointBid(lt)?"joint":"sole"):"",

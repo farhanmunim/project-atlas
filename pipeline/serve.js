@@ -108,7 +108,7 @@ const V1_SETS = {
   "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
   "tenders":           { file: "tenders.json",            desc: "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles, plus derived joint-bid (partner routes + total), awarded vehicle (deck/propulsion/basis) and tranche." },
   "route-performance": { file: "route-performance.json",  desc: "Reliability per route — EWT/OTP vs the MPS benchmark, % mileage operated." },
-  "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough." },
+  "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, casualties, plus decoded context: roadType, speedLimit, junction, light, weather, roadSurface, day, timeBand." },
   "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
   "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };
@@ -224,8 +224,10 @@ function accidentsSnapshot(q, limit, order) {
     }
     return true;
   });
-  const desc = !/\.asc$/.test(order);
-  rows.sort((a, b) => desc ? String(b.date).localeCompare(String(a.date)) : String(a.date).localeCompare(String(b.date)));
+  const ORDER_MAP = { collision_date: "date", severity: "severity", borough: "borough", vehicles: "vehicles", casualties: "casualties", road_type: "roadType", speed_limit: "speedLimit", junction: "junction", light: "light", weather: "weather", road_surface: "roadSurface", day: "day", time_band: "timeBand" };
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(order || "");
+  const ocol = (om && ORDER_MAP[om[1]]) || "date", desc = om ? om[2] === "desc" : true;
+  rows.sort((a, b) => { const av = a[ocol], bv = b[ocol]; const c = (typeof av === "number" && typeof bv === "number") ? (av - bv) : String(av == null ? "" : av).localeCompare(String(bv == null ? "" : bv)); return desc ? -c : c; });
   rows = rows.slice(0, limit).map((a) => ({ collision_id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, collision_date: a.date, borough: a.borough, vehicles: a.vehicles, casualties: a.casualties, road_type: a.roadType, speed_limit: a.speedLimit, junction: a.junction, light: a.light, weather: a.weather, road_surface: a.roadSurface, day: a.day, time_band: a.timeBand }));
   return { dataset: "accidents", table: "accidents", source: "snapshot (data/accidents.json — warehouse migration pending)", count: rows.length, limit, rows };
 }

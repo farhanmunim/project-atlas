@@ -97,8 +97,16 @@ async function accidentsSnapshot(origin, q, limit, order) {
     }
     return true;
   });
-  const desc = !/\.asc$/.test(order);                      // default / collision_date.desc → newest first
-  rows.sort((a, b) => desc ? String(b.date).localeCompare(String(a.date)) : String(a.date).localeCompare(String(b.date)));
+  // honour the requested order column (mapped warehouse snake_case → snapshot camelCase), so the
+  // fallback's ordering matches the Supabase path rather than always sorting by date.
+  const ORDER_MAP = { collision_date: "date", severity: "severity", borough: "borough", vehicles: "vehicles", casualties: "casualties", road_type: "roadType", speed_limit: "speedLimit", junction: "junction", light: "light", weather: "weather", road_surface: "roadSurface", day: "day", time_band: "timeBand" };
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(order || "");
+  const ocol = (om && ORDER_MAP[om[1]]) || "date", desc = om ? om[2] === "desc" : true;
+  rows.sort((a, b) => {
+    const av = a[ocol], bv = b[ocol];
+    const c = (typeof av === "number" && typeof bv === "number") ? (av - bv) : String(av == null ? "" : av).localeCompare(String(bv == null ? "" : bv));
+    return desc ? -c : c;
+  });
   rows = rows.slice(0, limit).map((a) => ({
     collision_id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, collision_date: a.date,
     borough: a.borough, vehicles: a.vehicles, casualties: a.casualties, road_type: a.roadType,
