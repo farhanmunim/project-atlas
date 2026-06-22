@@ -532,6 +532,7 @@ var state = {
   bridges:null,          // cached full bridge set
   overview:null,         // cached routes-overview.geojson (DB-backed route geometry)
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
+  netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
@@ -816,8 +817,17 @@ function drawNetwork(){
   map.addLayer(networkLayer);
   return Object.keys(names).length;
 }
+// re-render whichever route-scoped layers are toggled on, for the CURRENT view. With a route in
+// view they scope to its corridor; at top-level they cover the whole network. Called when the view
+// flips back to the network so an active layer doesn't go blank.
+function reapplyScopedLayers(){
+  if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
+  if($('tgBridges') && $('tgBridges').checked) renderBridges(true);
+  if($('tgStops') && $('tgStops').checked) showStops();
+  if($('tgBuses') && $('tgBuses').checked) refreshBuses();
+}
 function showNetwork(){
-  state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[];
+  state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[]; state._stops=[];
   renderRouteChips();
   syncClearAll();
   routeLayer.clearLayers(); stopLayer.clearLayers();
@@ -832,6 +842,7 @@ function showNetwork(){
     $('emptyState').style.display='none';
     showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
     status(n+' routes ready', 'ok');
+    reapplyScopedLayers();   // collisions/bridges/stops/buses left on at top-level → repaint network-wide
   }).catch(function(e){ status('Network load failed: '+e.message, 'err'); });
 }
 
@@ -1175,20 +1186,44 @@ function drawRoute(){
   var b=L.latLngBounds(all);
   map.fitBounds(b, {paddingTopLeft:[300,70], paddingBottomRight:[286,30]});
 }
+// every distinct stop across the whole network, deduped by position — the top-level (no route) set.
+function networkStops(){
+  if(state.netStops) return state.netStops;
+  var sa=state.stopsAll||{}, seen={}, out=[];
+  Object.keys(sa).forEach(function(rn){
+    var d=sa[rn]; if(!d) return;
+    ['outbound','inbound'].forEach(function(dir){
+      (d[dir]||[]).forEach(function(s){
+        if(s.lat==null||s.lng==null) return;
+        var k=s.lat.toFixed(4)+','+s.lng.toFixed(4); if(seen[k]) return; seen[k]=1;
+        out.push({lat:s.lat, lon:s.lng, name:s.name});
+      });
+    });
+  });
+  state.netStops=out; return out;
+}
 function renderStops(){
   stopLayer.clearLayers();
   if(!$('tgStops').checked) return;
-  (state._stops||[]).forEach(function(sp){
+  // a route in view → its corridor stops; top-level → every stop in the network.
+  var list = state.routePath.length ? (state._stops||[]) : networkStops();
+  list.forEach(function(sp){
     L.circleMarker([sp.lat,sp.lon], {radius:3, color:'#E7ECF1', weight:1, opacity:.55, fillColor:'#0A0C10', fillOpacity:1, renderer:ptRenderer})
       .bindTooltip(esc(sp.name), {direction:'top', className:'stop-tip'}).addTo(stopLayer);
   });
 }
-$('tgStops').addEventListener('change', function(){
-  if(this.checked){
-    if(!state.routePath.length){ this.checked=false; status('Pick a route first — stops show along its corridor.', 'err'); return; }
-    map.addLayer(stopLayer); renderStops();
-  } else { map.removeLayer(stopLayer); }
-});
+// turn the stops layer on for whatever's in view — a route corridor, or (top-level) the whole network.
+function showStops(){
+  if(!$('tgStops').checked){ map.removeLayer(stopLayer); return; }
+  map.addLayer(stopLayer);
+  if(state.routePath.length){ renderStops(); return; }
+  status('Loading network stops…');
+  ensureRouteData().then(function(){
+    if(!$('tgStops').checked || state.routePath.length) return;   // toggled off / a route landed mid-load
+    renderStops(); status(networkStops().length+' stops across the network', 'ok');
+  }).catch(function(e){ status('Stops unavailable ('+e.message+')','err'); });
+}
+$('tgStops').addEventListener('change', showStops);
 $('tgBase').addEventListener('change', function(){
   if(this.checked) map.addLayer(baseLayer); else map.removeLayer(baseLayer);
 });
@@ -1340,16 +1375,16 @@ function toggleCollisions(on){
     }
     clearCollisionData(); status('Collisions cleared','ok'); return;
   }
-  if(!state.routeId){ status('Pick a route first — collisions plot along its corridor.','err'); $('tgCollisions').checked=false; return; }
   loadAtlasAccidents();
 }
 function loadAtlasAccidents(){
-  if(!state.routePath.length){ status('Pick a route first — STATS19 loads along its corridor.', 'err'); if($('tgCollisions')) $('tgCollisions').checked=false; return; }
+  // Top-level (no route) → the whole STATS19 network; a route in view → scoped to its corridor.
+  var netView=!state.routePath.length;
   var tok=selectedLineParam()+'|'+state.dir;   // full selection signature (multi-aware), not just the primary
   var build=function(all){
     if(tok!==selectedLineParam()+'|'+state.dir) return;   // selection changed mid-load — drop stale result
-    var near=withinCorridor(all, CORRIDOR_BUFFER_M);
-    if(!near.length){ status('No STATS19 collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName+'.', 'ok'); return; }
+    var near=netView ? all : withinCorridor(all, CORRIDOR_BUFFER_M);
+    if(!near.length){ status(netView?'No STATS19 collisions available.':('No STATS19 collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName+'.'), 'ok'); return; }
     var rows=near.map(function(a){ return {
       lat:a.lat, lon:(a.lng!=null?a.lng:a.lon),
       severity:a.severity, date:a.date, vehicles:a.vehicles, casualties:a.casualties,
@@ -1359,9 +1394,9 @@ function loadAtlasAccidents(){
       light:a.light||'', weather:a.weather||'', roadSurface:a.roadSurface||'',
       day:a.day||'', timeBand:a.timeBand||''
     }; });
-    ingest(['lat','lon','severity','date','vehicles','casualties','borough','roadType','speedLimit','junction','light','weather','roadSurface','day','timeBand'], rows, 'Atlas STATS19 · '+state.routeName);
+    ingest(['lat','lon','severity','date','vehicles','casualties','borough','roadType','speedLimit','junction','light','weather','roadSurface','day','timeBand'], rows, 'Atlas STATS19 · '+(netView?'whole network':state.routeName));
     if($('tgCollisions')) $('tgCollisions').checked=true;
-    status('Loaded '+rows.length+' collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName, 'ok');
+    status('Loaded '+rows.length+' collisions'+(netView?' across the network':(' within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName)), 'ok');
   };
   if(state.atlasAll){ build(state.atlasAll); return; }
   status('Loading STATS19 collisions from Atlas…');
@@ -1377,18 +1412,19 @@ function bridgeIcon(){
 function drawBridges(all){
   bridgeLayer.clearLayers();
   var low=all.filter(function(b){ return (+b.height_m||99) < 4.4; }); // double-deck strike risk
-  var near=withinCorridor(low, CORRIDOR_BUFFER_M);
+  // Top-level (no route) → every low bridge in London; a route in view → scoped to its corridor.
+  var netView=!state.routePath.length;
+  var near=netView ? low : withinCorridor(low, CORRIDOR_BUFFER_M);
   near.forEach(function(b){
     L.marker([b.lat,(b.lng!=null?b.lng:b.lon)], {icon:bridgeIcon(), zIndexOffset:500})
       .bindTooltip('Low bridge · '+esc(b.name||'')+' · '+esc(b.height_m)+' m'+(b.road?' · '+esc(b.road):''), {direction:'top', className:'stop-tip'})
       .addTo(bridgeLayer);
   });
   map.addLayer(bridgeLayer);
-  status(near.length+' low bridge(s) <4.4 m near '+state.routeName, 'ok');
+  status(near.length+' low bridge(s) <4.4 m'+(netView?' across London':(' near '+state.routeName)), 'ok');
 }
 function renderBridges(on){
   if(!on){ map.removeLayer(bridgeLayer); return; }
-  if(!state.routePath.length){ $('tgBridges').checked=false; status('Pick a route first — low bridges flag along its corridor.', 'err'); return; }
   if(state.bridges){ drawBridges(state.bridges); return; }
   status('Loading low bridges from Atlas…');
   getJSON(atlasBase()+'/bridges')
