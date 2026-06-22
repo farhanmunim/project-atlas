@@ -1080,10 +1080,16 @@ function fmtAgo(ms){ if(!ms)return"never"; const s=Math.round((Date.now()-ms)/10
 function reduceMotion(){ return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
 
 /* Live capture — store every datapoint we touch live (same CDC warehouse as the
-   pipeline). Best-effort: no-ops on file:// or if the endpoint is absent. */
+   pipeline). Best-effort: the /ingest sink only exists under the dev server (serve.js);
+   in production the Actions pipeline does the warehousing, so we must NOT POST there
+   (it would 405 on every live pull). Dev-host only, and self-disable on any failure. */
+let _ingestSink = null;   // null = untested, false = unavailable (stop trying)
 function ingest(entityType, items){
   if(!items || !items.length || !location.protocol.startsWith("http")) return;
-  try{ fetch("/ingest", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ entityType, kind:"live", items }) }).catch(()=>{}); }catch(e){}
+  if(_ingestSink === false) return;
+  if(!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)){ _ingestSink = false; return; }
+  try{ fetch("/ingest", { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ entityType, kind:"live", items }) })
+        .then(r=>{ if(!r.ok) _ingestSink = false; }).catch(()=>{ _ingestSink = false; }); }catch(e){ _ingestSink = false; }
 }
 function fmtDist(km){ if(settings.units==="mi"){ const mi=km*0.621371; return mi.toFixed(mi<10?2:1)+" mi"; } return km.toFixed(km<10?2:1)+" km"; }
 // distance as a KPI value with the unit set small/subordinate (e.g. 14.9 km → 14.9 ᵏᵐ)
