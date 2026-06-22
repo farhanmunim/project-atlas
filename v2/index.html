@@ -932,6 +932,30 @@ function setKpiChip(chipId, valId, count, show){
   var c=$(chipId); if(c) c.style.display = show ? '' : 'none';
   if(show){ var v=$(valId); if(v) v.textContent = (count==null?0:count).toLocaleString('en-GB'); }
 }
+// Keep the Live-buses / Road-incidents / Low-bridges KPIs populated even when their map layer is
+// OFF, so the header always carries the network tally (not a blank until you enable a layer). When
+// the layer IS on it owns the chip (scoped count), so we skip those here. Fired on boot + refresh +
+// whenever a layer is switched off. Each fetch is independent and fails quietly to a hidden chip.
+function loadHeaderCounts(){
+  // Low bridges (<4.4 m) — static, cheap; cache once.
+  if(!$('tgBridges') || !$('tgBridges').checked){
+    (state.bridges ? Promise.resolve(state.bridges) : getJSON(atlasBase()+'/bridges').then(function(d){ state.bridges=(d.bridges||d)||[]; return state.bridges; }))
+      .then(function(all){ if($('tgBridges')&&$('tgBridges').checked) return;
+        setKpiChip('chipBridges','cBridges', all.filter(function(b){return (+b.height_m||99)<4.4;}).length, true); }).catch(function(){});
+  }
+  // Live road incidents — TfL control centre + National Highways.
+  if(!$('tgRoad') || !$('tgRoad').checked){
+    Promise.all([
+      getJSON(atlasBase()+'/live/road-disruptions').then(function(j){ return (Array.isArray(j.data)?j.data:[]).filter(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); return m&&m.length>=2; }).length; }).catch(function(){return 0;}),
+      getJSON(atlasBase()+'/live/national-highways').then(function(j){ return (Array.isArray(j.data)?j.data:[]).filter(function(d){ return Number.isFinite(d.lat)&&Number.isFinite(d.lng); }).length; }).catch(function(){return 0;})
+    ]).then(function(c){ if($('tgRoad')&&$('tgRoad').checked) return; setKpiChip('chipRoad','cRoad', c[0]+c[1], true); }).catch(function(){});
+  }
+  // Live buses (BODS SIRI-VM) — whole-network snapshot (10s edge-cached, so one pull is cheap).
+  if(!$('tgBuses') || !$('tgBuses').checked){
+    getJSON(atlasBase()+'/live/vehicles').then(function(j){ if($('tgBuses')&&$('tgBuses').checked) return;
+      setKpiChip('chipBuses','cBuses', (j.data||j.vehicles||[]).filter(function(v){return Number.isFinite(v.lat)&&Number.isFinite(v.lng);}).length, true); }).catch(function(){});
+  }
+}
 function fChip(group,val,label,count,color){
   var on=FILTERS[group].has(val);
   return '<button type="button" class="ychip'+(on?' on':'')+'" role="button" aria-pressed="'+on+'" data-g="'+group+'" data-v="'+esc(val)+'">'+
@@ -998,7 +1022,7 @@ function toggleGarages(on){
 // Live road incidents — TfL control-centre feed via /api/v1/live/road-disruptions.
 function nhIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:11px;height:11px;background:#B388FF;border:2px solid #0A0C10;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>'}); }
 function toggleRoad(on){
-  if(!on){ map.removeLayer(roadLayer); setKpiChip('chipRoad','cRoad',0,false); return; }
+  if(!on){ map.removeLayer(roadLayer); loadHeaderCounts(); return; }   // revert chip to the network tally
   roadLayer.clearLayers();
   status('Loading live road incidents…');
   // Two sources through our API: TfL control centre (London) + National Highways (SRN).
@@ -1055,7 +1079,7 @@ function refreshBuses(){
 }
 function toggleBuses(on){
   if(busTimer){ clearInterval(busTimer); busTimer=null; }
-  if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); setKpiChip('chipBuses','cBuses',0,false); return; }
+  if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); loadHeaderCounts(); return; }   // revert chip to the network tally
   refreshBuses(); busTimer=setInterval(refreshBuses, 12000);   // ~feed cadence; cache collapses upstream load
 }
 // Lazy-load the two big DB-backed datasets once, then cache them.
@@ -1165,11 +1189,16 @@ function renderDossier(){
 
     // ── Route card — identity + Reliability + Fleet all count as route info, so they live in
     //    one collapsible card (Reliability/Fleet as in-card subsections). live Status fills the slot. ──
+    // The core identity rows are ALWAYS shown — with a muted "—" when the source (e.g. night routes
+    // on londonbusroutes.net) doesn't carry the figure — so a data-sparse route reads as "unknown",
+    // not as a half-built/broken card. Spec/Contract stay conditional (they're detail extras).
+    var dash='var(--faint)';
     var rc='<div id="dossierStatusSlot"></div>';
-    rc+=drow('Operator', m.operator);
-    rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_TXT[m.propulsion]:null);
-    rc+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
-    rc+=drow('PVR', m.pvr);
+    rc+=drow('Operator', m.operator||'—', m.operator?null:dash);
+    rc+=drow('Type', m.type?(TYPE_FILTER_LBL[m.type]||m.type):'—', m.type?null:dash);
+    rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:'—', m.propulsion?PROP_TXT[m.propulsion]:dash);
+    rc+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||'—'), (m.garageName||m.garage)?null:dash);
+    rc+=drow('PVR', m.pvr!=null?m.pvr:'—', m.pvr!=null?null:dash);
     rc+=drow('Spec', m.fleet);   // the contracted/rostered vehicle type (route-meta)
     rc+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
 
@@ -1503,7 +1532,7 @@ function drawBridges(all){
   status(near.length+' low bridge(s) <4.4 m'+(netView?' across London':(' near '+state.routeName)), 'ok');
 }
 function renderBridges(on){
-  if(!on){ map.removeLayer(bridgeLayer); setKpiChip('chipBridges','cBridges',0,false); return; }
+  if(!on){ map.removeLayer(bridgeLayer); loadHeaderCounts(); return; }   // revert chip to the network tally
   if(state.bridges){ drawBridges(state.bridges); return; }
   status('Loading low bridges from Atlas…');
   getJSON(atlasBase()+'/bridges')
@@ -1956,6 +1985,7 @@ function refresh(){
   if($('tgRoad').checked) toggleRoad(true);          // live road incidents (TfL + National Highways)
   if($('tgBuses').checked) refreshBuses();           // live bus GPS (BODS)
   if(state.routeId) renderDossier();                 // live status / reliability for the selected route
+  loadHeaderCounts();                                // refresh the network KPI tallies for any off layers
   markFresh();
   setTimeout(function(){ if(btn){ btn.classList.remove('spin'); btn.disabled=false; } }, 700);
 }
@@ -1987,7 +2017,7 @@ tickClock(); paintFresh();
 $('radLabel').textContent=fmtRadius(state.radius);   // honour km/mi from the shared settings on first paint
 setInterval(function(){ tickClock(); paintFresh(); }, 1000);
 
-loadRoutes().then(markFresh, markFresh);   // → restoreFromURL() (deep-linked route) or showNetwork(); seed the freshness badge
+loadRoutes().then(function(){ markFresh(); loadHeaderCounts(); }, markFresh);   // → restoreFromURL() (deep-linked route) or showNetwork(); seed the freshness badge + header KPI tallies
 })();
 </script>
 
