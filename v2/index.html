@@ -23,7 +23,7 @@
   :root{
     --bg:#0A0C10; --panel:rgba(17,21,27,0.90); --panel-solid:#11151B;
     --border:#262E38; --border-soft:#1A212A;
-    --text:#E7ECF1; --muted:#8C97A4; --faint:#5C6772;
+    --text:#E7ECF1; --muted:#8C97A4; --faint:#7C8794; --line:#5C6772;
     --red:#DC241F; --red-bright:#FF463F;
     --cyan:#36C5F0; --amber:#F2A20C;
     --mono:'IBM Plex Mono',ui-monospace,monospace;
@@ -119,6 +119,15 @@
     background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
     background-position:calc(100% - 15px) center, calc(100% - 10px) center; background-size:5px 5px,5px 5px; background-repeat:no-repeat;}
   input[type=text]:focus, select:focus{border-color:var(--red)}
+  /* visible keyboard focus on every interactive element (a11y) */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible,
+  [tabindex]:focus-visible, .card-h:focus-visible, .opt:focus-visible, .ychip:focus-visible{
+    outline:2px solid var(--red-bright); outline-offset:2px; border-radius:5px;
+  }
+  /* respect reduced-motion preference (a11y / CLAUDE.md) */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{transition-duration:.001ms!important; animation-duration:.001ms!important; animation-iteration-count:1!important; scroll-behavior:auto!important}
+  }
   input::placeholder{color:var(--faint)}
 
   /* combobox */
@@ -276,7 +285,7 @@
 </head>
 <body>
 
-<div id="map"></div>
+<div id="map" role="region" aria-label="Map of the London bus network — route corridor, collisions and live layers"></div>
 
 <div class="empty-state" id="emptyState">
   <div class="es-title">ROUTE LENS</div>
@@ -409,7 +418,7 @@
 </div>
 
 <!-- STATUS -->
-<div class="hud" id="status"><span class="pulse"></span><span id="statusText">676 routes ready</span></div>
+<div class="hud" id="status" role="status" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">676 routes ready</span></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
@@ -488,7 +497,10 @@ function incidentStyle(cat){ return INCIDENT_STYLE[cat]||{c:"#9AA7B2",t:cat||"In
 function $(id){return document.getElementById(id);}
 function status(msg, kind){
   var s=$('status'); s.className='hud show '+(kind||''); $('statusText').textContent=msg;
-  if(kind==='ok'){clearTimeout(status._t); status._t=setTimeout(function(){s.className='hud';},2200);}
+  // auto-dismiss ok (2.2s) and errors (6s) so a transient toast doesn't linger forever.
+  clearTimeout(status._t);
+  if(kind==='ok') status._t=setTimeout(function(){s.className='hud';},2200);
+  else if(kind==='err') status._t=setTimeout(function(){s.className='hud';},6000);
 }
 function hideStatus(){$('status').className='hud';}
 function naturalCmp(a,b){
@@ -1365,7 +1377,7 @@ function buildLensCard(lens){
   card.innerHTML =
     '<div class="card-h"><div class="dot" style="background:'+lens.color+'"></div>'+
     '<h2>Lens '+lens.name+'</h2>'+
-    '<button class="rm" title="Remove">&times;</button>'+
+    '<button type="button" class="rm" title="Remove lens" aria-label="Remove lens '+esc(lens.name)+'">&times;</button>'+
     '<span class="chev">▶</span></div>'+
     '<div class="card-b"><div class="lens-body"></div></div>';
   card.querySelector('.card-h').addEventListener('click', function(e){
@@ -1478,6 +1490,11 @@ $('netBtn').addEventListener('click', showNetwork);
 $('tgGarages').addEventListener('change', function(){ toggleGarages(this.checked); });
 $('tgRoad').addEventListener('change', function(){ toggleRoad(this.checked); });
 $('tgBuses').addEventListener('change', function(){ toggleBuses(this.checked); });
+// give every toggle an accessible name from its row label (a11y).
+document.querySelectorAll('.toggle-row').forEach(function(row){
+  var inp=row.querySelector('input[type=checkbox]'), txt=row.querySelector('span:not(.track)');
+  if(inp&&txt&&!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', txt.textContent.trim());
+});
 loadRoutes();
 showNetwork();        // default view: the whole network, coloured by operator
 })();
