@@ -618,8 +618,14 @@ function renderList(filter){
   var f=(filter||'').trim().toLowerCase();
   var items = state.routes.filter(function(r){
     if(!routePasses(r.name)) return false;
-    return !f || r.name.toLowerCase().indexOf(f)===0 || r.name.toLowerCase().indexOf(f)>-1 || r.od.toLowerCase().indexOf(f)>-1;
-  }).slice(0,200);
+    if(!f) return true;
+    return r.name.toLowerCase().indexOf(f)>-1 || r.od.toLowerCase().indexOf(f)>-1;
+  });
+  if(f){ items.sort(function(a,b){            // prefix matches rank above mid-string matches (e.g. "25" → 25 before 125)
+    var ap=a.name.toLowerCase().indexOf(f)===0?0:1, bp=b.name.toLowerCase().indexOf(f)===0?0:1;
+    return ap!==bp ? ap-bp : naturalCmp(a.name,b.name);
+  }); }
+  items=items.slice(0,200);
   if(!state.routes.length){ list.innerHTML='<div class="opt"><span class="empty">Loading routes…</span></div>'; return; }
   if(!items.length){ list.innerHTML='<div class="opt"><span class="empty">No match</span></div>'; return; }
   list.innerHTML='';
