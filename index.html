@@ -951,8 +951,15 @@ const dataSource = (() => {
     async fetchRouteSections(id){ const j=await get(`/Line/${encodeURIComponent(id)}/Route`);
       return (j.routeSections||[]).map(s=>({direction:s.direction,origin:s.originationName,destination:s.destinationName,validFrom:s.validFrom,serviceType:s.serviceType})); },
     /* GET /Line/{id}/Status (LIVE ~30s) -> current status + disruption reason */
-    async fetchLineStatus(id){ const j=await get(`/Line/${encodeURIComponent(id)}/Status`); const l=Array.isArray(j)?j[0]:j; const ls=(l.lineStatuses||[])[0]||{};
-      return { description:ls.statusSeverityDescription||"Unknown", reason:ls.reason||"", severity:typeof ls.statusSeverity==="number"?ls.statusSeverity:10 }; },
+    async fetchLineStatus(id){ const j=await get(`/Line/${encodeURIComponent(id)}/Status`); const l=Array.isArray(j)?j[0]:j; const all=(l&&l.lineStatuses)||[];
+      // Show the status active NOW. TfL flags planned works (e.g. a future diversion) as severity-0
+      // "Special Service" with validityPeriods where isNow=false — those aren't a current problem
+      // (it's why ~1/3 of routes wrongly read "Special Service"). Count a disruption only if it has
+      // no validity window or one active now; otherwise the route is running Good Service.
+      let cur=null;
+      for(const st of all){ if(st.statusSeverity===10) continue; const vp=st.validityPeriods||[]; if(!vp.length||vp.some(p=>p.isNow)){ cur=st; break; } }
+      const ls = cur || { statusSeverityDescription:"Good Service", statusSeverity:10, reason:"" };
+      return { description:ls.statusSeverityDescription||"Good Service", reason:ls.reason||"", severity:typeof ls.statusSeverity==="number"?ls.statusSeverity:10 }; },
     /* GET /Line/{id}/Arrivals (LIVE) -> unique vehicle registrations currently on the route */
     async fetchLineVehicles(id){ const j=await get(`/Line/${encodeURIComponent(id)}/Arrivals`); const seen=new Set();
       (j||[]).forEach(a=>{ if(a.vehicleId) seen.add(a.vehicleId); }); return [...seen].sort((a,b)=>String(a).localeCompare(String(b))); },

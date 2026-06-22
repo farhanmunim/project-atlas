@@ -1004,9 +1004,11 @@ function fetchRoute(){
   var sel = (state.selected && state.selected.length) ? state.selected
           : (state.routeId ? [{id:state.routeId, name:state.routeName}] : []);
   if(!sel.length) return;
+  var tok = sel.map(function(r){return r.id;}).join(',')+'|'+state.dir;   // snapshot the selection
   var label = sel.length>1 ? (sel.length+' routes') : ('route '+state.routeName);
   status('Loading '+label+' ('+state.dir+')…');
   ensureRouteData().then(function(){
+    if(tok !== (selectedLineParam()+'|'+state.dir)) return;   // selection changed mid-load — drop stale draw
     var segs=[], stops=[];
     sel.forEach(function(r){ var g=geometryFor(r); segs=segs.concat(g.segs); stops=stops.concat(g.stops); });
     if(!segs.length){ status('No '+state.dir+' geometry on record for '+label+'.', 'err'); return; }
