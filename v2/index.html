@@ -739,17 +739,28 @@ function toggleGarages(on){
     .catch(function(e){ status('Garages failed: '+e.message,'err'); $('tgGarages').checked=false; });
 }
 // Live road incidents — TfL control-centre feed via /api/v1/live/road-disruptions.
+function nhIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:11px;height:11px;background:#B388FF;border:2px solid #0A0C10;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>'}); }
 function toggleRoad(on){
   if(!on){ map.removeLayer(roadLayer); return; }
+  roadLayer.clearLayers();
   status('Loading live road incidents…');
-  getJSON(atlasBase()+'/live/road-disruptions').then(function(j){
-    var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]); roadLayer.clearLayers(); var n=0;
-    arr.forEach(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); if(!m||m.length<2) return; var lng=+m[0],lat=+m[1];
+  // Two sources through our API: TfL control centre (London) + National Highways (SRN).
+  Promise.all([
+    getJSON(atlasBase()+'/live/road-disruptions').then(function(j){return Array.isArray(j.data)?j.data:[];}).catch(function(){return [];}),
+    getJSON(atlasBase()+'/live/national-highways').then(function(j){return Array.isArray(j.data)?j.data:[];}).catch(function(){return [];})
+  ]).then(function(res){
+    var n=0;
+    res[0].forEach(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); if(!m||m.length<2) return; var lng=+m[0],lat=+m[1];
       var st=incidentStyle(d.category);
       L.circleMarker([lat,lng],{radius:5,color:'#0A0C10',weight:1.5,fillColor:st.c,fillOpacity:.95,renderer:ptRenderer})
         .bindPopup('<div style="font-size:12px;max-width:230px"><b style="color:'+st.c+'">'+esc(st.t)+'</b>'+(d.severity?' · '+esc(d.severity):'')+'<br>'+esc(d.location||'')+((d.comments||d.currentUpdate)?'<br><span style="color:var(--muted)">'+esc(String(d.comments||d.currentUpdate).slice(0,180))+'</span>':'')+'</div>')
         .addTo(roadLayer); n++; });
-    map.addLayer(roadLayer); status(n+' live road incidents','ok');
+    res[1].forEach(function(d){ if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng)) return;
+      L.marker([d.lat,d.lng],{icon:nhIcon(),zIndexOffset:400})
+        .bindTooltip('National Highways · '+esc(d.road||''),{className:'stop-tip'})
+        .bindPopup('<div style="font-size:12px;max-width:240px"><b style="color:#B388FF">National Highways</b>'+(d.road?' · '+esc(d.road):'')+'<br>'+esc(d.category||'')+(d.severity?' · '+esc(d.severity):'')+(d.comments?'<br><span style="color:var(--muted)">'+esc(String(d.comments).slice(0,180))+'</span>':'')+'</div>')
+        .addTo(roadLayer); n++; });
+    map.addLayer(roadLayer); status(n+' live road incidents · TfL + National Highways','ok');
   }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
 }
 // Live buses — BODS SIRI-VM GPS via the keyed /api/live/vehicles proxy (route-scoped).

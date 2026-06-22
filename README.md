@@ -91,6 +91,7 @@ collapses to a trickle of upstream pulls). No caller key.
 | `GET /api/v1/live/disruptions` | Active bus line disruptions |
 | `GET /api/v1/live/arrivals?stop=<naptan>` *(or `?route=<id>`)* | Live arrival predictions |
 | `GET /api/v1/live/road-disruptions` | Live London road incidents/closures (TfL control centre, ~5 min) |
+| `GET /api/v1/live/national-highways` | Live National Highways unplanned events (incidents/congestion/closures) on the strategic road network, filtered to Greater London — keyless RSS, 2 min cache |
 
 Real-time bus **GPS** stays on its own keyed endpoint, edge-cached ~10s:
 

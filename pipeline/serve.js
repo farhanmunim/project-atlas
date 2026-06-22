@@ -142,7 +142,27 @@ const LIVE_EP = {
   "disruptions":     { ttl: 60, url: () => `/Line/Mode/bus/Disruption`, desc: "Active bus line disruptions." },
   "arrivals":        { ttl: 30, url: (p) => { const r = (p.get("route") || "").trim(), s = (p.get("stop") || "").trim(); return s ? `/StopPoint/${encodeURIComponent(s)}/Arrivals` : r ? `/Line/${encodeURIComponent(r)}/Arrivals` : null; }, desc: "Live arrivals. ?stop=<naptan> or ?route=<id>." },
   "road-disruptions":{ ttl: 60, url: () => `/Road/all/Disruption`, desc: "Live London road incidents / closures (TfL control centre, ~5 min)." },
+  "national-highways":{ ttl: 120, custom: true, desc: "Live National Highways unplanned events on the strategic road network, filtered to Greater London (keyless RSS)." },
 };
+// National Highways open RSS → London-scoped incidents (mirrors functions/api/v1/live/[[path]].js).
+const NH_FEED = "https://m.highwaysengland.co.uk/feeds/rss/UnplannedEvents.xml";
+const NH_BBOX = [-0.55, 51.25, 0.30, 51.71];
+function parseNationalHighways(xml) {
+  const decode = (s) => String(s || "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  const tag = (b, n) => { const m = b.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</${n}>`, "i")); return m ? decode(m[1]) : null; };
+  const out = [];
+  for (const it of xml.split(/<item>/i).slice(1)) {
+    const lat = parseFloat(tag(it, "latitude")), lng = parseFloat(tag(it, "longitude"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    if (lng < NH_BBOX[0] || lng > NH_BBOX[2] || lat < NH_BBOX[1] || lat > NH_BBOX[3]) continue;
+    const cats = [...it.matchAll(/<category[^>]*>([\s\S]*?)<\/category>/gi)].map((m) => decode(m[1]));
+    out.push({ id: tag(it, "reference") || tag(it, "guid"), lat, lng, category: cats[0] || "Incident", severity: cats[1] || "",
+      road: tag(it, "road") || "", region: tag(it, "region") || "", county: tag(it, "county") || "",
+      title: tag(it, "title") || "", location: tag(it, "title") || "", comments: tag(it, "description") || "", since: tag(it, "pubDate") || null });
+  }
+  return out;
+}
 // ── History API (Supabase proxy) — mirrors functions/api/v1/history/[[path]].js.
 const HIST_EP = {
   "reliability-daily":   { table: "route_reliability_daily", filters: { route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"] }, defaultOrder: "day.desc", desc: "Our daily reliability per route (EWT/OTD/lost mileage)." },
@@ -160,6 +180,12 @@ function histDiscovery(req) { const origin = `http://${req.headers.host || "loca
     endpoints: Object.entries(HIST_EP).map(([k, v]) => ({ name: k, path: `/api/v1/history/${k}`, url: `${origin}/api/v1/history/${k}`, description: v.desc })) }; }
 async function serveLive(req, res, name) {
   const ep = LIVE_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown live feed: " + name, available: Object.keys(LIVE_EP) });
+  if (ep.custom && name === "national-highways") {
+    try { const r = await fetch(NH_FEED, { headers: { "User-Agent": "Atlas/1.0" } });  // upstream 500s if sent an Accept header
+      if (!r.ok) return jsonCors(res, 502, { error: `national highways feed failed (${r.status})` });
+      return jsonCors(res, 200, { feed: name, capturedAt: new Date().toISOString(), data: parseNationalHighways(await r.text()) }); }
+    catch (e) { return jsonCors(res, 502, { error: "national highways feed unreachable" }); }
+  }
   const sp = new URL(req.url, "http://x").searchParams; const tflPath = ep.url(sp);
   if (!tflPath) return jsonCors(res, 400, { error: "missing required param (stop or route)" });
   let url = `${TFL_BASE}${tflPath}`; if (process.env.TFL_APP_KEY) url += (url.includes("?") ? "&" : "?") + `app_key=${process.env.TFL_APP_KEY}`;
