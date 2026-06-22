@@ -201,6 +201,19 @@
   .bar .btrack{grid-column:1 / -1; height:5px; background:#1B222B; border-radius:3px; overflow:hidden}
   .bar .bfill{height:100%; border-radius:3px; transition:width .12s linear}
   .lens-empty{font-size:11px; color:var(--faint); font-style:italic; padding:4px 0}
+  /* route dossier card (data from the Atlas API) */
+  #dossierBody{gap:9px}
+  #dossierBody .dsec{font-family:var(--mono); font-size:8.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint); margin-top:3px; display:flex; gap:6px; align-items:center}
+  #dossierBody .dsec .da{margin-left:auto; color:var(--faint); text-transform:none; letter-spacing:.02em}
+  #dossierBody .drow{display:flex; justify-content:space-between; gap:10px; font-size:12px; align-items:baseline}
+  #dossierBody .drow .dk{color:var(--muted)}
+  #dossierBody .drow .dv{font-family:var(--mono); color:var(--text); text-align:right; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  #dossierBody .dpills{display:flex; flex-wrap:wrap; gap:5px}
+  #dossierBody .dpill{display:inline-flex; gap:5px; align-items:center; font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:20px; border:1px solid var(--border); color:var(--text)}
+  #dossierBody .dpill .dd{width:7px; height:7px; border-radius:50%}
+  #dossierBody .dpill.amber{color:var(--amber); border-color:rgba(242,162,12,.45)}
+  #dossierBody .dpill.cyan{color:var(--cyan); border-color:rgba(54,197,240,.4)}
+  #dossierBody .dempty{font-size:11px; color:var(--faint); font-style:italic}
   .sevline{display:flex; gap:6px; flex-wrap:wrap; margin:-2px 0 9px}
   .sv{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border)}
   .sv.f{color:#FF6B66; border-color:rgba(220,36,31,.5)}
@@ -386,7 +399,12 @@
 </div>
 
 <!-- RIGHT RAIL (lens readouts) -->
-<div class="hud" id="rightrail"><div class="card open lenscard"><div class="card-h"><div class="dot" style="background:#DC241F"></div><h2>Lens A</h2><button class="rm" title="Remove">×</button><span class="chev">▶</span></div><div class="card-b"><div class="lens-body"><div class="lens-meta"><span class="lens-count">0<small> incidents</small></span></div><div class="lens-sub">r 600 m · 0.0 / km²</div><div class="lens-empty">Load incident data to profile this lens.</div></div></div></div></div>
+<div class="hud" id="rightrail">
+  <div class="card open" id="dossierCard" data-card="" style="display:none">
+    <div class="card-h"><div class="dot" style="background:#36C5F0"></div><h2 id="dossierTitle">Route</h2><span class="chev">▶</span></div>
+    <div class="card-b" id="dossierBody"></div>
+  </div>
+</div>
 
 <!-- STATUS -->
 <div class="hud" id="status"><span class="pulse"></span><span id="statusText">676 routes ready</span></div>
@@ -436,8 +454,11 @@ var state = {
   bridges:null,          // cached full bridge set
   overview:null,         // cached routes-overview.geojson (DB-backed route geometry)
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
+  meta:null, perf:null, tenders:null, fleet:null,   // cached dossier datasets (Atlas API)
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
+var PROP_COL={electric:'#7ED957', hydrogen:'#36C5F0', hybrid:'#F2A20C', diesel:'#9AA7B2'};
+var PROP_LBL={electric:'Electric', hydrogen:'Hydrogen', hybrid:'Hybrid', diesel:'Diesel'};
 
 /* ============================ MAP ============================ */
 var map = L.map('map', {zoomControl:false, preferCanvas:true, attributionControl:true})
@@ -582,6 +603,83 @@ function fetchRoute(){
     if(state.atlasAll) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
+  renderDossier();
+}
+
+/* ============================ ROUTE DOSSIER (Atlas API) ============================ */
+// Lazy-load the per-route info datasets once (operator/reliability/tenders/fleet).
+function ensureDossierData(){
+  var jobs=[];
+  if(!state.meta)    jobs.push(getJSON(atlasBase()+'/route-meta').then(function(d){ state.meta=(d.routes||d); }));
+  if(!state.perf)    jobs.push(getJSON(atlasBase()+'/route-performance').then(function(d){ state.perf=(d.routes||d); }));
+  if(!state.tenders) jobs.push(getJSON(atlasBase()+'/tenders').then(function(d){ state.tenders=(d.byRoute||d); }));
+  if(!state.fleet)   jobs.push(getJSON(atlasBase()+'/fleet').then(function(d){ state.fleet=(d.byRoute||d); }));
+  return Promise.all(jobs);
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function row(k,v){ return v==null||v===''?'':'<div class="drow"><span class="dk">'+esc(k)+'</span><span class="dv" title="'+esc(v)+'">'+esc(v)+'</span></div>'; }
+function propPill(p){ if(!p||!PROP_COL[p]) return ''; return '<span class="dpill"><span class="dd" style="background:'+PROP_COL[p]+'"></span>'+PROP_LBL[p]+'</span>'; }
+function renderDossier(){
+  var name=state.routeName; if(!name) return;
+  var card=$('dossierCard'), title=$('dossierTitle'), body=$('dossierBody');
+  card.style.display='block'; title.textContent='Route '+name;
+  body.innerHTML='<div class="dempty">Loading route detail…</div>';
+  ensureDossierData().then(function(){
+    if(state.routeName!==name) return;   // selection changed while loading
+    var m=(state.meta||{})[name]||{};
+    var pf=(state.perf||{})[name]||(state.perf||{})[String(name).toUpperCase()]||null;
+    var tn=(state.tenders||{})[name]||[];
+    var fl=(state.fleet||{})[name]||null;
+    var html='';
+
+    // Identity
+    html+='<div class="dpills">'+propPill(m.propulsion)+
+      (m.operator?'<span class="dpill">'+esc(m.operator)+'</span>':'')+'</div>';
+    html+=row('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
+    html+=row('Peak vehicles (PVR)', m.pvr);
+    html+=row('Spec', m.fleet);
+    html+=row('Contract', m.contractStart?(m.contractStart+'→'+(m.contractEnd||'?')):(m.contractDate||null));
+
+    // Reliability
+    if(pf){
+      html+='<div class="dsec">Reliability<span class="da">'+esc(pf.serviceClass||'')+'</span></div>';
+      if(pf.serviceClass==='high-frequency' && pf.ewtMinutes!=null)
+        html+=row('Excess wait (EWT)', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
+      if(pf.onTimePercent!=null) html+=row('On-time (OTP)', Math.round(pf.onTimePercent)+'%');
+      if(pf.mileagePercent!=null) html+=row('Mileage operated', pf.mileagePercent.toFixed(1)+'%');
+    }
+
+    // Commercial — latest award (joint-bid / awarded vehicle / tranche)
+    if(tn.length){
+      var a=tn[0];
+      var jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary;
+      html+='<div class="dsec">Commercial<span class="da">'+tn.length+' awards</span></div>';
+      html+=row('Latest operator', a.operator);
+      html+=row('Awarded', a.awardDate);
+      if(a.costPerMile>0&&a.costPerMile<=200) html+=row('Cost / mile', '£'+a.costPerMile);
+      if(a.tranche!=null) html+=row('Tranche', a.tranche);
+      var pills='';
+      pills+= jb
+        ? '<span class="dpill amber" title="'+esc((a.jb&&a.jb.raw)||'')+'">Joint bid'+(a.jb.total?' · £'+a.jb.total.toLocaleString('en-GB'):'')+'</span>'
+        : '<span class="dpill">Sole bid</span>';
+      if(a.jb&&a.jb.partners&&a.jb.partners.length) pills+='<span class="dpill" title="awarded with '+esc(a.jb.partners.join(', '))+'">with '+esc(a.jb.partners.slice(0,4).join(', '))+(a.jb.partners.length>4?'…':'')+'</span>';
+      if(veh) pills+='<span class="dpill cyan" title="vehicle the contract was awarded on">🚌 '+esc(veh)+'</span>';
+      html+='<div class="dpills">'+pills+'</div>';
+    }
+
+    // Fleet
+    if(fl && (fl.count||fl.avgAgeYears!=null)){
+      html+='<div class="dsec">Fleet<span class="da">live sample</span></div>';
+      html+=row('On the road now', fl.count);
+      if(fl.avgAgeYears!=null) html+=row('Average age', fl.avgAgeYears+' yrs');
+      if(fl.makes&&fl.makes.length){
+        html+='<div class="dpills">'+fl.makes.slice(0,4).map(function(mk){return '<span class="dpill">'+esc(mk.make)+' '+mk.n+'</span>';}).join('')+'</div>';
+      }
+    }
+
+    if(!html) html='<div class="dempty">No detail on record for route '+esc(name)+'.</div>';
+    body.innerHTML=html;
+  }).catch(function(e){ body.innerHTML='<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>'; });
 }
 function coordsFromLineStrings(lineStrings){
   var out=[];
