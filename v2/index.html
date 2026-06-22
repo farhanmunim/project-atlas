@@ -61,6 +61,9 @@
   .leaflet-tooltip{font-family:var(--mono); font-size:10.5px; padding:3px 7px}
   .leaflet-tooltip-top:before{border-top-color:var(--border)}
 
+  /* skip link (first focusable element) */
+  .skip{position:absolute; left:8px; top:-60px; z-index:3000; background:var(--red); color:#fff; padding:9px 14px; border-radius:7px; font-family:var(--mono); font-size:12px; transition:top .15s}
+  .skip:focus{top:8px}
   /* ---- HUD shell ---- */
   .hud{position:absolute; z-index:1000; pointer-events:none}
   .hud > *{pointer-events:auto}
@@ -287,7 +290,8 @@
 </head>
 <body>
 
-<div id="map" role="region" aria-label="Map of the London bus network — route corridor, collisions and live layers"></div>
+<a href="#map" class="skip">Skip to map</a>
+<main id="map" role="application" aria-label="Map of the London bus network — route corridor, collisions and live layers"></main>
 
 <div class="empty-state" id="emptyState">
   <div class="es-title">ROUTE LENS</div>
@@ -297,7 +301,7 @@
 <div class="hud" id="netLabel" style="display:none"><span class="ndot"></span><span id="netLabelText">—</span></div>
 
 <!-- TOP BAR -->
-<div class="hud" id="topbar">
+<div class="hud" id="topbar" role="banner">
   <div class="brand">
     <div class="roundel"></div>
     <div><h1>ROUTE LENS</h1><small>COLLISION DENSITY</small></div>
@@ -311,7 +315,7 @@
 </div>
 
 <!-- LEFT RAIL -->
-<div class="hud" id="leftrail">
+<div class="hud" id="leftrail" role="navigation" aria-label="Route, filters and map layers">
 
   <div class="card open" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Route</h2><span class="chev">▶</span></div>
@@ -394,8 +398,9 @@
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px">
           <div class="btn-row">
             <label class="btn primary filelabel">Load CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
-            <button class="btn" id="genBtn">Sample</button>
+            <button type="button" class="btn" id="genBtn">Sample</button>
           </div>
+          <button type="button" class="btn" id="exportBtn">⤓ Export current view (CSV)</button>
           <div id="mapCols" style="display:none; flex-direction:column; gap:8px">
             <div class="btn-row">
               <label class="fld" style="flex:1"><span>Lat column</span><select id="latCol"></select></label>
@@ -412,7 +417,7 @@
 </div>
 
 <!-- RIGHT RAIL (lens readouts) -->
-<div class="hud" id="rightrail">
+<div class="hud" id="rightrail" role="complementary" aria-label="Route detail and lens readouts">
   <div class="card open" id="dossierCard" data-card="" style="display:none">
     <div class="card-h"><div class="dot" style="background:#36C5F0"></div><h2 id="dossierTitle">Route</h2><span class="chev">▶</span></div>
     <div class="card-b" id="dossierBody"></div>
@@ -1511,6 +1516,21 @@ function clearCollisionData(){
   updateStats();
 }
 $('clearBtn').addEventListener('click', function(){ clearCollisionData(); status('Data cleared','ok'); });
+
+/* ============================ CSV EXPORT (current view) ============================ */
+// formula-injection-safe cell (mirrors the / app's writer).
+function csvCell(v){ var s=String(v==null?'':v); if(/^[=+\-@\t\r]/.test(s)) s="'"+s; return '"'+s.replace(/"/g,'""')+'"'; }
+function exportCurrentCSV(){
+  if(!state.points.length){ status('Nothing to export — turn on Collisions or import a CSV first.','err'); return; }
+  var headers=(state.headers&&state.headers.length)?state.headers.filter(function(h){return h.indexOf('__')!==0;}):['lat','lon'];
+  var rows=[headers].concat(state.points.map(function(p){return headers.map(function(h){return p.row[h];});}));
+  var csv='﻿'+rows.map(function(r){return r.map(csvCell).join(',');}).join('\r\n');
+  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='route-lens_'+(state.routeName||'data')+'_'+new Intl.DateTimeFormat('en-CA').format(new Date())+'.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  status('Exported '+state.points.length+' rows','ok');
+}
+$('exportBtn').addEventListener('click', exportCurrentCSV);
 
 /* ============================ BOOT ============================ */
 $('tgCollisions').addEventListener('change', function(){ toggleCollisions(this.checked); });
