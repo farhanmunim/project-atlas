@@ -739,7 +739,9 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
   </form>
 </dialog>
 
-<div id="tip" role="tooltip"></div>
+<!-- visual-only hover tooltip; its text duplicates each control's own title/aria-label, so it's
+     hidden from the a11y tree (an empty role=tooltip would fail WCAG aria-tooltip-name). -->
+<div id="tip" aria-hidden="true"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""

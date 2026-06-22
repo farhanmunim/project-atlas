@@ -258,7 +258,8 @@
   .wf > span{font-family:var(--mono); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint)}
   input[type=number]{width:100%; background:#0C0F14; border:1px solid var(--border); color:var(--text); font-family:var(--mono); font-size:12px; padding:6px 7px; border-radius:6px; outline:none; -moz-appearance:textfield}
   input[type=number]:focus{border-color:var(--red)}
-  .rm{margin-left:auto; background:none; border:none; color:var(--faint); cursor:pointer; font-size:15px; line-height:1; padding:0 2px}
+  .lenscard{position:relative}
+  .rm{position:absolute; top:9px; right:30px; z-index:3; background:none; border:none; color:var(--faint); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px}
   .rm:hover{color:var(--red-bright)}
 
   /* lens marker on map */
@@ -1524,11 +1525,13 @@ $('addLensBtn').addEventListener('click', function(){ var l=addLens(); if(l){ l.
 function buildLensCard(lens){
   var card=document.createElement('div');
   card.className='card open lenscard';
+  // the remove button sits OUTSIDE the role=button header (absolutely positioned) so it isn't
+  // a nested interactive control inside another (WCAG nested-interactive).
   card.innerHTML =
     '<div class="card-h"><div class="dot" style="background:'+lens.color+'"></div>'+
     '<h2>Lens '+lens.name+'</h2>'+
-    '<button type="button" class="rm" title="Remove lens" aria-label="Remove lens '+esc(lens.name)+'">&times;</button>'+
     '<span class="chev">▶</span></div>'+
+    '<button type="button" class="rm" title="Remove lens" aria-label="Remove lens '+esc(lens.name)+'">&times;</button>'+
     '<div class="card-b"><div class="lens-body"></div></div>';
   var rm=card.querySelector('.rm');
   rm.addEventListener('click', function(e){ e.stopPropagation(); removeLens(lens); });   // stopPropagation keeps the header from toggling
