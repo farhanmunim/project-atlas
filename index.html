@@ -2581,6 +2581,21 @@ function exportCurrent(){
     selected.forEach(r=>{ const seq=r._seq||{stops:[]}; const m=metaOf(r); const ty=TYPE_DEFS[typeOf(r)].label;
       seq.stops.forEach((s,i)=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",i+1,s.id,s.name,s.lat,s.lng,(s.lines||[]).join(" ")])); });
     fname= selected.length===1 ? `atlas_route-${selected[0].name}_${direction}_${todayStamp()}.csv` : `atlas_routes-${selected.length}_${direction}_${todayStamp()}.csv`;
+    // also export the nearby bus collisions the dossier's Risk & accidents readout shows
+    // (single route) — same geometry + alert-proximity, incl. the decoded STATS19 context.
+    if(selected.length===1){
+      const r0=selected[0], adata=accidentsData();
+      const cs=(r0._seq&&r0._seq.coords&&r0._seq.coords.length)?r0._seq.coords:storeCoordsFor(r0.id);
+      if(adata&&cs&&cs.length){
+        const RR=riskRadius/1000;
+        const near=(adata.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<RR; });
+        if(near.length){
+          const arows=[["Collision ID","Date","Severity","Lat","Lng","Borough","Vehicles","Road type","Speed limit","Junction","Light","Weather","Road surface"],
+            ...near.map(a=>[a.id,a.date||"",sevOf(a),a.lat,a.lng,boroughName(a.borough),a.vehicles||"",a.roadType||"",a.speedLimit||"",a.junction||"",a.light||"",a.weather||"",a.roadSurface||""])];
+          downloadCSV(`atlas_collisions_route-${r0.name}_r${riskRadius}m_${todayStamp()}.csv`, arows);
+        }
+      }
+    }
   }else{
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
