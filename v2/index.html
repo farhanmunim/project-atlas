@@ -108,9 +108,11 @@
   .roundel::after{content:""; position:absolute; left:-7px; right:-7px; top:50%; height:4px; transform:translateY(-50%); background:var(--red)}
   .brand h1{font-family:var(--mono); font-size:14px; font-weight:600; letter-spacing:.16em; margin:0}
   .brand small{display:block; font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:var(--faint); margin-top:1px}
-  .chips{display:flex; gap:8px; flex:1 1 auto; overflow:hidden}
+  /* horizontal scroll (scrollbar hidden) so many contextual KPI chips never clip or overflow the bar */
+  .chips{display:flex; gap:8px; flex:1 1 auto; overflow-x:auto; overflow-y:hidden; scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
   .chip{
-    display:flex; flex-direction:column; justify-content:center; min-width:0;
+    display:flex; flex-direction:column; justify-content:center; flex:0 0 auto;
     padding:4px 11px; background:var(--panel); border:1px solid var(--border-soft);
     border-radius:7px; backdrop-filter:blur(8px);
   }
@@ -387,10 +389,15 @@
     <div><h1>ROUTE LENS</h1><small>INTERACTIVE NETWORK MAP</small></div>
   </div>
   <div class="chips">
-    <div class="chip"><span class="k">Route</span><span class="v accent" id="cRoute">—</span></div>
-    <div class="chip"><span class="k">Corridor</span><span class="v" id="cLen">—</span></div>
-    <div class="chip"><span class="k">Incidents</span><span class="v" id="cTotal">0</span></div>
-    <div class="chip"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
+    <div class="chip"><span class="k">Routes</span><span class="v accent" id="cRoutes">—</span></div>
+    <div class="chip"><span class="k">PVR</span><span class="v" id="cPVR">—</span></div>
+    <div class="chip"><span class="k">EV %</span><span class="v" id="cEV">—</span></div>
+    <div class="chip" id="chipCorridor" style="display:none"><span class="k">Corridor</span><span class="v" id="cLen">—</span></div>
+    <div class="chip" id="chipBuses" style="display:none"><span class="k">Live buses</span><span class="v" id="cBuses">0</span></div>
+    <div class="chip" id="chipRoad" style="display:none"><span class="k">Road incidents</span><span class="v" id="cRoad">0</span></div>
+    <div class="chip" id="chipBridges" style="display:none"><span class="k">Low bridges</span><span class="v" id="cBridges">0</span></div>
+    <div class="chip" id="chipIncidents" style="display:none"><span class="k">Collisions</span><span class="v" id="cTotal">0</span></div>
+    <div class="chip" id="chipInview" style="display:none"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
   </div>
   <div class="dstatus">
     <button type="button" class="clrbtn" id="clearAllBtn" title="Clear routes + filters" aria-label="Clear all routes and filters" style="display:none"><span aria-hidden="true">✕</span><span class="clbl">Clear all</span></button>
@@ -404,7 +411,7 @@
 <!-- LEFT RAIL -->
 <div class="hud" id="leftrail" role="navigation" aria-label="Route, filters and map layers">
 
-  <div class="card open" data-card="">
+  <div class="card" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Route</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <label class="fld">
@@ -428,7 +435,7 @@
     </div>
   </div>
 
-  <div class="card open" data-card="" id="filterCard">
+  <div class="card" data-card="" id="filterCard">
     <div class="card-h"><div class="dot"></div><h2>Filters</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <div class="meta" id="fShowing">All routes</div>
@@ -439,7 +446,7 @@
     </div>
   </div>
 
-  <div class="card open" data-card="">
+  <div class="card" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Layers</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <div class="toggle-row"><span>Collisions · STATS19</span><label class="sw"><input type="checkbox" id="tgCollisions"><span class="track"></span></label></div>
@@ -758,11 +765,11 @@ function selectRoutes(arr){
   state.selected=sel;
   var primary=sel[0];
   state.routeId=primary.id; state.routeName=primary.name;
-  $('cRoute').textContent = sel.length>1 ? (primary.name+' +'+(sel.length-1)) : primary.name;
   if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the selected corridor(s)
   hideNetLabel();
   renderRouteChips();
   syncClearAll();
+  updateKPIs();   // header KPIs now scope to the selected route(s)
   fetchRoute();
   syncURL();
 }
@@ -865,7 +872,7 @@ function showNetwork(){
   renderRouteChips();
   syncClearAll();
   routeLayer.clearLayers(); stopLayer.clearLayers();
-  $('cRoute').textContent='—'; $('cLen').textContent='—';
+  $('cLen').textContent='—';
   $('dossierCards').innerHTML='';
   syncURL();
   status('Loading network…');
@@ -876,6 +883,7 @@ function showNetwork(){
     $('emptyState').style.display='none';
     showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
     status(n+' routes ready', 'ok');
+    updateKPIs();            // header KPIs reflect the network (or the filtered subset)
     reapplyScopedLayers();   // collisions/bridges/stops/buses left on at top-level → repaint network-wide
   }).catch(function(e){ status('Network load failed: '+e.message, 'err'); });
 }
@@ -898,6 +906,31 @@ function routePasses(name){
     if(!r || !f.type.has(r.type)) return false;
   }
   return true;
+}
+// header KPIs — route count, total PVR, and EV% (zero-emission share of KNOWN PVR, weighted like
+// Atlas so a big diesel trunk route outweighs a small electric one). Scope = the searched route(s)
+// when one is selected, else every route passing the active filters. Recomputed on search/filter.
+function scopeRouteNames(){
+  if(state.selected && state.selected.length) return state.selected.map(function(r){return r.name;});
+  var out=[]; (state.routes||[]).forEach(function(r){ if(routePasses(r.name)) out.push(r.name); }); return out;
+}
+function updateKPIs(){
+  var meta=state.meta||{}, names=scopeRouteNames();
+  var pvrSum=0, known=0, zev=0;
+  names.forEach(function(n){ var m=meta[n]||{}, pvr=+m.pvr;
+    if(isFinite(pvr)&&pvr>0){ pvrSum+=pvr; known+=pvr; if(m.propulsion==='electric'||m.propulsion==='hydrogen') zev+=pvr; } });
+  var R=$('cRoutes'), P=$('cPVR'), E=$('cEV');
+  if(R) R.textContent = names.length ? names.length.toLocaleString('en-GB') : '—';
+  if(P) P.textContent = pvrSum ? pvrSum.toLocaleString('en-GB') : '—';
+  if(E) E.textContent = known ? Math.round(zev/known*100)+'%' : '—';
+  // Corridor length only means something with a route in view.
+  var corr=$('chipCorridor'); if(corr) corr.style.display = (state.selected&&state.selected.length) ? '' : 'none';
+}
+// a contextual count chip (live buses / road incidents / low bridges / collisions) — shown only
+// while its layer is on, so the header carries the live tally for whatever's enabled.
+function setKpiChip(chipId, valId, count, show){
+  var c=$(chipId); if(c) c.style.display = show ? '' : 'none';
+  if(show){ var v=$(valId); if(v) v.textContent = (count==null?0:count).toLocaleString('en-GB'); }
 }
 function fChip(group,val,label,count,color){
   var on=FILTERS[group].has(val);
@@ -932,6 +965,7 @@ function applyFiltersUI(){
   var total=(state.routes||[]).length;
   var shown=(state.routes||[]).filter(function(r){return routePasses(r.name);}).length;
   $('fShowing').textContent = filtersActive()? (shown+' of '+total+' routes') : 'All routes';
+  updateKPIs();   // route count / PVR / EV% follow the filtered subset
   if(!state.routeId && $('tgBuses') && $('tgBuses').checked) refreshBuses();   // re-scope network live buses to the filtered routes now, not at the next poll
 }
 function onFilterClick(e){
@@ -964,7 +998,7 @@ function toggleGarages(on){
 // Live road incidents — TfL control-centre feed via /api/v1/live/road-disruptions.
 function nhIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:11px;height:11px;background:#B388FF;border:2px solid #0A0C10;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>'}); }
 function toggleRoad(on){
-  if(!on){ map.removeLayer(roadLayer); return; }
+  if(!on){ map.removeLayer(roadLayer); setKpiChip('chipRoad','cRoad',0,false); return; }
   roadLayer.clearLayers();
   status('Loading live road incidents…');
   // Two sources through our API: TfL control centre (London) + National Highways (SRN).
@@ -984,6 +1018,7 @@ function toggleRoad(on){
         .bindPopup('<div style="font-size:12px;max-width:240px"><b style="color:#B388FF">National Highways</b>'+(d.road?' · '+esc(d.road):'')+'<br>'+esc(d.category||'')+(d.severity?' · '+esc(d.severity):'')+(d.comments?'<br><span style="color:var(--muted)">'+esc(String(d.comments).slice(0,180))+'</span>':'')+'</div>')
         .addTo(roadLayer); n++; });
     map.addLayer(roadLayer); if(typeof markFresh==='function') markFresh();
+    setKpiChip('chipRoad','cRoad', n, true);   // header tally for live road incidents
     status(n+' live road incidents · TfL + National Highways','ok');
   }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
 }
@@ -1013,13 +1048,14 @@ function refreshBuses(){
       else { L.marker([v.lat,v.lng],{icon:busIcon(),zIndexOffset:2000}).bindTooltip(esc(v.reg||'bus')+' · route '+esc(v.publishedLine||v.line||state.routeName),{className:'stop-tip'}).addTo(busLayer); drawn++; }
     });
     map.addLayer(busLayer);
+    setKpiChip('chipBuses','cBuses', drawn, true);   // header tally for the live buses on screen
     if(typeof markFresh==='function') markFresh();   // live GPS just pulled — badge reflects it
     status(network?(drawn+' live buses · '+(filtered?'filtered routes':'whole network')):(drawn?(drawn+' live buses on '+state.routeName):('No live buses on '+state.routeName+' right now')),'ok');
   }).catch(function(e){ status('Live buses unavailable ('+e.message+')','err'); });
 }
 function toggleBuses(on){
   if(busTimer){ clearInterval(busTimer); busTimer=null; }
-  if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); return; }
+  if(!on){ map.removeLayer(busLayer); busLayer.clearLayers(); setKpiChip('chipBuses','cBuses',0,false); return; }
   refreshBuses(); busTimer=setInterval(refreshBuses, 12000);   // ~feed cadence; cache collapses upstream load
 }
 // Lazy-load the two big DB-backed datasets once, then cache them.
@@ -1120,6 +1156,7 @@ function renderDossier(){
   cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Loading route detail…</div>', true);
   ensureDossierData().then(function(){
     if(state.routeName!==name) return;   // selection changed while loading
+    updateKPIs();   // meta is now loaded — refresh the selected route's PVR / EV%
     var m=(state.meta||{})[name]||{};
     var pf=(state.perf||{})[name]||(state.perf||{})[String(name).toUpperCase()]||null;
     var tn=(state.tenders||{})[name]||[];
@@ -1462,10 +1499,11 @@ function drawBridges(all){
       .addTo(bridgeLayer);
   });
   map.addLayer(bridgeLayer);
+  setKpiChip('chipBridges','cBridges', near.length, true);   // header tally for low bridges in view
   status(near.length+' low bridge(s) <4.4 m'+(netView?' across London':(' near '+state.routeName)), 'ok');
 }
 function renderBridges(on){
-  if(!on){ map.removeLayer(bridgeLayer); return; }
+  if(!on){ map.removeLayer(bridgeLayer); setKpiChip('chipBridges','cBridges',0,false); return; }
   if(state.bridges){ drawBridges(state.bridges); return; }
   status('Loading low bridges from Atlas…');
   getJSON(atlasBase()+'/bridges')
@@ -1659,6 +1697,10 @@ function updateStats(){
   var vp=visiblePoints(), b;
   try{ b=map.getBounds(); }catch(e){ b=null; }
   $('cVisible').textContent = b ? vp.filter(function(p){return b.contains(p.latlng);}).length : vp.length;
+  // the Collisions / In-view chips only carry meaning once collision data is loaded.
+  var hasInc=state.points.length>0;
+  var ci=$('chipIncidents'); if(ci) ci.style.display=hasInc?'':'none';
+  var cv=$('chipInview'); if(cv) cv.style.display=hasInc?'':'none';
 }
 
 /* ============================ LENSES ============================ */
