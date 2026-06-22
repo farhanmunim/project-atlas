@@ -1422,11 +1422,17 @@ function setHeat(on){
   if(on){ map.removeLayer(ptLayer); renderHeat(); }
   else { if(heatLayer){ map.removeLayer(heatLayer); heatLayer=null; } if(!map.hasLayer(ptLayer)) map.addLayer(ptLayer); }
 }
+// readable labels for the known STATS19 keys; arbitrary CSV columns fall back to their raw header.
+var POPUP_LABEL={severity:'Severity', date:'Date', vehicles:'Vehicles', borough:'Borough',
+  roadType:'Road type', speedLimit:'Speed limit', junction:'Junction', light:'Light',
+  weather:'Weather', roadSurface:'Road surface'};
 function popupHTML(row){
   var html='<div style="font-family:var(--mono);font-size:11px;line-height:1.6;max-width:230px;color:#E7ECF1">';
   Object.keys(row).forEach(function(k){
     if(k.indexOf('__')===0) return;
-    html+='<div><span style="color:#8C97A4">'+esc(k)+':</span> '+esc(row[k]||'—')+'</div>';
+    if(k===state.latCol||k===state.lonCol) return;   // skip coords — you clicked the point
+    var v=row[k]; if(v==null||v==='') return;          // skip empty fields (e.g. missing STATS19 context)
+    html+='<div><span style="color:#8C97A4">'+esc(POPUP_LABEL[k]||k)+':</span> '+esc(v)+'</div>';
   });
   return html+'</div>';
 }
