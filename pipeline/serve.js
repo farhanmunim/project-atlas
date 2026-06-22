@@ -49,6 +49,8 @@ const ALLOWED_ENTITIES = new Set(["line_status"]);
 // Static allowlist: tool pages + the JSON store only — never the .db, source, or dotfiles.
 function staticAllowed(rel, ext) {
   if (/^\/[\w-]+\.html$/.test(rel)) return true;
+  if (rel === "/v2/index.html") return true;   // the v2 (Route Lens) page
+
   if (rel.startsWith("/data/") && (ext === ".json" || ext === ".geojson")) return true;
   return [".svg", ".png", ".ico", ".css", ".webmanifest"].includes(ext);
 }
@@ -104,7 +106,7 @@ const V1_SETS = {
   "garages":           { file: "garages.json",            desc: "Bus garages — code, name, operator, lat/lng, PVR, routes served." },
   "fleet":             { file: "fleet.json",              desc: "Fleet profile per route — vehicle count, average age, propulsion mix, makes." },
   "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
-  "tenders":           { file: "tenders.json",            desc: "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles." },
+  "tenders":           { file: "tenders.json",            desc: "Tender / contract award history per route — bids (low/won/high), operator, dates, contracted miles, plus derived joint-bid (partner routes + total), awarded vehicle (deck/propulsion/basis) and tranche." },
   "route-performance": { file: "route-performance.json",  desc: "Reliability per route — EWT/OTP vs the MPS benchmark, % mileage operated." },
   "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough." },
   "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
@@ -247,6 +249,8 @@ http.createServer(async (req, res) => {
   // ── static files (allowlisted: tool pages + JSON store only) ─────────────────
   let rel = decodeURIComponent(urlPath);
   if (rel === "/") rel = "/index.html";
+  // directory-index pages (mirrors Cloudflare Pages): /v2 and /v2/ → /v2/index.html.
+  if (/^\/v2\/?$/.test(rel)) rel = "/v2/index.html";
   const fp = path.join(ROOT, path.normalize(rel));
   const ext = path.extname(fp).toLowerCase();
   if (!fp.startsWith(ROOT) || !staticAllowed(rel, ext)) { res.writeHead(404).end("not found"); return; }

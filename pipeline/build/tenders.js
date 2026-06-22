@@ -14,6 +14,7 @@ import { fetchTenderIndex, fetchTenderResult } from "../sources/tfl-tenders.js";
 import { mapLimit } from "../lib/http.js";
 import { check } from "../lib/validate.js";
 import { canonicalOperator } from "../lib/normalize.js";
+import { deriveAward } from "../lib/tender-parse.js";
 
 function parseDate(s) { if (!s) return 0; const t = Date.parse(s); return Number.isNaN(t) ? 0 : t; }
 function routeKeys(routeText) {
@@ -51,8 +52,10 @@ export async function build(ctx) {
     const a = byId[id];
     // Clone into byRoute with a canonical operator brand (raw kept on `operatorRaw`),
     // so the read layer shows clean, consistent names and "operator changed" compares
-    // parent brands — without mutating the append-only raw `byId` cache.
-    const award = { ...a, operator: canonicalOperator(a.operator) || a.operator, operatorRaw: a.operator };
+    // parent brands — without mutating the append-only raw `byId` cache. deriveAward
+    // attaches the structured joint-bid / awarded-vehicle / tranche fields (in lockstep
+    // with the Supabase derivations) so the app + table + export read them directly.
+    const award = deriveAward({ ...a, operator: canonicalOperator(a.operator) || a.operator, operatorRaw: a.operator });
     for (const k of routeKeys(a.route || "")) (byRoute[k] ||= []).push(award);
   }
   for (const k of Object.keys(byRoute)) byRoute[k].sort((x, y) => parseDate(y.awardDate) - parseDate(x.awardDate) || Number(y.btID) - Number(x.btID));

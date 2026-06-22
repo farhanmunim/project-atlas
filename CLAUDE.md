@@ -315,8 +315,10 @@ can never block the Cloudflare site.
 - **Reuses the existing Supabase project from london-buses**, so tables
   `0001`–`0013` were already live (no migration needed at the switch). **New
   migrations to run once in Supabase SQL Editor:** `0014_accidents.sql`,
-  `0015_live_reliability.sql`. The rest pre-existed. Don't reshape existing
-  tables; add a migration for anything new.
+  `0015_live_reliability.sql`, `0016_tender_awarded_deck.sql` (adds the awarded
+  `deck` to the per-award `tenders` table — `push-to-supabase.js` derives it from
+  the notes, mirroring the app's `tender-parse.js`). The rest pre-existed. Don't
+  reshape existing tables; add a migration for anything new.
 - **Workflows** (all `permissions: contents: read` — Supabase-only, no
   commit-back):
   - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.
@@ -348,23 +350,39 @@ can never block the Cloudflare site.
 ## Every datapoint flows through to the warehouse AND the API (no dead ends)
 
 When you add or change a datapoint, field, or dataset, wire it end-to-end so it's
-reflected **automatically** everywhere downstream — never just in one place:
+reflected **automatically** everywhere downstream — never just in one place. The
+**database is updated first**, then the read layer, then everything that reads it:
+**Supabase → `data/*.json` store → `/api/v1` API → app (dossier **and** table view) →
+CSV export → docs.** A change that lands in one of these but not the rest is an
+**incomplete change** — the standing expectation is that all of them move together.
 
-- **Pipeline → store.** A new field is produced by a `build/<name>.js`, validated, and
+- **Supabase first.** A new field is added to the warehouse schema/ingest (the `ingest/`
+  subtree → its Supabase table, with a migration for anything new) so the historical
+  store carries it before — or alongside — the read layer. The append-only/CDC tables
+  are the system of record; never let the app diverge from what the DB can hold.
+- **Pipeline → store.** The same field is produced by a `build/<name>.js`, validated, and
   written to `data/*.json` (the prod read layer) and mirrored into the warehouse
   (`db-mirror.js` / Supabase ingest). If it's time-series, it accrues via CDC.
 - **Store → API.** It must be reachable through `/api/v1` — either it rides an existing
   dataset (current group) or it gets a new endpoint. Add it to the prod Pages Function
   **and** the `serve.js` dev mirror (keep them in sync), and list it in the `/api/v1`
   discovery index. Live feeds → `/api/v1/live/*`; Supabase time-series → `/api/v1/history/*`.
-- **API → app + docs.** The app reads it via the `dataSource` seam (never a raw inline
-  fetch), and `README.md` (the public API reference) + this file are updated so the new
-  surface is documented. A datapoint that the warehouse holds but the API can't serve, or
-  that the API serves but the docs don't mention, is an incomplete change.
+- **API → app.** The app reads it via the `dataSource` seam (never a raw inline fetch).
+  Surface it in **every** view that should show it — the right-rail dossier **and** the
+  canvas **table view** (a new field that belongs in the table is added as a column, not
+  just the dossier) — and re-render the affected pane on change.
+- **App → CSV export.** The export reflects the *current* view, so any column/field added
+  to the table (or dossier export) is added to the CSV writer too — exported rows and the
+  on-screen table never drift apart.
+- **→ docs.** `README.md` (the public API reference) + this file are updated so the new
+  surface is documented. A datapoint that the warehouse holds but the API can't serve, that
+  the API serves but the app/table/export don't show, or that nothing documents, is an
+  incomplete change.
 
-Net: capture once, expose everywhere — the warehouse, the public API, the app, and the
-docs stay in lockstep. The default expectation for any data change is "is it queryable
-through `/api/v1` and documented?"
+Net: capture once, expose everywhere — Supabase, the public API, the app (dossier **and**
+table), the CSV export, and the docs stay in lockstep. The default expectation for any data
+change is "is it in the database, queryable through `/api/v1`, shown in the app + table,
+exported, and documented?"
 
 ## Golden rule
 
@@ -959,6 +977,13 @@ data** — not just "it renders". Don't trust a screenshot alone.
   not separate pages — render them as in-tool references, never cross-page links.
 - Archived suite + old hub: `archive/`. If a layer ever needs to spin out into its own
   page again, keep the render helpers/`dataSource` seam modular so it lifts out cleanly.
+- **`v2/index.html` (served at `/v2`) is a deliberate alternate design** — a "Route Lens"
+  full-bleed-map shell with floating glass control/context cards (collision & incident
+  density along a route corridor, with a draggable lens), reading the same `/api/v1`
+  (STATS19 collisions + low bridges) and TfL (routes/geometry). It is an **intentional
+  experiment that coexists with** the three-pane `/` app — do NOT "correct" it back to the
+  three-pane shell; the "one layout" rule above governs `index.html`. `serve.js` mirrors the
+  `/v2` route for dev; Cloudflare Pages serves `v2/index.html` at `/v2` automatically.
 
 ---
 
@@ -1019,6 +1044,7 @@ manual/agent-driven changes during development sessions, which commit **as Farha
 - [ ] Pre-commit: desktop (1280×800) + mobile (390×844) screenshots; zero JS console errors
 - [ ] Validated: rendered values cross-checked against the source via headless browser + Node/Python; reproducible script
 - [ ] CSV export of the current view (respects selection/filters/mode)
+- [ ] Data lockstep: any new/changed field lands in **Supabase first**, then `data/*.json`, `/api/v1`, the app **dossier + table view**, the **CSV export**, and the docs — all together, none skipped
 - [ ] Import &/or inline editing wired where it makes sense (imported/edited data is first-class; bad input reported)
 - [ ] New layer/section wired into Atlas's display toggles + context groups (modular helpers)
 - [ ] README current; analytics confirmed (added or explicitly skipped); pre-ship Network-tab check passed

@@ -22,9 +22,11 @@ import { rowsWithin } from "../lib/validate.js";
 const SOURCE = "DfT STATS19 road safety data (bus/coach-involved, Greater London)";
 const SAMPLE_SOURCE = "sample — synthetic (STATS19 ingest pending)";
 
-// Newest STATS19 typically lands ~2 years after the year-end. Pull the recent window.
-const YEARS = [2023, 2022, 2021];
-const MAX_KEEP = 5000;       // cap to the most recent N for a sane map payload
+// Newest STATS19 typically lands ~2 years after the year-end. Pull a deeper window
+// (newest first) so the by-year risk trend has real history, not just 3 points; a
+// year that isn't published yet simply 404s and is skipped (soft per-year failure).
+const YEARS = [2024, 2023, 2022, 2021, 2020, 2019, 2018];
+const MAX_KEEP = 12000;      // cap the map payload, but deep enough for ~7yr of bus/coach collisions
 const LIVE_FLOOR = 200;      // a live pull below this is treated as degraded → keep last-good
 
 export async function build(ctx) {

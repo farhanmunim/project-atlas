@@ -409,6 +409,15 @@ function deriveVehiclesBasis(notes) {
   if (/\b(?:awarded|award)\s+on\s+new\b/.test(t)) return 'new';
   return null;
 }
+// Awarded deck from notes: 'double' | 'single' | null. Mirrors deriveDeck() in
+// pipeline/lib/tender-parse.js (the app side) so the warehouse and the app agree.
+function deriveAwardedDeck(notes) {
+  if (!notes) return null;
+  const t = notes.toLowerCase();
+  if (/double[\s-]*deck/.test(t)) return 'double';
+  if (/single[\s-]*deck/.test(t)) return 'single';
+  return null;
+}
 function deriveProgrammePropulsion(vehicleType) {
   if (!vehicleType) return null;
   const t = vehicleType.toUpperCase();
@@ -480,6 +489,7 @@ async function pushTenders() {
                            ? ov.is_joint_bid
                            : deriveJointBid(notes, jointBids);
     const basis        = ov.vehicles_basis ?? deriveVehiclesBasis(notes);
+    const awardedDeck  = ov.awarded_deck ?? deriveAwardedDeck(notes);
     return {
       tfl_tender_id:        parseInt(btId, 10),
       route_id:             ov.route_id             ?? t.route_id             ?? '',
@@ -498,10 +508,11 @@ async function pushTenders() {
       reason_not_lowest:    ov.reason_not_lowest    ?? t.reason_not_lowest    ?? null,
       joint_bids:           jointBids,
       notes:                notes,
-      // Derived columns (added in 0007)
+      // Derived columns (added in 0007; awarded_deck in 0016)
       propulsion_type:      propulsion,
       is_joint_bid:         isJoint,
       vehicles_basis:       basis,
+      awarded_deck:         awardedDeck,
       previous_operator:    ov.previous_operator    ?? null,   // populated in 2nd pass
       source_url:           t.source_url ?? null,
       data_as_of:           ov.award_announced_date ?? t.award_announced_date ?? null,
