@@ -101,6 +101,12 @@
   .rbtn:hover{border-color:var(--line)}
   .rbtn.spin{animation:rspin .7s linear}
   .rbtn[disabled]{opacity:.55; cursor:default}
+  /* topbar "Clear all" — always reachable even when the Route card is collapsed; only shown when there's something to clear */
+  .clrbtn{flex:0 0 auto; height:28px; padding:0 10px; display:flex; align-items:center; gap:5px;
+    background:var(--panel); border:1px solid var(--border-soft); border-radius:7px; color:var(--muted);
+    font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
+    backdrop-filter:blur(8px); transition:border-color .15s, color .15s}
+  .clrbtn:hover{border-color:var(--line); color:var(--text)}
   @keyframes rspin{to{transform:rotate(360deg)}}
   .clock{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap}
   .clock .cdot{width:6px; height:6px; border-radius:50%; background:#4FD675; box-shadow:0 0 6px rgba(79,214,117,.8); animation:cpulse 2s ease-in-out infinite}
@@ -318,6 +324,8 @@
     .chips{display:none}
     .brand small{display:none}   /* drop the wide subheading on phones so the topbar can't overflow (320px) */
     .fresh #freshText{display:none}   /* keep the dot, drop the text so the topbar never overflows */
+    .clrbtn .clbl{display:none}   /* collapse "Clear all" to just the ✕ icon so the topbar never overflows at 320px */
+    .clrbtn{padding:0 8px}
     #topbar{height:48px}
     .leaflet-control-zoom{display:none}   /* pinch-zoom on touch; buttons would sit under the sheet */
     /* comfortable touch targets (≈44px) */
@@ -355,6 +363,7 @@
     <div class="chip"><span class="k">In view</span><span class="v" id="cVisible">0</span></div>
   </div>
   <div class="dstatus">
+    <button type="button" class="clrbtn" id="clearAllBtn" title="Clear routes + filters" aria-label="Clear all routes and filters" style="display:none"><span aria-hidden="true">✕</span><span class="clbl">Clear all</span></button>
     <span class="fresh" id="freshBadge" title="Time since the live layers were last pulled"><span class="fdot"></span><span id="freshText">—</span></span>
     <button type="button" class="rbtn" id="refreshBtn" aria-label="Refresh data" title="Refresh data">⟳</button>
     <span class="clock"><span class="cdot"></span><time id="clock" aria-label="Current time">--:--:--</time></span>
@@ -377,7 +386,6 @@
       <div class="rchips" id="routeChips" style="display:none"></div>
       <div class="btn-row">
         <button class="btn ghost" id="netBtn" style="flex:1">◂ Whole network</button>
-        <button class="btn ghost" id="clearAllBtn" style="flex:0 0 auto" title="Clear routes + filters">Clear all</button>
       </div>
       <label class="fld">
         <span>Direction</span>
@@ -719,6 +727,7 @@ function selectRoutes(arr){
   if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the selected corridor(s)
   hideNetLabel();
   renderRouteChips();
+  syncClearAll();
   fetchRoute();
   syncURL();
 }
@@ -810,6 +819,7 @@ function drawNetwork(){
 function showNetwork(){
   state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[];
   renderRouteChips();
+  syncClearAll();
   routeLayer.clearLayers(); stopLayer.clearLayers();
   $('cRoute').textContent='—'; $('cLen').textContent='—';
   $('dossierCards').innerHTML='';
@@ -829,6 +839,8 @@ function showNetwork(){
 var FILTERS={operator:new Set(), type:new Set(), propulsion:new Set()};
 var TYPE_FILTER_LBL={day:'Regular', night:'Night', school:'School', local:'Local', superloop:'Superloop', prefix:'Lettered', twentyfour:'24-hour'};
 function filtersActive(){ return FILTERS.operator.size||FILTERS.type.size||FILTERS.propulsion.size; }
+// topbar "Clear all" only appears when there's actually a route selection or a filter to clear.
+function syncClearAll(){ var b=$('clearAllBtn'); if(b) b.style.display=(filtersActive()||(state.selected&&state.selected.length))?'flex':'none'; }
 function routePasses(name){
   var f=FILTERS;
   if(f.operator.size || f.propulsion.size){
@@ -866,6 +878,7 @@ function buildFilterChips(){
 }
 function applyFiltersUI(){
   $('fClear').style.display = filtersActive()?'block':'none';
+  syncClearAll();
   renderList($('routeSearch').value);
   if(!state.routeName && state.overview){
     var n=drawNetwork();
