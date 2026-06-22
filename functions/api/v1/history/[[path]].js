@@ -73,7 +73,9 @@ const ACC_SNAP_FILTERS = {
 async function accidentsSnapshot(origin, q, limit, order) {
   let snap;
   try {
-    const r = await fetch(`${origin}/api/v1/accidents`);
+    // fetch the static asset directly (edge-cached) — not /api/v1/accidents, which would add a
+    // Function-to-Function subrequest hop (and can time the Function out).
+    const r = await fetch(`${origin}/data/accidents.json`, { cf: { cacheTtl: 300, cacheEverything: true } });
     if (!r.ok) return null;
     const d = await r.json();
     snap = Array.isArray(d) ? d : (d && d.accidents) || null;
