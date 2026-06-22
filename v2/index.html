@@ -214,6 +214,7 @@
   .lens-count{font-size:22px; font-weight:700; line-height:1}
   .lens-count small{font-size:11px; font-weight:500; color:var(--muted)}
   .lens-sub{font-family:var(--mono); font-size:9.5px; color:var(--faint); letter-spacing:.05em; margin-bottom:9px}
+  .lsec{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding:9px 0 7px; margin-top:2px; border-top:1px solid var(--border-soft)}
   .bars{display:flex; flex-direction:column; gap:6px}
   .bar{display:grid; grid-template-columns:1fr auto; gap:2px}
   .bar .blabel{font-size:11px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
@@ -1490,6 +1491,7 @@ function renderLensCard(lens, agg){
     var max=Math.max.apply(null, keys.map(function(k){return agg.counts[k];}));
     keys.sort(function(a,b){return agg.counts[b]-agg.counts[a];});
     var shown=keys.slice(0,12);
+    html+='<div class="lsec">By '+esc(state.dimension==='__year'?'year':state.dimension)+'</div>';
     html+='<div class="bars">';
     shown.forEach(function(k){
       var c=state.colorMap.get(k)||'#9AA7B2';
