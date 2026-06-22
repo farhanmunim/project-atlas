@@ -5,6 +5,26 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-06-22 — Table enrichment + per-route risk; UI behaviour verified
+
+- **Per-route risk summary.** `build/accidents.js` now pre-aggregates, for every route,
+  the bus-involved collisions within ~150 m of its line (deduped across directions) +
+  the KSI subset — `accidents.json.byRoute[name] = {collisions, ksi}`, computed from
+  `routes-overview.geojson` via `riskByRoute()`. Rides the `accidents` dataset through
+  `/api/v1` automatically; documented in `README.md` + CLAUDE.md (new road-safety
+  historical+live standard).
+- **Enriched table view.** New **Risk** (collisions / KSI within 150 m) and **£/mi**
+  (latest tender cost-per-mile) columns, sourced O(1) from the store; CSV "view" export
+  mirrors them (Collisions, KSI, £/mile columns). Verified live in headless Chromium —
+  e.g. route 35 → Risk "212 / 46 KSI", £7.64/mi, "from 29/04/2023".
+- **UI behaviour pass.** Drove the app in headless Chromium across a randomised mix of
+  selections — single/comma-multi select, filter-as-you-type, table view, all 9 map-layer
+  toggles, units km↔mi reformat, 12h clock, theme toggle, clearAll, radius slider, refresh
+  — **zero uncaught page errors**. (The OSM tile `ERR_CERT` console lines are the sandbox
+  blocking tiles, not an app fault.)
+- CLAUDE.md: documented that the LBSL tender **tranche** (in `tender_programme` → Supabase
+  → `/api/v1/history/tender-programme`) must be surfaced with the tender details.
+
 ## 2026-06-21 — Data-correctness audit pass
 
 Adversarial audit of the data we fetch, clean, and output (app · CSV · `/api/v1`),

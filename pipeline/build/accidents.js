@@ -27,6 +27,58 @@ const YEARS = [2023, 2022, 2021];
 const MAX_KEEP = 5000;       // cap to the most recent N for a sane map payload
 const LIVE_FLOOR = 200;      // a live pull below this is treated as degraded → keep last-good
 
+/* ── per-route risk summary ────────────────────────────────────────────────
+ * Pre-aggregate, for every route, the bus-involved collisions within ~150 m of
+ * its line (deduped across directions) + the KSI subset. The app's table + risk
+ * panel read this O(1) instead of re-scanning 4.5k points × 676 routes per render,
+ * and it rides the existing `accidents` dataset through /api/v1 automatically.
+ * Reads the route geometry the pipeline already emits (routes-overview.geojson);
+ * if it isn't available the field is simply omitted (degrade, don't break). */
+const RISK_RADIUS_M = 150;
+function distToSegM(plng, plat, alng, alat, blng, blat) {
+  const mPerDegLat = 111_320, mPerDegLng = 111_320 * Math.cos((plat * Math.PI) / 180);
+  const px = plng * mPerDegLng, py = plat * mPerDegLat;
+  const ax = alng * mPerDegLng, ay = alat * mPerDegLat, bx = blng * mPerDegLng, by = blat * mPerDegLat;
+  const dx = bx - ax, dy = by - ay; const len2 = dx * dx + dy * dy;
+  const t = len2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+export function riskByRoute(accidents, geo, radiusM = RISK_RADIUS_M) {
+  if (!geo || !Array.isArray(geo.features)) return null;
+  const cell = 0.01; // ~1.1 km grid for candidate lookup
+  const grid = new Map();
+  accidents.forEach((a, i) => {
+    const k = `${Math.round(a.lng / cell)},${Math.round(a.lat / cell)}`;
+    (grid.get(k) || grid.set(k, []).get(k)).push(i);
+  });
+  const margin = Math.ceil(radiusM / 1000 / cell) + 1;
+  const byRoute = {};
+  const setFor = {};
+  for (const f of geo.features) {
+    const name = f.properties?.name; const coords = f.geometry?.coordinates;
+    if (!name || !Array.isArray(coords) || coords.length < 2) continue;
+    const set = (setFor[name] ||= new Set());
+    for (let s = 0; s < coords.length - 1; s++) {
+      const [alng, alat] = coords[s], [blng, blat] = coords[s + 1];
+      const cx = Math.round(((alng + blng) / 2) / cell), cy = Math.round(((alat + blat) / 2) / cell);
+      for (let gx = cx - margin; gx <= cx + margin; gx++)
+        for (let gy = cy - margin; gy <= cy + margin; gy++) {
+          const cand = grid.get(`${gx},${gy}`); if (!cand) continue;
+          for (const i of cand) {
+            if (set.has(i)) continue;
+            const a = accidents[i];
+            if (distToSegM(a.lng, a.lat, alng, alat, blng, blat) <= radiusM) set.add(i);
+          }
+        }
+    }
+  }
+  for (const [name, set] of Object.entries(setFor)) {
+    let ksi = 0; for (const i of set) { const s = accidents[i].severity; if (s === "fatal" || s === "serious") ksi++; }
+    byRoute[name] = { collisions: set.size, ksi };
+  }
+  return byRoute;
+}
+
 export async function build(ctx) {
   const { sink, log, args } = ctx;
   const prev = (await sink.readDataset("accidents")) || null;
@@ -69,6 +121,13 @@ export async function build(ctx) {
 
   // Gate: sample floors low (1), live floors high. A cratered pull throws → last-good kept.
   rowsWithin(data.accidents, data.sample ? 1 : LIVE_FLOOR, MAX_KEEP, "accidents");
+
+  // Per-route risk summary (rides the dataset → API → app table + risk panel).
+  try {
+    const geo = await sink.readDataset("routes-overview", { ext: "geojson" });
+    const byRoute = riskByRoute(data.accidents, geo);
+    if (byRoute) { data.byRoute = byRoute; log.info(`accidents: risk summarised for ${Object.keys(byRoute).length} routes`); }
+  } catch (e) { log.warn(`accidents: per-route risk skipped (${e.message})`); }
 
   await sink.writeDataset("accidents", data, { pretty: false });
 

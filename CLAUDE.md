@@ -345,6 +345,39 @@ can never block the Cloudflare site.
   one-time seed of these is committed for the first warm run; everything else the
   pipeline regenerates is gitignored (`ingest/.gitignore`).
 
+## Road-safety layer — historical + live (keep both in lockstep)
+
+Road risk is **two complementary feeds**, and any change must keep BOTH the historical
+and live paths flowing through the store → API → app → table → context panel (the
+capture-once rule below):
+
+- **Historical (STATS19 collisions).** `pipeline/build/accidents.js` → `data/accidents.json`
+  (`{ accidents:[{lat,lng,severity,date,borough,vehicles}], byRoute, period, sample }`).
+  The builder also pre-aggregates a **per-route risk summary** — `byRoute[name] =
+  { collisions, ksi }`, every bus-involved collision within ~150 m of the route line
+  (deduped across directions), computed from `routes-overview.geojson` via `riskByRoute()`.
+  This rides the existing `accidents` dataset through `/api/v1` automatically and powers
+  the **table Risk column** + the route **Risk & accidents** panel O(1) (no per-render
+  geo scan). Cadence: annual (DfT ~2yr in arrears).
+- **Live (current road issues).** TfL Road Disruptions → `/api/v1/live/road-disruptions`
+  (collisions/breakdowns/delays/works/closures), the live **incidents** map layer +
+  live-ops panel. Plus the **low-bridge** strike-risk layer (`build/bridges.js`,
+  conservative clearance = the tighter of the metric/imperial reading).
+- **Time-series (future).** Collision history over time belongs in the **history group**
+  (`/api/v1/history/*`, Supabase) alongside reliability/performance — add an `accidents`
+  history endpoint there rather than bloating the static snapshot.
+
+Rule: a new road-safety datapoint must update the **pipeline → `data/*.json` (+ `byRoute`
+where per-route) → `/api/v1` → app map layer + table column + context panel** — never just
+the map. Historical and live are different feeds but one coherent "road risk" story.
+
+> **Tender tranche.** The LBSL tender **tranche** number (the batch a route was tendered
+> in) lives in `tender_programme` (ingest → Supabase) and is served by
+> `/api/v1/history/tender-programme` (incl. `tranche`). Surface it **with the tender
+> details** in the app's tender block (via the history seam) so each award is precisely
+> identifiable — the award pages themselves (13796.aspx) don't carry it, so it must come
+> from the programme join.
+
 ## Every datapoint flows through to the warehouse AND the API (no dead ends)
 
 When you add or change a datapoint, field, or dataset, wire it end-to-end so it's

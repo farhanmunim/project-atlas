@@ -1777,17 +1777,24 @@ function renderTable(){
     const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
     const rel = pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)}<span class="u">EWT</span>` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}<span class="u">%OTP</span>` : "—") : "—";
     const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?"from "+esc(fmtDate(m.contractDate)):"—");
+    const rk=store.accidents&&store.accidents.byRoute&&store.accidents.byRoute[r.name];
+    const risk=rk?`${rk.collisions}${rk.ksi?`<span class="u" title="${rk.ksi} killed or seriously injured"> ${rk.ksi}KSI</span>`:""}`:"—";
+    const tnd=store.tenders&&store.tenders[r.name]&&store.tenders[r.name][0];
+    const cpmV=tnd&&tnd.costPerMile>0&&tnd.costPerMile<=200?tnd.costPerMile:null;
+    const cpm=cpmV!=null?`£${cpmV}`:"—";
     return `<tr data-id="${esc(r.id)}"><td class="rno">${esc(r.name)}</td>
       <td><span class="tdot" style="background:${d.color}"></span>${d.label}</td>
       <td>${esc(m.op?shortOp(m.op):"—")}</td><td>${esc(m.garage||"—")}</td>
       <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
+      <td class="num" title="bus-involved collisions within 150m of the route (STATS19)">${risk}</td>
+      <td class="num">${cpm}</td>
       <td class="num" style="font-size:10px">${contract}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
   document.getElementById("tableView").innerHTML =
-    `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num">Contract</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="10" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+    `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num" title="bus-involved collisions within 150m (STATS19)">Risk</th><th class="num">£/mi</th><th class="num">Contract</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="12" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
   document.getElementById("tableView").querySelectorAll("tbody tr[data-id]").forEach(tr=>tr.addEventListener("click",()=>{
     const r=routes.find(x=>x.id===tr.dataset.id); if(r){ setCanvasView("map"); toggleRoute(r); }
   }));
@@ -2559,13 +2566,16 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    // Header + column order mirror the rendered table (what's shown), incl. Reliability.
-    rows=[["Route","Type","Operator","Garage","PVR","Length km","Propulsion","Reliability","Contract","Fleet"],
+    // Header + column order mirror the rendered table (what's shown).
+    rows=[["Route","Type","Operator","Garage","PVR","Length km","Propulsion","Reliability","Collisions","KSI","£/mile","Contract","Fleet"],
       ...filtered.map(r=>{ const m=metaOf(r);
         const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
         const rel=pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)} EWT` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}% OTP` : "") : "";
+        const rk=store.accidents&&store.accidents.byRoute&&store.accidents.byRoute[r.name];
+        const tnd=store.tenders&&store.tenders[r.name]&&store.tenders[r.name][0];
+        const cpmV=tnd&&tnd.costPerMile>0&&tnd.costPerMile<=200?tnd.costPerMile:"";
         return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"",
-          m.lengthKm||"", m.prop?PROP_DEFS[m.prop]:"", rel,
+          m.lengthKm||"", m.prop?PROP_DEFS[m.prop]:"", rel, rk?rk.collisions:"", rk?rk.ksi:"", cpmV,
           m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate?"from "+m.contractDate:""), m.fleet||""]; })];
     fname=`atlas_routes_${todayStamp()}.csv`;
   }
