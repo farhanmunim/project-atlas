@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-22T11:57:59.436Z",
+  "generatedAt": "2026-06-22T13:17:39.526Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -105,7 +105,7 @@
     },
     "accidents": {
       "source": "DfT STATS19 road safety data (collision + vehicle tables, bus/coach-involved)",
-      "fetchedAt": "2026-06-22T11:57:59.435Z",
+      "fetchedAt": "2026-06-22T13:17:39.525Z",
       "status": "ok",
       "rows": 7118,
       "files": [

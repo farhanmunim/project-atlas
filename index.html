@@ -1486,7 +1486,7 @@ function sentinelBody(list, data, scopeNote, opts={}){
   if(!list || !list.length) return `<div class="empty" style="padding:7px 0">No bus collisions recorded ${esc(scopeNote||"")}.</div>`;
   const by={fatal:0,serious:0,slight:0}, byYear={}, byBorough={};
   // decoded STATS19 collision-context dimensions (roll up the most common value per dimension)
-  const CTX=[["Road type","roadType"],["Speed","speedLimit"],["Junction","junction"],["Light","light"],["Weather","weather"],["Surface","roadSurface"]];
+  const CTX=[["Road type","roadType"],["Speed","speedLimit"],["Junction","junction"],["Light","light"],["Weather","weather"],["Surface","roadSurface"],["Day","day"],["Time","timeBand"]];
   const ctx={}; CTX.forEach(([,k])=>ctx[k]={});
   list.forEach(a=>{ by[sevOf(a)]++; const y=String(a.date||"").slice(0,4); if(/^\d{4}$/.test(y)) byYear[y]=(byYear[y]||0)+1;
     const bn=boroughName(a.borough); if(bn&&bn!=="—"&&bn!=="Outside London") byBorough[bn]=(byBorough[bn]||0)+1;
@@ -2602,8 +2602,8 @@ function exportCurrent(){
         const RR=riskRadius/1000;
         const near=(adata.accidents||[]).filter(a=>{ const p=routeProximity(cs,a.lat,a.lng); return p.offKm!=null && p.offKm<RR; });
         if(near.length){
-          const arows=[["Collision ID","Date","Severity","Lat","Lng","Borough","Vehicles","Road type","Speed limit","Junction","Light","Weather","Road surface"],
-            ...near.map(a=>[a.id,a.date||"",sevOf(a),a.lat,a.lng,boroughName(a.borough),a.vehicles||"",a.roadType||"",a.speedLimit||"",a.junction||"",a.light||"",a.weather||"",a.roadSurface||""])];
+          const arows=[["Collision ID","Date","Severity","Lat","Lng","Borough","Vehicles","Road type","Speed limit","Junction","Light","Weather","Road surface","Day","Time of day"],
+            ...near.map(a=>[a.id,a.date||"",sevOf(a),a.lat,a.lng,boroughName(a.borough),a.vehicles||"",a.roadType||"",a.speedLimit||"",a.junction||"",a.light||"",a.weather||"",a.roadSurface||"",a.day||"",a.timeBand||""])];
           downloadCSV(`atlas_collisions_route-${r0.name}_r${riskRadius}m_${todayStamp()}.csv`, arows);
         }
       }

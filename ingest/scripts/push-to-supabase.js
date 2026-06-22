@@ -628,11 +628,13 @@ async function pushAccidents() {
       light:          a.light ?? null,
       weather:        a.weather ?? null,
       road_surface:   a.roadSurface ?? null,
+      day:            a.day ?? null,            // migration 0018
+      time_band:      a.timeBand ?? null,       // migration 0018
       extracted_at:   extractedAt,
     }));
   // the six context columns land via migration 0017; until it's applied, upsert strips them
   // and writes the base record rather than failing the accidents push.
-  await upsertInBatches('accidents', rows, 'collision_id', ['road_type', 'speed_limit', 'junction', 'light', 'weather', 'road_surface']);
+  await upsertInBatches('accidents', rows, 'collision_id', ['road_type', 'speed_limit', 'junction', 'light', 'weather', 'road_surface', 'day', 'time_band']);
 }
 
 // route_schedule — the scheduled-side baseline (SWT, scheduled km) the live-

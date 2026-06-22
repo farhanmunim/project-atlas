@@ -1227,9 +1227,10 @@ function loadAtlasAccidents(){
       borough:(GSS_BOROUGH[a.borough]|| (/^E0\d/.test(a.borough||'')?'Outside Greater London':a.borough)),
       // decoded STATS19 collision-context — each becomes an "aggregate by" lens dimension
       roadType:a.roadType||'', speedLimit:a.speedLimit||'', junction:a.junction||'',
-      light:a.light||'', weather:a.weather||'', roadSurface:a.roadSurface||''
+      light:a.light||'', weather:a.weather||'', roadSurface:a.roadSurface||'',
+      day:a.day||'', timeBand:a.timeBand||''
     }; });
-    ingest(['lat','lon','severity','date','vehicles','borough','roadType','speedLimit','junction','light','weather','roadSurface'], rows, 'Atlas STATS19 · '+state.routeName);
+    ingest(['lat','lon','severity','date','vehicles','borough','roadType','speedLimit','junction','light','weather','roadSurface','day','timeBand'], rows, 'Atlas STATS19 · '+state.routeName);
     if($('tgCollisions')) $('tgCollisions').checked=true;
     status('Loaded '+rows.length+' collisions within '+fmtKm(CORRIDOR_BUFFER_M/1000)+' of '+state.routeName, 'ok');
   };
@@ -1432,7 +1433,7 @@ function setHeat(on){
 // readable labels for the known STATS19 keys; arbitrary CSV columns fall back to their raw header.
 var POPUP_LABEL={severity:'Severity', date:'Date', vehicles:'Vehicles', borough:'Borough',
   roadType:'Road type', speedLimit:'Speed limit', junction:'Junction', light:'Light',
-  weather:'Weather', roadSurface:'Road surface'};
+  weather:'Weather', roadSurface:'Road surface', day:'Day', timeBand:'Time of day'};
 function popupHTML(row){
   var html='<div style="font-family:var(--mono);font-size:11px;line-height:1.6;max-width:230px;color:#E7ECF1">';
   Object.keys(row).forEach(function(k){

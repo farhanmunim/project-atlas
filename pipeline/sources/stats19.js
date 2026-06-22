@@ -40,8 +40,16 @@ const JUNCTION = { "0": "Not at junction", "1": "Roundabout", "2": "Mini-roundab
 const LIGHT = { "1": "Daylight", "4": "Dark — lit", "5": "Dark — unlit", "6": "Dark — no lighting", "7": "Dark — unknown" };
 const WEATHER = { "1": "Fine", "2": "Raining", "3": "Snowing", "4": "Fine + winds", "5": "Raining + winds", "6": "Snowing + winds", "7": "Fog/mist", "8": "Other" };
 const SURFACE = { "1": "Dry", "2": "Wet/damp", "3": "Snow", "4": "Frost/ice", "5": "Flood", "6": "Oil/diesel", "7": "Mud" };
+const DOW = { "1": "Sun", "2": "Mon", "3": "Tue", "4": "Wed", "5": "Thu", "6": "Fri", "7": "Sat" }; // STATS19: 1=Sunday
 const decode = (map, v) => map[(v == null ? "" : String(v)).trim()] || null;
 const speedLimit = (v) => { const n = parseInt(v, 10); return n >= 20 && n <= 70 ? `${n} mph` : null; };
+// time-of-day band from the HH:MM collision time (TfL-ish peaks); blank/"-1" → null.
+const timeBand = (t) => {
+  const m = /^(\d{1,2}):(\d{2})/.exec((t == null ? "" : String(t)).trim());
+  if (!m) return null;
+  const h = +m[1];
+  return h < 6 ? "Night" : h < 10 ? "AM peak" : h < 16 ? "Inter-peak" : h < 19 ? "PM peak" : "Evening";
+};
 
 const DEFAULT_TIMEOUT_MS = 120_000; // these CSVs are multi-MB; allow a slow stream
 
@@ -162,6 +170,8 @@ export async function fetchStats19Year(year, { bbox = LONDON_BBOX, timeoutMs } =
       light: decode(LIGHT, at("light_conditions")),
       weather: decode(WEATHER, at("weather_conditions")),
       roadSurface: decode(SURFACE, at("road_surface_conditions")),
+      day: decode(DOW, at("day_of_week")),
+      timeBand: timeBand(at("time")),
     });
   }, { timeoutMs });
 

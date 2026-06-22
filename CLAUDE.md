@@ -280,7 +280,8 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   vehicles, tenders, routes-overview.geojson, **route-performance.json** (EWT/OTP/MPS,
   `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`
   — per collision: severity/date/borough/vehicles **plus decoded context** roadType/speedLimit/
-  junction/light/weather/roadSurface, which surface as the lens "aggregate by" dimensions).
+  junction/light/weather/roadSurface/day/timeBand, which surface as the lens "aggregate by"
+  dimensions and the apps' "Collision context" risk readouts).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
@@ -322,8 +323,10 @@ can never block the Cloudflare site.
   the notes, mirroring the app's `tender-parse.js`), `0017_accidents_context.sql`
   (adds decoded STATS19 collision-context columns `road_type`/`speed_limit`/`junction`/
   `light`/`weather`/`road_surface` to `accidents` — decoded at the fetch boundary in
-  `fetch-accidents.js`, mirrored in `pipeline/sources/stats19.js`). The rest pre-existed.
-  Don't reshape existing tables; add a migration for anything new.
+  `fetch-accidents.js`, mirrored in `pipeline/sources/stats19.js`), `0018_accidents_temporal.sql`
+  (adds `day` + `time_band`). The accidents upsert is **self-healing** — it strips columns a
+  pending migration hasn't added yet and writes the base record, so a new field never blocks the
+  ingest. The rest pre-existed. Don't reshape existing tables; add a migration for anything new.
 - **Workflows** (all `permissions: contents: read` — Supabase-only, no
   commit-back):
   - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.

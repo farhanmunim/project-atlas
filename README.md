@@ -71,7 +71,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/vehicles` | Vehicle register by reg — routes, operator, make, year, fuel |
 | `GET /api/v1/tenders` | Tender/contract award history per route — bids, operator, dates, miles; each award also carries derived `jb` (joint-bid: partner routes + total £), `vehicle` (awarded deck/propulsion/basis), and `tranche` |
 | `GET /api/v1/route-performance` | Reliability per route — EWT/OTP vs MPS, % mileage |
-| `GET /api/v1/accidents` | STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, plus decoded context: `roadType`, `speedLimit`, `junction`, `light`, `weather`, `roadSurface` |
+| `GET /api/v1/accidents` | STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, plus decoded context: `roadType`, `speedLimit`, `junction`, `light`, `weather`, `roadSurface`, `day`, `timeBand` |
 | `GET /api/v1/bridges` | Low bridges / height restrictions — lat/lng, clearance, name |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 

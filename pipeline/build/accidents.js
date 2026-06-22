@@ -14,10 +14,11 @@
  * Output shape:
  *   { generatedAt, source, sample, period, count, bbox:[minLng,minLat,maxLng,maxLat],
  *     accidents:[ { id, lat, lng, severity, date, borough, vehicles,
- *                   roadType, speedLimit, junction, light, weather, roadSurface } ] }
- *   The trailing six are decoded STATS19 collision-context attributes (clean labels;
- *   missing/unknown → null). They flow straight through to /api/v1/accidents and become
- *   "aggregate by" lens dimensions in the app.
+ *                   roadType, speedLimit, junction, light, weather, roadSurface,
+ *                   day, timeBand } ] }
+ *   The trailing eight are decoded STATS19 collision-context attributes (clean labels;
+ *   missing/unknown → null), incl. day-of-week and time-of-day band. They flow straight
+ *   through to /api/v1/accidents and become "aggregate by" lens dimensions in the app.
  */
 
 import { fetchStats19, LONDON_BBOX } from "../sources/stats19.js";
@@ -156,6 +157,8 @@ function synthSample() {
   const WEATHERS = ["Fine", "Fine", "Fine", "Raining", "Fog/mist"];
   const SURFACES = ["Dry", "Dry", "Wet/damp", "Frost/ice"];
   const SPEEDS = ["20 mph", "30 mph", "30 mph", "40 mph"];
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const BANDS = ["AM peak", "AM peak", "Inter-peak", "Inter-peak", "PM peak", "PM peak", "Evening", "Night"];
 
   const out = [];
   const now = new Date("2026-06-18T00:00:00Z").getTime();
@@ -189,6 +192,8 @@ function synthSample() {
       light: pick(LIGHTS),
       weather: pick(WEATHERS),
       roadSurface: pick(SURFACES),
+      day: pick(DAYS),
+      timeBand: pick(BANDS),
     });
   }
   return out;
