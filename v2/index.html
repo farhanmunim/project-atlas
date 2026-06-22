@@ -1122,12 +1122,21 @@ function renderDossier(){
     getJSON(atlasBase()+'/live/status?route='+encodeURIComponent(name)).then(function(j){
       if(state.routeName!==name) return;
       var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]);
-      // match the line that IS this route (by id/name), not just arr[0] — a multi-line response
-      // could otherwise surface a different line's status (e.g. a wrong "Special Service").
+      // match the line that IS this route (by id/name), not just arr[0].
       var ln=arr.filter(function(x){return String(x.id)===String(name)||String(x.name)===String(name);})[0]||arr[0];
-      var s=ln&&ln.lineStatuses&&ln.lineStatuses[0]; var sev=s&&s.statusSeverityDescription;
-      if(!sev) return; var good=/good service/i.test(sev);
-      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, good?'#4FD675':'var(--amber)');
+      var statuses=(ln&&ln.lineStatuses)||[]; if(!statuses.length) return;
+      // Show the status that's active RIGHT NOW. TfL flags planned works (e.g. a future diversion)
+      // as "Special Service" but with validityPeriods where isNow=false — those shouldn't headline
+      // as a current problem (this is why ~1/3 of routes wrongly read "Special Service"). A
+      // disruption only counts if it has no validity window or one that is active now.
+      var active=null;
+      for(var i=0;i<statuses.length;i++){ var st=statuses[i];
+        if(st.statusSeverity===10) continue;   // 10 = Good Service, not a disruption
+        var vp=st.validityPeriods||[];
+        if(!vp.length || vp.some(function(p){return p.isNow;})){ active=st; break; }
+      }
+      var sev = active ? active.statusSeverityDescription : 'Good Service';
+      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, active?'var(--amber)':'#4FD675');
     }).catch(function(){});
   }).catch(function(e){ cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>', true); cont.querySelectorAll('.card-h').forEach(wireCardHeader); });
 }
