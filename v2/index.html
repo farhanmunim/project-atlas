@@ -909,9 +909,16 @@ function fetchRoute(){
       var p=f.properties||{}; return String(p.routeId)===String(state.routeId) || String(p.name)===String(state.routeName);
     });
     if(!feats.length){ status('No geometry on record for '+state.routeName+'.', 'err'); return; }
-    // direction: map outbound → the first GSS direction, inbound → the second (if any).
+    // direction: routes-overview.geojson encodes "1" = outbound, "2" = inbound (verified against
+    // the pipeline). Map explicitly; for any other vocabulary fall back to sorted order
+    // (outbound = first, inbound = second/last). One-directional routes degrade to all geometry below.
     var dirs=[]; feats.forEach(function(f){ var d=(f.properties||{}).direction; if(dirs.indexOf(d)<0) dirs.push(d); }); dirs.sort();
-    var want = (state.dir==='inbound' && dirs.length>1) ? dirs[1] : dirs[0];
+    var want;
+    if(dirs.indexOf('1')>=0 || dirs.indexOf('2')>=0){
+      want = state.dir==='inbound' ? (dirs.indexOf('2')>=0 ? '2' : dirs[0]) : (dirs.indexOf('1')>=0 ? '1' : dirs[0]);
+    } else {
+      want = (state.dir==='inbound' && dirs.length>1) ? dirs[dirs.length-1] : dirs[0];
+    }
     var dirFeats=feats.filter(function(f){ return (f.properties||{}).direction===want; });
     if(!dirFeats.length) dirFeats=feats;
     var segs=[];
