@@ -569,6 +569,7 @@ function loadRoutes(){
       }).sort(function(a,b){return naturalCmp(a.name,b.name);});
       status(state.routes.length+' routes ready', 'ok');
       buildFilterChips();
+      if(!restoreFromURL()) showNetwork();   // deep-link a shared route, else the network view
     })
     .catch(function(e){
       status('Could not load routes from Atlas — '+e.message, 'err');
@@ -624,7 +625,7 @@ document.querySelectorAll('#dirSeg button').forEach(function(b){
   b.addEventListener('click', function(){
     document.querySelectorAll('#dirSeg button').forEach(function(x){x.classList.remove('on');});
     b.classList.add('on'); state.dir=b.dataset.dir;
-    if(state.routeId) fetchRoute();
+    if(state.routeId){ fetchRoute(); syncURL(); }
   });
 });
 
@@ -635,6 +636,21 @@ function selectRoute(r){
   if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the single corridor
   hideNetLabel();
   fetchRoute();
+  syncURL();
+}
+// Shareable/bookmarkable state in the hash: route + direction.
+function syncURL(){
+  var p=new URLSearchParams();
+  if(state.routeName){ p.set('route', state.routeName); if(state.dir!=='outbound') p.set('dir', state.dir); }
+  try{ history.replaceState(null,'', p.toString()?('#'+p.toString()):location.pathname+location.search); }catch(e){}
+}
+function restoreFromURL(){
+  var h=(location.hash||'').replace(/^#/,''); if(!h) return false;
+  var p=new URLSearchParams(h), rt=p.get('route'); if(!rt) return false;
+  var r=(state.routes||[]).filter(function(x){return x.name===rt;})[0]; if(!r) return false;
+  if(p.get('dir')==='inbound'){ state.dir='inbound';
+    document.querySelectorAll('#dirSeg button').forEach(function(x){ x.classList.toggle('on', x.dataset.dir==='inbound'); }); }
+  $('routeSearch').value=r.name; selectRoute(r); return true;
 }
 
 /* ============================ NETWORK OVERVIEW (all routes by operator) ============================ */
@@ -685,6 +701,7 @@ function showNetwork(){
   routeLayer.clearLayers(); stopLayer.clearLayers();
   $('cRoute').textContent='—'; $('cLen').textContent='—';
   $('dossierCard').style.display='none';
+  syncURL();
   status('Loading network…');
   ensureNetworkData().then(function(){
     buildFilterChips();
@@ -1568,8 +1585,7 @@ document.querySelectorAll('.toggle-row').forEach(function(row){
   var inp=row.querySelector('input[type=checkbox]'), txt=row.querySelector('span:not(.track)');
   if(inp&&txt&&!inp.getAttribute('aria-label')) inp.setAttribute('aria-label', txt.textContent.trim());
 });
-loadRoutes();
-showNetwork();        // default view: the whole network, coloured by operator
+loadRoutes();   // → restoreFromURL() (deep-linked route) or showNetwork() once routes land
 })();
 </script>
 
