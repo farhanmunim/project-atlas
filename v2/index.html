@@ -114,6 +114,9 @@
     display:flex; flex-direction:column; gap:10px; pointer-events:auto;
     max-height:calc(100vh - 78px); overflow-y:auto; padding-bottom:8px;
   }
+  /* keep cards at their natural height so the rail OVERFLOWS (and scrolls) instead of the flex
+     items shrinking to fit — without this the rail can't scroll and tall cards get clipped. */
+  #leftrail > *, #rightrail > *{ flex:0 0 auto; }
   .card{
     background:var(--panel); border:1px solid var(--border); border-radius:11px;
     backdrop-filter:blur(11px); box-shadow:var(--shadow); overflow:hidden;
@@ -218,11 +221,25 @@
   .ychip{font-family:var(--mono); font-size:11px; line-height:1.3; padding:4px 9px; border-radius:20px; border:1px solid var(--border); color:var(--muted); cursor:pointer; background:#0C0F14; display:inline-flex; align-items:center}
   .ychip.on{background:rgba(220,36,31,.16); border-color:var(--red); color:var(--text)}
 
+  /* selected-route chips (multi-select) */
+  .rchips{display:flex; flex-wrap:wrap; gap:5px}
+  .rchip{font-family:var(--mono); font-size:11.5px; font-weight:600; padding:3px 5px 3px 9px; border-radius:7px; border:1px solid var(--red); background:rgba(220,36,31,.16); color:var(--text); display:inline-flex; align-items:center; gap:4px}
+  .rchip .x{background:none; border:none; color:var(--faint); cursor:pointer; font-size:14px; line-height:1; padding:0 2px}
+  .rchip .x:hover{color:var(--red-bright)}
+
   /* legend */
   .legend{display:flex; flex-direction:column; gap:5px}
   .legrow{display:flex; align-items:center; gap:8px; font-size:11.5px}
   .legrow .swatch{width:10px; height:10px; border-radius:2px; flex:0 0 auto}
   .legrow .lct{margin-left:auto; font-family:var(--mono); color:var(--faint); font-size:10.5px}
+
+  /* per-section route cards (dossier) */
+  #dossierCards{display:flex; flex-direction:column; gap:10px}
+  #dossierCards:empty{display:none}
+  .dcard .card-h .dot{background:#36C5F0}
+  .card-annot{margin-left:auto; font-family:var(--mono); font-size:9px; letter-spacing:.06em; color:var(--faint); text-transform:none}
+  .dossier-b{padding:2px 13px 10px}
+  .card.open .dossier-b{display:block}
 
   /* lens readout cards */
   .lenscard .card-h .dot{background:var(--red)}
@@ -239,15 +256,11 @@
   .bar .bfill{height:100%; border-radius:3px; transition:width .12s linear}
   .lens-empty{font-size:11px; color:var(--faint); font-style:italic; padding:4px 0}
   /* route dossier card — clean full-width rows with quiet dividers (data from the Atlas API) */
-  #dossierBody{padding:2px 13px 4px}
-  .card.open #dossierBody{display:block}   /* block rows when open; base .card-b display:none hides it when collapsed */
-  #dossierBody .drow{display:grid; grid-template-columns:84px 1fr; gap:12px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
-  #dossierBody .drow .dk{color:var(--muted)}
-  #dossierBody .drow .dv{font-family:var(--mono); color:var(--text); text-align:left; word-break:break-word; line-height:1.45}
-  #dossierBody .dsec{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); display:flex; gap:6px; align-items:baseline; padding:13px 0 6px; border-bottom:1px solid var(--border-soft)}
-  #dossierBody .dsec .da{margin-left:auto; text-transform:none; letter-spacing:.02em}
-  #dossierBody > .drow:last-child{border-bottom:none}
-  #dossierBody .dempty{font-size:12px; color:var(--faint); font-style:italic; padding:6px 0}
+  .dossier-b .drow{display:grid; grid-template-columns:84px 1fr; gap:12px; align-items:baseline; padding:7px 0; border-bottom:1px solid var(--border-soft); font-size:13px}
+  .dossier-b .drow .dk{color:var(--muted)}
+  .dossier-b .drow .dv{font-family:var(--mono); color:var(--text); text-align:left; word-break:break-word; line-height:1.45}
+  .dossier-b > .drow:last-child{border-bottom:none}
+  .dossier-b .dempty{font-size:12px; color:var(--faint); font-style:italic; padding:6px 0}
   .sevline{display:flex; gap:6px; flex-wrap:wrap; margin:-2px 0 9px}
   .sv{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border)}
   .sv.f{color:#FF6B66; border-color:rgba(220,36,31,.5)}
@@ -332,7 +345,7 @@
 <div class="hud" id="topbar" role="banner">
   <div class="brand">
     <div class="roundel"></div>
-    <div><h1>ROUTE LENS</h1><small>COLLISION DENSITY</small></div>
+    <div><h1>ROUTE LENS</h1><small>INTERACTIVE NETWORK MAP</small></div>
   </div>
   <div class="chips">
     <div class="chip"><span class="k">Route</span><span class="v accent" id="cRoute">—</span></div>
@@ -356,11 +369,15 @@
       <label class="fld">
         <span>Bus route</span>
         <div class="combo">
-          <input type="text" id="routeSearch" placeholder="Search… e.g. 53, 472, N15" autocomplete="off">
+          <input type="text" id="routeSearch" placeholder="Search… e.g. 25, or 25,86 to compare" autocomplete="off">
           <div class="combo-list hidden" id="routeList"></div>
         </div>
       </label>
-      <button class="btn ghost" id="netBtn">◂ Whole network (by operator)</button>
+      <div class="rchips" id="routeChips" style="display:none"></div>
+      <div class="btn-row">
+        <button class="btn ghost" id="netBtn" style="flex:1">◂ Whole network</button>
+        <button class="btn ghost" id="clearAllBtn" style="flex:0 0 auto" title="Clear routes + filters">Clear all</button>
+      </div>
       <label class="fld">
         <span>Direction</span>
         <div class="seg" id="dirSeg">
@@ -386,7 +403,7 @@
     <div class="card-h"><div class="dot"></div><h2>Layers</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <div class="toggle-row"><span>Collisions · STATS19</span><label class="sw"><input type="checkbox" id="tgCollisions"><span class="track"></span></label></div>
-      <div class="toggle-row"><span>Heatmap</span><label class="sw"><input type="checkbox" id="tgHeat"><span class="track"></span></label></div>
+      <div class="toggle-row" id="rowHeat" style="display:none"><span>Heatmap</span><label class="sw"><input type="checkbox" id="tgHeat"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Low bridges &lt;4.4m</span><label class="sw"><input type="checkbox" id="tgBridges"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Road incidents · live</span><label class="sw"><input type="checkbox" id="tgRoad"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
@@ -451,12 +468,9 @@
 
 </div>
 
-<!-- RIGHT RAIL (lens readouts) -->
+<!-- RIGHT RAIL — per-section collapsible route cards (rendered into #dossierCards) + lens readouts -->
 <div class="hud" id="rightrail" role="complementary" aria-label="Route detail and lens readouts">
-  <div class="card open" id="dossierCard" data-card="" style="display:none">
-    <div class="card-h"><div class="dot" style="background:#36C5F0"></div><h2 id="dossierTitle">Route</h2><span class="chev">▶</span></div>
-    <div class="card-b" id="dossierBody"></div>
-  </div>
+  <div id="dossierCards"></div>
 </div>
 
 <!-- STATUS -->
@@ -495,6 +509,7 @@ var GSS_BOROUGH = {
 var state = {
   routes: [],            // [{id,name,od}]
   routeId:null, routeName:null, dir:'outbound',
+  selected:[],           // multi-select: [{id,name,...}] — selected[0] is the primary (drives dossier/direction)
   routeSegments:[],      // array of [ [lat,lng], ... ]
   routePath:[],          // flattened [ [lat,lng], ... ]
   routeLenKm:0,
@@ -617,8 +632,15 @@ function loadRoutes(){
 
 /* ============================ COMBOBOX ============================ */
 var search=$('routeSearch'), list=$('routeList');
+// when typing a comma list ("25,8") the dropdown filters by the LAST token (the one being typed).
+function commaPrefix(){ return search.value.split(',').slice(0,-1).map(function(t){return t.trim();}).filter(Boolean); }
+function pickInto(name){
+  var lst=commaPrefix().concat([name]), seen={}, out=[];
+  lst.forEach(function(n){ var k=n.toLowerCase(); if(!seen[k]){ seen[k]=1; out.push(n); } });
+  search.value=out.join(','); comboToggle(false); selectRoutes(resolveRouteTokens(out)); search.blur();
+}
 function renderList(filter){
-  var f=(filter||'').trim().toLowerCase();
+  var f=String(filter||'').split(',').pop().trim().toLowerCase();   // filter by the token being typed
   var items = state.routes.filter(function(r){
     if(!routePasses(r.name)) return false;
     if(!f) return true;
@@ -635,9 +657,7 @@ function renderList(filter){
   items.forEach(function(r,i){
     var o=document.createElement('div'); o.className='opt'; o.setAttribute('role','option'); o.id='ropt-'+i; o._route=r;
     o.innerHTML='<span class="num">'+esc(r.name)+'</span><span class="od">'+esc(r.od||'')+'</span>';
-    o.addEventListener('click', function(){
-      search.value=r.name; comboToggle(false); selectRoute(r);
-    });
+    o.addEventListener('click', function(){ pickInto(r.name); });   // adds to the comma list (multi-select)
     list.appendChild(o);
   });
   _comboIdx=-1;
@@ -660,7 +680,16 @@ search.addEventListener('keydown', function(e){
   if(list.classList.contains('hidden') && (e.key==='ArrowDown'||e.key==='ArrowUp')){ renderList(search.value); comboToggle(true); }
   if(e.key==='ArrowDown'){ e.preventDefault(); comboHighlight(_comboIdx+1); }
   else if(e.key==='ArrowUp'){ e.preventDefault(); comboHighlight(_comboIdx-1); }
-  else if(e.key==='Enter'){ var opts=list.querySelectorAll('.opt[role=option]'); var o=opts[_comboIdx]||opts[0]; if(o&&o._route){ e.preventDefault(); search.value=o._route.name; comboToggle(false); selectRoute(o._route); search.blur(); } }
+  else if(e.key==='Enter'){
+    e.preventDefault();
+    // if every comma token is already an exact route name, select them directly ("25,86")
+    var typed=search.value.split(',').map(function(t){return t.trim();}).filter(Boolean);
+    var exact=resolveRouteTokens(search.value);
+    if(exact.length && exact.length===typed.length){ comboToggle(false); search.value=exact.map(function(r){return r.name;}).join(','); selectRoutes(exact); search.blur(); return; }
+    // otherwise commit the highlighted (or first) option for the token being typed
+    var opts=list.querySelectorAll('.opt[role=option]'); var o=opts[_comboIdx>=0?_comboIdx:0];
+    if(o&&o._route){ pickInto(o._route.name); }
+  }
   else if(e.key==='Escape'){ comboToggle(false); }
 });
 document.addEventListener('click', function(e){ if(!e.target.closest('.combo')) comboToggle(false); });
@@ -675,27 +704,61 @@ document.querySelectorAll('#dirSeg button').forEach(function(b){
 });
 
 /* ============================ ROUTE GEOMETRY ============================ */
-function selectRoute(r){
-  state.routeId=r.id; state.routeName=r.name;
-  $('cRoute').textContent=r.name;
-  if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the single corridor
+// Multi-select: select one OR several routes. selected[0] is the primary (drives dossier/direction).
+function selectRoutes(arr){
+  var seen={}, sel=[];
+  (arr||[]).forEach(function(r){ if(r && !seen[r.id]){ seen[r.id]=1; sel.push(r); } });
+  if(!sel.length){ showNetwork(); return; }
+  state.selected=sel;
+  var primary=sel[0];
+  state.routeId=primary.id; state.routeName=primary.name;
+  $('cRoute').textContent = sel.length>1 ? (primary.name+' +'+(sel.length-1)) : primary.name;
+  if(map.hasLayer(networkLayer)) map.removeLayer(networkLayer);   // focus the selected corridor(s)
   hideNetLabel();
+  renderRouteChips();
   fetchRoute();
   syncURL();
 }
-// Shareable/bookmarkable state in the hash: route + direction.
+function selectRoute(r){ selectRoutes([r]); }
+// resolve a raw "25, 86" string (or array of tokens) → de-duped route objects (exact name match).
+function resolveRouteTokens(raw){
+  var toks=(Array.isArray(raw)?raw:String(raw||'').split(',')).map(function(t){return String(t).trim();}).filter(Boolean);
+  var out=[], seen={};
+  toks.forEach(function(t){
+    var r=(state.routes||[]).filter(function(x){return x.name.toLowerCase()===t.toLowerCase();})[0];
+    if(r && !seen[r.id]){ seen[r.id]=1; out.push(r); }
+  });
+  return out;
+}
+function removeRouteFromSelection(id){
+  var sel=state.selected.filter(function(x){return String(x.id)!==String(id);});
+  if(!sel.length){ $('routeSearch').value=''; showNetwork(); return; }
+  $('routeSearch').value=sel.map(function(r){return r.name;}).join(',');
+  selectRoutes(sel);
+}
+function renderRouteChips(){
+  var wrap=$('routeChips'); if(!wrap) return;
+  if(!state.selected || state.selected.length<2){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  wrap.style.display='flex';
+  wrap.innerHTML=state.selected.map(function(r){
+    return '<span class="rchip">'+esc(r.name)+'<button type="button" class="x" data-id="'+esc(r.id)+'" aria-label="Remove route '+esc(r.name)+'">&times;</button></span>';
+  }).join('');
+  wrap.querySelectorAll('.x').forEach(function(b){ b.addEventListener('click', function(){ removeRouteFromSelection(b.getAttribute('data-id')); }); });
+}
+// Shareable/bookmarkable state in the hash: route(s) + direction.
 function syncURL(){
   var p=new URLSearchParams();
-  if(state.routeName){ p.set('route', state.routeName); if(state.dir!=='outbound') p.set('dir', state.dir); }
+  if(state.selected && state.selected.length){ p.set('route', state.selected.map(function(r){return r.name;}).join(',')); if(state.dir!=='outbound') p.set('dir', state.dir); }
+  else if(state.routeName){ p.set('route', state.routeName); if(state.dir!=='outbound') p.set('dir', state.dir); }
   try{ history.replaceState(null,'', p.toString()?('#'+p.toString()):location.pathname+location.search); }catch(e){}
 }
 function restoreFromURL(){
   var h=(location.hash||'').replace(/^#/,''); if(!h) return false;
   var p=new URLSearchParams(h), rt=p.get('route'); if(!rt) return false;
-  var r=(state.routes||[]).filter(function(x){return x.name===rt;})[0]; if(!r) return false;
+  var picked=resolveRouteTokens(rt); if(!picked.length) return false;
   if(p.get('dir')==='inbound'){ state.dir='inbound';
     document.querySelectorAll('#dirSeg button').forEach(function(x){ x.classList.toggle('on', x.dataset.dir==='inbound'); }); }
-  $('routeSearch').value=r.name; selectRoute(r); return true;
+  $('routeSearch').value=picked.map(function(r){return r.name;}).join(','); selectRoutes(picked); return true;
 }
 
 /* ============================ NETWORK OVERVIEW (all routes by operator) ============================ */
@@ -742,10 +805,11 @@ function drawNetwork(){
   return Object.keys(names).length;
 }
 function showNetwork(){
-  state.routeId=null; state.routeName=null; state.routeSegments=[]; state.routePath=[];
+  state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[];
+  renderRouteChips();
   routeLayer.clearLayers(); stopLayer.clearLayers();
   $('cRoute').textContent='—'; $('cLen').textContent='—';
-  $('dossierCard').style.display='none';
+  $('dossierCards').innerHTML='';
   syncURL();
   status('Loading network…');
   ensureNetworkData().then(function(){
@@ -865,14 +929,16 @@ function toggleRoad(on){
 // Live buses — BODS SIRI-VM GPS through our API (/api/v1/live/vehicles). Route-scoped
 // when a route is selected; the whole network otherwise (same 10s-cached snapshot).
 function busIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:12px;height:12px;border-radius:50%;background:#4FD675;border:2px solid #0A0C10;box-shadow:0 0 7px rgba(79,214,117,.85)"></div>'}); }
+function selectedLineParam(){ return (state.selected&&state.selected.length)?state.selected.map(function(r){return r.id;}).join(','):(state.routeId||''); }
 function refreshBuses(){
   if(!$('tgBuses').checked) return;
-  var network=!state.routeId;
-  var tok=state.routeId||'__net';   // guard against a slow response landing after a route switch
-  var url=atlasBase()+'/live/vehicles'+(network?'':'?line='+encodeURIComponent(state.routeId));
+  var lp=selectedLineParam();                         // comma-joined ids for the selected route(s); endpoint splits on comma
+  var network=!lp;
+  var tok=lp||'__net';                                // guard against a slow response landing after a selection change
+  var url=atlasBase()+'/live/vehicles'+(network?'':'?line='+encodeURIComponent(lp));
   getJSON(url).then(function(j){
     if(!$('tgBuses').checked) return;                 // toggled off mid-flight
-    if((state.routeId||'__net')!==tok) return;        // selection changed mid-flight — drop stale buses
+    if((selectedLineParam()||'__net')!==tok) return;  // selection changed mid-flight — drop stale buses
     var arr=(j.data||j.vehicles||[]); busLayer.clearLayers();
     // in network view, scope live buses to the same routes the filters leave on screen,
     // so the dots match the visible network instead of showing the whole fleet.
@@ -902,50 +968,61 @@ function ensureRouteData(){
   if(!state.stopsAll) jobs.push(getJSON(atlasBase()+'/route-stops').then(function(s){ state.stopsAll=(s.routes||s); }));
   return Promise.all(jobs);
 }
+// pick the direction value to draw for a route, given the direction values present.
+// routes-overview.geojson encodes "1" = outbound, "2" = inbound (verified against the pipeline).
+function dirWantFor(dirs){
+  dirs=dirs.slice().sort();
+  if(dirs.indexOf('1')>=0 || dirs.indexOf('2')>=0){
+    return state.dir==='inbound' ? (dirs.indexOf('2')>=0 ? '2' : dirs[0]) : (dirs.indexOf('1')>=0 ? '1' : dirs[0]);
+  }
+  return (state.dir==='inbound' && dirs.length>1) ? dirs[dirs.length-1] : dirs[0];
+}
+// geometry + stops for one route in the current direction.
+function geometryFor(routeObj){
+  var feats=(state.overview.features||[]).filter(function(f){
+    var p=f.properties||{}; return String(p.routeId)===String(routeObj.id) || String(p.name)===String(routeObj.name);
+  });
+  if(!feats.length) return {segs:[], stops:[]};
+  var dirs=[]; feats.forEach(function(f){ var d=(f.properties||{}).direction; if(dirs.indexOf(d)<0) dirs.push(d); });
+  var want=dirWantFor(dirs);
+  var dirFeats=feats.filter(function(f){ return (f.properties||{}).direction===want; });
+  if(!dirFeats.length) dirFeats=feats;
+  var segs=[];
+  dirFeats.forEach(function(f){
+    var g=f.geometry; if(!g) return;
+    if(g.type==='LineString'){ segs.push(g.coordinates.map(function(p){return [p[1],p[0]];})); }
+    else if(g.type==='MultiLineString'){ g.coordinates.forEach(function(seg){ segs.push(seg.map(function(p){return [p[1],p[0]];})); }); }
+  });
+  segs=segs.filter(function(s){return s.length;});
+  var sd=state.stopsAll && state.stopsAll[routeObj.name];
+  var slist = sd ? (sd[state.dir] || sd.outbound || sd.inbound || []) : [];
+  var stops=[];
+  slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) stops.push({lat:s.lat, lon:s.lng, name:s.name}); });
+  return {segs:segs, stops:stops};
+}
 function fetchRoute(){
-  status('Loading route '+state.routeName+' ('+state.dir+')…');
+  var sel = (state.selected && state.selected.length) ? state.selected
+          : (state.routeId ? [{id:state.routeId, name:state.routeName}] : []);
+  if(!sel.length) return;
+  var label = sel.length>1 ? (sel.length+' routes') : ('route '+state.routeName);
+  status('Loading '+label+' ('+state.dir+')…');
   ensureRouteData().then(function(){
-    var feats=(state.overview.features||[]).filter(function(f){
-      var p=f.properties||{}; return String(p.routeId)===String(state.routeId) || String(p.name)===String(state.routeName);
-    });
-    if(!feats.length){ status('No geometry on record for '+state.routeName+'.', 'err'); return; }
-    // direction: routes-overview.geojson encodes "1" = outbound, "2" = inbound (verified against
-    // the pipeline). Map explicitly; for any other vocabulary fall back to sorted order
-    // (outbound = first, inbound = second/last). One-directional routes degrade to all geometry below.
-    var dirs=[]; feats.forEach(function(f){ var d=(f.properties||{}).direction; if(dirs.indexOf(d)<0) dirs.push(d); }); dirs.sort();
-    var want;
-    if(dirs.indexOf('1')>=0 || dirs.indexOf('2')>=0){
-      want = state.dir==='inbound' ? (dirs.indexOf('2')>=0 ? '2' : dirs[0]) : (dirs.indexOf('1')>=0 ? '1' : dirs[0]);
-    } else {
-      want = (state.dir==='inbound' && dirs.length>1) ? dirs[dirs.length-1] : dirs[0];
-    }
-    var dirFeats=feats.filter(function(f){ return (f.properties||{}).direction===want; });
-    if(!dirFeats.length) dirFeats=feats;
-    var segs=[];
-    dirFeats.forEach(function(f){
-      var g=f.geometry; if(!g) return;
-      if(g.type==='LineString'){ segs.push(g.coordinates.map(function(p){return [p[1],p[0]];})); }
-      else if(g.type==='MultiLineString'){ g.coordinates.forEach(function(seg){ segs.push(seg.map(function(p){return [p[1],p[0]];})); }); }
-    });
-    segs=segs.filter(function(s){return s.length;});
-    if(!segs.length){ status('No '+state.dir+' geometry for '+state.routeName+'.', 'err'); return; }
+    var segs=[], stops=[];
+    sel.forEach(function(r){ var g=geometryFor(r); segs=segs.concat(g.segs); stops=stops.concat(g.stops); });
+    if(!segs.length){ status('No '+state.dir+' geometry on record for '+label+'.', 'err'); return; }
     state.routeSegments=segs;
-    drawRoute();
-    // stops (DB-backed, directional)
-    stopLayer.clearLayers(); state._stops=[];
-    var sd=state.stopsAll && state.stopsAll[state.routeName];
-    var slist = sd ? (sd[state.dir] || sd.outbound || sd.inbound || []) : [];
-    slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) state._stops.push({lat:s.lat, lon:s.lng, name:s.name}); });
+    drawRoute();   // sets state.routePath + routeLenKm from the accumulated segments
+    stopLayer.clearLayers(); state._stops=stops;
     renderStops();
     $('emptyState').style.display='none';
-    status('Route '+state.routeName+' · '+fmtKm(state.routeLenKm)+' · '+(state._stops.length)+' stops', 'ok');
+    status((sel.length>1?sel.length+' routes':'Route '+state.routeName)+' · '+fmtKm(state.routeLenKm)+' · '+(state._stops.length)+' stops', 'ok');
     // move lenses onto the corridor if they aren't placed yet
     ensureLensesOnRoute();
     updateAllLenses();
-    // re-apply live Atlas layers to the new corridor
+    // re-apply live Atlas layers to the new corridor(s)
     if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
-    if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route
+    if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route(s)
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
   renderDossier();
 }
@@ -965,78 +1042,94 @@ function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){retur
 function drow(k,v,color){ if(v==null||v==='') return ''; var t=esc(String(v));
   return '<div class="drow"><span class="dk">'+esc(k)+'</span><span class="dv"'+(color?' style="color:'+color+'"':'')+' title="'+t+'">'+t+'</span></div>'; }
 function dsec(label,annot){ return '<div class="dsec">'+esc(label)+(annot?'<span class="da">'+esc(annot)+'</span>':'')+'</div>'; }
+// one collapsible dossier card (per info type). Wired for keyboard collapse via wireCardHeader.
+function dcardHTML(title, annot, rows, open){
+  return '<div class="card dcard'+(open?' open':'')+'" data-card="">'+
+    '<div class="card-h"><div class="dot"></div><h2>'+esc(title)+'</h2>'+
+    (annot?'<span class="card-annot">'+esc(annot)+'</span>':'')+'<span class="chev">▶</span></div>'+
+    '<div class="card-b dossier-b">'+rows+'</div></div>';
+}
 function renderDossier(){
   var name=state.routeName; if(!name) return;
-  var card=$('dossierCard'), title=$('dossierTitle'), body=$('dossierBody');
-  card.style.display='block'; title.textContent='Route '+name;
-  body.innerHTML='<div class="dempty">Loading route detail…</div>';
+  var cont=$('dossierCards'); if(!cont) return;
+  var multi=(state.selected&&state.selected.length>1);
+  var rtitle='Route '+name+(multi?' +'+(state.selected.length-1):'');
+  cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Loading route detail…</div>', true);
   ensureDossierData().then(function(){
     if(state.routeName!==name) return;   // selection changed while loading
     var m=(state.meta||{})[name]||{};
     var pf=(state.perf||{})[name]||(state.perf||{})[String(name).toUpperCase()]||null;
     var tn=(state.tenders||{})[name]||[];
     var fl=(state.fleet||{})[name]||null;
-    var html='';
+    var cards='';
 
-    // Identity — short labels, value column left-aligned for easy scanning.
-    html+=drow('Operator', m.operator);
-    html+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
-    html+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
-    html+=drow('PVR', m.pvr);
-    html+=drow('Spec', m.fleet);
-    html+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
+    // ── Route info card (identity; live Status fills the slot when it arrives) ──
+    var ident='<div id="dossierStatusSlot"></div>';
+    ident+=drow('Operator', m.operator);
+    ident+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:null, m.propulsion?PROP_COL[m.propulsion]:null);
+    ident+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||null));
+    ident+=drow('PVR', m.pvr);
+    ident+=drow('Spec', m.fleet);
+    ident+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
+    cards+=dcardHTML(rtitle, null, ident, true);
 
-    // Reliability
+    // ── Reliability card ──
     if(pf){
-      html+=dsec('Reliability', pf.serviceClass);
+      var r='';
       if(pf.serviceClass==='high-frequency' && pf.ewtMinutes!=null)
-        html+=drow('EWT', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
-      if(pf.onTimePercent!=null) html+=drow('OTP', Math.round(pf.onTimePercent)+'%'+(pf.otpMps!=null?' · MPS '+pf.otpMps:''));
-      if(pf.mileagePercent!=null) html+=drow('Mileage', pf.mileagePercent.toFixed(1)+'%'+(pf.mileageMps!=null?' · MPS '+pf.mileageMps:''));
+        r+=drow('EWT', pf.ewtMinutes.toFixed(1)+' min'+(pf.ewtMps!=null?' · MPS '+pf.ewtMps:''));
+      if(pf.onTimePercent!=null) r+=drow('OTP', Math.round(pf.onTimePercent)+'%'+(pf.otpMps!=null?' · MPS '+pf.otpMps:''));
+      if(pf.mileagePercent!=null) r+=drow('Mileage', pf.mileagePercent.toFixed(1)+'%'+(pf.mileageMps!=null?' · MPS '+pf.mileageMps:''));
+      if(r) cards+=dcardHTML('Reliability', pf.serviceClass, r, true);
     }
 
-    // Commercial — latest award + won price, previous operator, contract expiry
+    // ── Commercial card — latest award + won price, previous operator, contract expiry ──
     if(tn.length){
-      var a=tn[0], jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary;
-      html+=dsec('Commercial', tn.length+' awards');
-      html+=drow('Operator', a.operator);
-      html+=drow('Awarded', a.awardDate);
-      if(a.acceptedBid>0) html+=drow('Won', '£'+Math.round(a.acceptedBid).toLocaleString('en-GB')+' pa');
-      if(a.costPerMile>0&&a.costPerMile<=200) html+=drow('£/mile', '£'+a.costPerMile.toFixed(2));
-      if(a.lowestBid&&a.highestBid&&a.highestBid!==a.lowestBid) html+=drow('Bid range', '£'+Math.round(a.lowestBid).toLocaleString('en-GB')+' – £'+Math.round(a.highestBid).toLocaleString('en-GB'));
-      if(a.tranche!=null) html+=drow('Tranche', a.tranche);
+      var a=tn[0], jb=a.jb&&a.jb.isJoint, veh=a.vehicle&&a.vehicle.summary, c='';
+      c+=drow('Operator', a.operator);
+      c+=drow('Awarded', a.awardDate);
+      if(a.acceptedBid>0) c+=drow('Won', '£'+Math.round(a.acceptedBid).toLocaleString('en-GB')+' pa');
+      if(a.costPerMile>0&&a.costPerMile<=200) c+=drow('£/mile', '£'+a.costPerMile.toFixed(2));
+      if(a.lowestBid&&a.highestBid&&a.highestBid!==a.lowestBid) c+=drow('Bid range', '£'+Math.round(a.lowestBid).toLocaleString('en-GB')+' – £'+Math.round(a.highestBid).toLocaleString('en-GB'));
+      if(a.tranche!=null) c+=drow('Tranche', a.tranche);
       var bid = jb ? ('Joint'+(a.jb.total?' · £'+a.jb.total.toLocaleString('en-GB'):'')+((a.jb.partners&&a.jb.partners.length)?' (with '+a.jb.partners.slice(0,3).join(', ')+(a.jb.partners.length>3?'…':'')+')':'')) : 'Sole';
-      html+=drow('Bid', bid, jb?'var(--amber)':null);
-      if(veh) html+=drow('Vehicle', veh, 'var(--cyan)');
+      c+=drow('Bid', bid, jb?'var(--amber)':null);
+      if(veh) c+=drow('Vehicle', veh, 'var(--cyan)');
       var prevOp=null; for(var i=1;i<tn.length;i++){ if(tn[i].operator && tn[i].operator!==a.operator){ prevOp=tn[i].operator; break; } }
-      if(prevOp) html+=drow('Previous', prevOp);
+      if(prevOp) c+=drow('Previous', prevOp);
       var exp=monthsUntil(m.contractEnd);
-      if(exp!=null) html+=drow('Expires', m.contractEnd+(exp<=0?' · expired':' · '+Math.floor(exp/12)+'y '+(exp%12)+'m left'), exp<=6?'var(--amber)':null);
+      if(exp!=null) c+=drow('Expires', m.contractEnd+(exp<=0?' · expired':' · '+Math.floor(exp/12)+'y '+(exp%12)+'m left'), exp<=6?'var(--amber)':null);
+      cards+=dcardHTML('Commercial', tn.length+' awards', c, false);
     }
 
-    // Fleet — live sample (count, age, propulsion mix, top make)
+    // ── Fleet card — live sample ──
     if(fl && (fl.count||fl.avgAgeYears!=null)){
-      html+=dsec('Fleet', 'live sample');
-      html+=drow('On road', fl.count);
-      if(fl.avgAgeYears!=null) html+=drow('Avg age', fl.avgAgeYears+' yrs');
+      var f='';
+      f+=drow('On road', fl.count);
+      if(fl.avgAgeYears!=null) f+=drow('Avg age', fl.avgAgeYears+' yrs');
       // DVLA reliably flags electric/hydrogen (but reports hybrids as diesel), so only
       // surface the trustworthy zero-emission count — the genuine re-fleet signal.
       if(fl.propulsion){ var zp=[]; if(fl.propulsion.electric) zp.push('Electric '+fl.propulsion.electric); if(fl.propulsion.hydrogen) zp.push('Hydrogen '+fl.propulsion.hydrogen);
-        if(zp.length) html+=drow('Zero-em', zp.join(' · '), '#7ED957'); }
-      if(fl.makes&&fl.makes.length) html+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
+        if(zp.length) f+=drow('Zero-em', zp.join(' · '), '#7ED957'); }
+      if(fl.makes&&fl.makes.length) f+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
+      cards+=dcardHTML('Fleet', 'live sample', f, false);
     }
 
-    if(!html) html='<div class="dempty">No detail on record for route '+esc(name)+'.</div>';
-    body.innerHTML=html;
-    // live line status (non-cached) — prepended as the first row when it arrives.
+    cont.innerHTML = cards || dcardHTML(rtitle, null, '<div class="dempty">No detail on record for route '+esc(name)+'.</div>', true);
+    cont.querySelectorAll('.card-h').forEach(wireCardHeader);
+
+    // live line status (non-cached) — fills the Route card's status slot when it arrives.
     getJSON(atlasBase()+'/live/status?route='+encodeURIComponent(name)).then(function(j){
       if(state.routeName!==name) return;
-      var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]); var ln=arr[0];
+      var arr=Array.isArray(j.data)?j.data:(Array.isArray(j)?j:[]);
+      // match the line that IS this route (by id/name), not just arr[0] — a multi-line response
+      // could otherwise surface a different line's status (e.g. a wrong "Special Service").
+      var ln=arr.filter(function(x){return String(x.id)===String(name)||String(x.name)===String(name);})[0]||arr[0];
       var s=ln&&ln.lineStatuses&&ln.lineStatuses[0]; var sev=s&&s.statusSeverityDescription;
       if(!sev) return; var good=/good service/i.test(sev);
-      body.insertAdjacentHTML('afterbegin', drow('Status', sev, good?'#4FD675':'var(--amber)'));
+      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, good?'#4FD675':'var(--amber)');
     }).catch(function(){});
-  }).catch(function(e){ body.innerHTML='<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>'; });
+  }).catch(function(e){ cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>', true); cont.querySelectorAll('.card-h').forEach(wireCardHeader); });
 }
 function drawRoute(){
   routeLayer.clearLayers();
@@ -1064,7 +1157,10 @@ function renderStops(){
   });
 }
 $('tgStops').addEventListener('change', function(){
-  if(this.checked){ map.addLayer(stopLayer); renderStops(); } else { map.removeLayer(stopLayer); }
+  if(this.checked){
+    if(!state.routePath.length){ this.checked=false; status('Pick a route first — stops show along its corridor.', 'err'); return; }
+    map.addLayer(stopLayer); renderStops();
+  } else { map.removeLayer(stopLayer); }
 });
 $('tgBase').addEventListener('change', function(){
   if(this.checked) map.addLayer(baseLayer); else map.removeLayer(baseLayer);
@@ -1174,7 +1270,13 @@ function buildPoints(){
 }
 // Lens controls are noise without incident data — show the card only when there's something
 // to profile (Collisions on, or a CSV/sample loaded), hide it otherwise.
-function syncLensCard(){ var c=$('lensCfgCard'); if(c) c.style.display = state.points.length ? '' : 'none'; }
+function syncLensCard(){
+  var has=state.points.length>0;
+  var c=$('lensCfgCard'); if(c) c.style.display = has ? '' : 'none';
+  // Heatmap operates on the collision points — only offer it when there's data to heat-map.
+  var rh=$('rowHeat'); if(rh) rh.style.display = has ? '' : 'none';
+  if(!has && $('tgHeat') && $('tgHeat').checked){ $('tgHeat').checked=false; setHeat(false); }
+}
 
 /* ============================ ATLAS (live STATS19 + low bridges) ============================ */
 function atlasBase(){ var el=$('atlasBase'); return ((el&&el.value)||ATLAS_DEFAULT).trim().replace(/\/+$/,''); }
@@ -1259,7 +1361,7 @@ function drawBridges(all){
 }
 function renderBridges(on){
   if(!on){ map.removeLayer(bridgeLayer); return; }
-  if(!state.routePath.length){ $('tgBridges').checked=false; status('Pick a route first.', 'err'); return; }
+  if(!state.routePath.length){ $('tgBridges').checked=false; status('Pick a route first — low bridges flag along its corridor.', 'err'); return; }
   if(state.bridges){ drawBridges(state.bridges); return; }
   status('Loading low bridges from Atlas…');
   getJSON(atlasBase()+'/bridges')
@@ -1671,6 +1773,15 @@ $('tgHeat').addEventListener('change', function(){ setHeat(this.checked); });
   });
 });
 $('netBtn').addEventListener('click', showNetwork);
+// Clear all: wipe filters + route selection + the search box, back to the whole-network view.
+$('clearAllBtn').addEventListener('click', function(){
+  FILTERS.operator.clear(); FILTERS.type.clear(); FILTERS.propulsion.clear();
+  $('routeSearch').value=''; state.selected=[];
+  buildFilterChips();
+  showNetwork();   // resets selection/chips and redraws the network
+  applyFiltersUI();
+  status('Cleared all routes + filters', 'ok');
+});
 $('tgGarages').addEventListener('change', function(){ toggleGarages(this.checked); });
 $('tgRoad').addEventListener('change', function(){ toggleRoad(this.checked); });
 $('tgBuses').addEventListener('change', function(){ toggleBuses(this.checked); });
