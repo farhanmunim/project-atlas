@@ -74,8 +74,13 @@ async function accidentsSnapshot(origin, q, limit, order) {
   let snap;
   try {
     // fetch the static asset directly (edge-cached) — not /api/v1/accidents, which would add a
-    // Function-to-Function subrequest hop (and can time the Function out).
-    const r = await fetch(`${origin}/data/accidents.json`, { cf: { cacheTtl: 300, cacheEverything: true } });
+    // Function-to-Function subrequest hop. Bounded by an 8s abort so a slow/hanging fetch fails
+    // FAST to the graceful 400 below rather than hanging the Function to a 524 gateway timeout.
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    let r;
+    try { r = await fetch(`${origin}/data/accidents.json`, { cf: { cacheTtl: 600, cacheEverything: true }, signal: ctrl.signal }); }
+    finally { clearTimeout(t); }
     if (!r.ok) return null;
     const d = await r.json();
     snap = Array.isArray(d) ? d : (d && d.accidents) || null;
