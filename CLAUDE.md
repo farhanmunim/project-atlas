@@ -318,9 +318,11 @@ can never block the Cloudflare site.
   Supabase upsert: `ingest/scripts/push-to-supabase.js` → tables `vehicles`,
   `route_snapshots`, `garage_snapshots`, `route_performance`, `tenders`,
   `tender_programme`, `route_vehicle_observations`, `route_vehicle_sightings`,
-  **`accidents`** (STATS19 collisions), and the live-reliability tables
-  (`route_schedule`, `arrival_samples`, `route_reliability_daily` — our own
-  EWT/OTD/lost-mileage, see below).
+  **`accidents`** (STATS19 collisions), **`bus_crowding`** (TfL BUSTO per route per
+  year — `fetch-crowding.js` streams the BUSTO CSV, conditional-skips when the year
+  is unchanged, `pushCrowding()` upserts per `(route_id, busto_year)`), and the
+  live-reliability tables (`route_schedule`, `arrival_samples`,
+  `route_reliability_daily` — our own EWT/OTD/lost-mileage, see below).
 - **Reuses the existing Supabase project from london-buses**, so tables
   `0001`–`0013` were already live (no migration needed at the switch). **New
   migrations to run once in Supabase SQL Editor:** `0014_accidents.sql`,
