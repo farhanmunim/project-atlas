@@ -788,6 +788,12 @@ function operatorColor(op){ return OP_COLORS[op] || "#647691"; }
 /* BUSTO crowding (peak V/C band) — colour + lookup helpers (the "Crowding" colour-by mode) */
 const CROWD_COL = { comfortable:"var(--green)", moderate:"var(--cyan)", busy:"var(--amber)", crowded:"var(--alert)" };
 const CROWD_LABEL = { comfortable:"Comfortable", moderate:"Moderate", busy:"Busy", crowded:"Crowded" };
+const CROWD_THRESH = { comfortable:"<50%", moderate:"50–65%", busy:"65–80%", crowded:"≥80%" };
+// the Crowding band key (colour → band → V/C threshold) — used in the map legend.
+function crowdKeyHtml(title){
+  return `<div class='lh'>${title}</div>`+["comfortable","moderate","busy","crowded"].map(b=>
+    `<div class="lr"><span class="lc" style="background:${CROWD_COL[b]}"></span>${CROWD_LABEL[b]}<span style="margin-left:auto;color:var(--paper-4);font-family:var(--mono);font-size:10px">${CROWD_THRESH[b]}</span></div>`).join("");
+}
 function crowdingOf(name){ return (store.crowding && store.crowding[name]) || null; }
 function crowdingColor(name){ const c=crowdingOf(name); return c ? (CROWD_COL[c.band]||"#647691") : "var(--paper-4)"; }
 const CROWD_HEX = { comfortable:"#3fb87a", moderate:"#37c5c5", busy:"#f5a524", crowded:"#ff5470" };   // raw hex for canvas/SVG (var() won't resolve there)
@@ -1380,11 +1386,13 @@ function updateLegend(){
   const el=document.getElementById("mapLegend");
   const parts=[];
   // ── colour-by section ──
-  if((mode==="route" && !selected.length) || mode==="catch"){
+  // a selected route in Crowding mode shows the corridor GRADIENT → it needs the band key too.
+  if(colorMode==="crowding" && showRoutes && selectMode==="single" && selected.length){
+    parts.push(crowdKeyHtml("Crowding · V/C along route"));
+  } else if((mode==="route" && !selected.length) || mode==="catch"){
     if(showRoutes){
       if(colorMode==="crowding"){
-        parts.push("<div class='lh'>Crowding · peak V/C</div>"+
-          ["comfortable","moderate","busy","crowded"].map(b=>`<div class="lr"><span class="lc" style="background:${CROWD_COL[b]}"></span>${CROWD_LABEL[b]}</div>`).join("")+
+        parts.push(crowdKeyHtml("Crowding · peak V/C")+
           `<div class="lr"><span class="lc" style="background:var(--paper-4)"></span>No data</div>`);
       } else if(colorMode==="operator"){
         const ops=[...new Set(applyFilters(routes).map(r=>metaOf(r).op).filter(Boolean))].sort();

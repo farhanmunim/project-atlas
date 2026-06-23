@@ -336,6 +336,16 @@
   }
   #status.show{display:flex}
   #status .pulse{width:7px; height:7px; border-radius:50%; background:var(--amber); flex:0 0 auto}
+  /* crowding key — bottom-left map legend for the Crowding layer */
+  #crowdKey{bottom:14px; left:14px; background:var(--panel-solid); border:1px solid var(--border); border-radius:9px;
+    padding:9px 11px; box-shadow:var(--shadow); display:none; flex-direction:column; gap:4px; min-width:138px}
+  #crowdKey.show{display:flex}
+  #crowdKey .ck-title{font-family:var(--mono); font-size:8.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); margin-bottom:2px}
+  #crowdKey .ck-row{display:flex; align-items:center; gap:7px; font-size:11px; color:var(--text)}
+  #crowdKey .ck-sw{width:11px; height:11px; border-radius:3px; flex:0 0 auto}
+  #crowdKey .ck-v{margin-left:auto; font-family:var(--mono); font-size:9.5px; color:var(--faint)}
+  #crowdKey .ck-foot{font-family:var(--mono); font-size:8.5px; color:var(--faint); margin-top:3px; letter-spacing:.04em}
+  @media (max-width:720px){ #crowdKey{display:none!important} }
   #status.err .pulse{background:var(--red-bright)}
   #status.ok .pulse{background:#4FD675}
 
@@ -530,6 +540,16 @@
 <div class="hud" id="status" role="status" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">676 routes ready</span></div>
 
 <div class="hud" id="tileWarn" role="status" style="display:none">⚠ Basemap unavailable (offline?) — routes &amp; data still work.</div>
+
+<!-- crowding key (shown only while the Crowding layer is on; default hidden via CSS) -->
+<div class="hud" id="crowdKey">
+  <div class="ck-title">Crowding · V/C</div>
+  <div class="ck-row"><span class="ck-sw" style="background:#3FB87A"></span><span>Comfortable</span><span class="ck-v">&lt;50%</span></div>
+  <div class="ck-row"><span class="ck-sw" style="background:#36C5F0"></span><span>Moderate</span><span class="ck-v">50–65%</span></div>
+  <div class="ck-row"><span class="ck-sw" style="background:#F2A20C"></span><span>Busy</span><span class="ck-v">65–80%</span></div>
+  <div class="ck-row"><span class="ck-sw" style="background:#FF463F"></span><span>Crowded</span><span class="ck-v">≥80%</span></div>
+  <div class="ck-foot" id="crowdKeyFoot">peak load per route</div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
@@ -778,6 +798,7 @@ function selectRoutes(arr){
   renderRouteChips();
   syncClearAll();
   updateKPIs();   // header KPIs now scope to the selected route(s)
+  syncCrowdKey();   // crowding key footnote: corridor vs network
   fetchRoute();
   syncURL();
 }
@@ -908,6 +929,7 @@ function showNetwork(){
   state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[]; state._stops=[];
   renderRouteChips();
   syncClearAll();
+  syncCrowdKey();   // back to network → key footnote reverts to "peak load per route"
   routeLayer.clearLayers(); stopLayer.clearLayers();
   $('cLen').textContent='—';
   $('dossierCards').innerHTML='';
@@ -2037,8 +2059,15 @@ $('exportBtn').addEventListener('click', exportCurrentCSV);
 $('tgCollisions').addEventListener('change', function(){ toggleCollisions(this.checked); });
 $('tgBridges').addEventListener('change', function(){ renderBridges(this.checked); });
 // Crowding colour layer — tints route lines (network or the selected corridor) by BUSTO peak-load band.
+// the map key for the Crowding layer — shown only while it's on; footnote reflects route vs network.
+function syncCrowdKey(){
+  var k=$('crowdKey'); if(!k) return;
+  k.classList.toggle('show', !!state.crowdMode);
+  var f=$('crowdKeyFoot'); if(f) f.textContent = state.routeName ? 'V/C along the corridor' : 'peak load per route';
+}
 function toggleCrowding(on){
   state.crowdMode=on;
+  syncCrowdKey();
   Promise.all([ensureCrowding(), on && state.routeId ? ensureCrowdingProfile() : Promise.resolve()]).then(function(){
     if(state.routeId){ drawRoute(); } else if(state.overview){ drawNetwork(); }
     status(on?(state.routeId?'Corridor coloured by crowding · TfL BUSTO':'Routes coloured by crowding · TfL BUSTO peak load'):'Crowding layer off','ok');
