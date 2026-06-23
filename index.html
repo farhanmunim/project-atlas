@@ -623,6 +623,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
         <div class="seg" aria-label="Colour routes by">
           <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
           <button type="button" data-k="ctype" data-tip="Colour routes by type">Type</button>
+          <button type="button" data-k="ccrowd" data-tip="Colour routes by crowding (TfL BUSTO peak load)">Crowding</button>
         </div>
       </div>
       <button class="iconbtn" id="exportBtn" type="button" aria-label="Export current view as CSV" data-tip="Export current view as CSV">
@@ -780,6 +781,12 @@ const OP_COLORS = {
   "Uno":"#5aa632",                  // Uno green
 };
 function operatorColor(op){ return OP_COLORS[op] || "#647691"; }
+/* BUSTO crowding (peak V/C band) — colour + lookup helpers (the "Crowding" colour-by mode) */
+const CROWD_COL = { comfortable:"var(--green)", moderate:"var(--cyan)", busy:"var(--amber)", crowded:"var(--alert)" };
+const CROWD_LABEL = { comfortable:"Comfortable", moderate:"Moderate", busy:"Busy", crowded:"Crowded" };
+function crowdingOf(name){ return (store.crowding && store.crowding[name]) || null; }
+function crowdingColor(name){ const c=crowdingOf(name); return c ? (CROWD_COL[c.band]||"#647691") : "var(--paper-4)"; }
+function colorLabel(){ return colorMode==="crowding" ? "crowding" : colorMode==="operator" ? "operator" : "type"; }
 const OP_INITIALS = {
   "Arriva London":"AR", "Go-Ahead London":"GA", "Metroline":"ML", "Stagecoach London":"SC",
   "First Bus London":"FB", "Transport UK London Bus (RATP)":"TUK", "Uno":"UN",
@@ -998,7 +1005,7 @@ function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)
    warehouse lands, only this loader changes. Falls back silently to live TfL +
    sample if the store can't be read (e.g. opened as a file:// page).
    =========================================================================== */
-const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null };
+const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null };
 async function loadStore(){
   if(!CONFIG.preferStore) return false;
   // Read our own public API first (/api/v1/* — the versioned, CORS-open surface served
@@ -1031,6 +1038,8 @@ async function loadStore(){
     if(accidents && Array.isArray(accidents.accidents)) store.accidents = accidents;   // Sentinel: { accidents:[{lat,lng,severity,date,borough}], sample, period }
     const bridges = await fetchData("bridges","bridges.json");
     if(bridges && Array.isArray(bridges.bridges)) store.bridges = bridges;   // low bridges: { bridges:[{lat,lng,height_m,name,road}], sample }
+    const crowding = await fetchData("crowding","crowding.json");
+    if(crowding && crowding.routes){ store.crowding = crowding.routes; store.crowdingMeta = { year:crowding.year, bands:crowding.bands, source:crowding.source }; }   // BUSTO: { [routeName]: { peakVC, band, load, capacity, stopname, time, dayType, byDay } }
     store.manifest = manifest;
     if(overview && Array.isArray(overview.features)){
       overview.features.forEach(f => {
@@ -1235,6 +1244,7 @@ function colorFor(i){
   if(selectMode==="multi") return MULTI_PALETTE[i%MULTI_PALETTE.length];          // distinct per route when comparing
   const r=selected[i]||selected[0]; if(!r) return TYPE_DEFS.regular.hex;
   // single select honours the colour-by mode, same as the network lines
+  if(colorMode==="crowding") return crowdingColor(r.name);
   return colorMode==="operator" ? operatorColor(metaOf(r).op) : TYPE_DEFS[typeOf(r)].hex;
 }
 function drawRoutes(fit=true){
@@ -1321,7 +1331,11 @@ function updateLegend(){
   // ── colour-by section ──
   if((mode==="route" && !selected.length) || mode==="catch"){
     if(showRoutes){
-      if(colorMode==="operator"){
+      if(colorMode==="crowding"){
+        parts.push("<div class='lh'>Crowding · peak V/C</div>"+
+          ["comfortable","moderate","busy","crowded"].map(b=>`<div class="lr"><span class="lc" style="background:${CROWD_COL[b]}"></span>${CROWD_LABEL[b]}</div>`).join("")+
+          `<div class="lr"><span class="lc" style="background:var(--paper-4)"></span>No data</div>`);
+      } else if(colorMode==="operator"){
         const ops=[...new Set(applyFilters(routes).map(r=>metaOf(r).op).filter(Boolean))].sort();
         if(ops.length) parts.push("<div class='lh'>Operator</div>"+ops.slice(0,8).map(o=>`<div class="lr"><span class="lc" style="background:${operatorColor(o)}"></span>${esc(shortOp(o))}</div>`).join(""));
       } else {
@@ -1377,7 +1391,7 @@ function refreshMap(fit=true){
 }
 
 function mkNetworkLine(r, coords){
-  const col = colorMode==="operator" ? operatorColor(metaOf(r).op) : TYPE_DEFS[typeOf(r)].hex;
+  const col = colorMode==="crowding" ? crowdingColor(r.name) : colorMode==="operator" ? operatorColor(metaOf(r).op) : TYPE_DEFS[typeOf(r)].hex;
   // non-interactive so a click bubbles to the map → "Routes here" popup (handles overlapping lines)
   return L.polyline(coords||r._seq.coords,{color:col,weight:2.8,opacity:.9,lineCap:"round",lineJoin:"round",interactive:false});
 }
@@ -1568,7 +1582,7 @@ function drawNetworkFromStore(filtered){
   routeLayer.clearLayers(); stopLayer.clearLayers(); divLayer.clearLayers();
   let drawn=0;
   filtered.forEach(r=>{ const coords=storeCoordsFor(r.id); if(coords && coords.length>1){ routeLayer.addLayer(mkNetworkLine(r,coords)); drawn++; } });
-  setMapNote(`${drawn} route${drawn===1?"":"s"} · coloured by ${colorMode==="operator"?"operator":"type"}`);
+  setMapNote(`${drawn} route${drawn===1?"":"s"} · coloured by ${colorLabel()}`);
   updateLegend();
 }
 /* drawNetwork — the default/“all routes” view: every filtered route's geometry,
@@ -1589,7 +1603,7 @@ async function drawNetwork(){
   const cap=filtered.slice(0,MAX_DRAW);
   setMapNote(filtered.length>MAX_DRAW
     ? `Showing ${MAX_DRAW} of ${filtered.length} routes · filter or select to focus`
-    : `${filtered.length} route${filtered.length===1?"":"s"} · coloured by ${colorMode==="operator"?"operator":"type"}`);
+    : `${filtered.length} route${filtered.length===1?"":"s"} · coloured by ${colorLabel()}`);
   updateLegend();
   // pass 1 — paint everything already cached, in one synchronous batch
   const need=[];
@@ -1776,7 +1790,7 @@ function renderFilters(){
 function syncMapCtl(){
   const c=document.getElementById("mapCtl"); if(!c) return;
   const set=(k,on)=>{ const el=c.querySelector(`[data-k="${k}"]`); el.classList.toggle("on",on); el.setAttribute("aria-pressed",String(on)); };
-  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("incidents",showIncidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator");
+  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("incidents",showIncidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator"); set("ccrowd",colorMode==="crowding");
 }
 /* ⟳ — refresh ALL data Atlas uses (every store dataset + the selected route's live
    status), not just the filtered view. Clears all caches first so nothing is stale. */
@@ -1784,7 +1798,7 @@ async function refreshAll(){
   const btn=document.getElementById("refresh"); if(!reduceMotion()) btn.classList.add("spin"); btn.disabled=true;
   try{
     store.via=null; store.overviewByRoute=new Map();
-    store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.manifest=null;
+    store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.crowding=store.manifest=null;
     seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear(); roadIncidents=null;   // drop ALL in-memory caches → genuinely re-pull
     await loadStore();              // routes, geometry, stops, route-meta, tenders, garages
     await loadRoutes();             // sets lastFetched = now → badge confirms the refresh
@@ -1850,20 +1864,23 @@ function routesTableHTML(){
     const jbCell = lt ? (isJointBid(lt)?`<span style="color:var(--amber)">joint</span>`:`<span style="color:var(--paper-3)">sole</span>`) : "—";
     const veh = lt&&awardedVehicle(lt) ? awardedVehicle(lt).summary : null;
     const tr = lt&&lt.tranche!=null ? lt.tranche : null;
+    const cw = crowdingOf(r.name);
+    const cwCell = cw ? `<span class="tdot" style="background:${CROWD_COL[cw.band]}"></span>${Math.round(cw.peakVC*100)}<span class="u">%</span>` : "—";
     return `<tr data-id="${esc(r.id)}"><td class="rno">${esc(r.name)}</td>
       <td><span class="tdot" style="background:${d.color}"></span>${d.label}</td>
       <td>${esc(m.op?shortOp(m.op):"—")}</td><td>${esc(m.garage||"—")}</td>
       <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
+      <td class="num" title="${cw?esc(CROWD_LABEL[cw.band]+" · peak "+Math.round(cw.peakVC*100)+"% V/C "+cw.dayType+" "+String(cw.time).slice(0,5)):"no BUSTO data"}">${cwCell}</td>
       <td class="num" style="font-size:10px">${contract}</td>
       <td class="num">${cpm!=null?"£"+cpm:"—"}</td>
       <td>${jbCell}</td>
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="15" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2610,10 +2627,32 @@ function renderContext(){
         : `<div class="empty" style="padding:var(--s3) 0">No operator/fleet record for this route yet.</div>`)+
        crossLink(meta._src==="londonbusroutes.net"?"source · londonbusroutes.net (operator/garage/fleet/PVR)":"sample — not in the free TfL feed"));
   const liveSummary = trackingOn()?`${liveVehicles.length} live`:(st?esc(st.description):"");
+  // Crowding (TfL BUSTO) — the route's busiest point: peak V/C (load÷capacity at the
+  // max-demand hour), banded, with the per-day-type peak. Source: data/crowding.json.
+  const cInfo = store.crowding && store.crowding[r.name];
+  const crowdingBlock = (()=>{
+    if(!cInfo) return "";
+    const col = CROWD_COL[cInfo.band]||"var(--paper-3)";
+    const cards=[
+      mcard("Peak load",`${Math.round(cInfo.peakVC*100)}<span class="u">% V/C</span>`, CROWD_LABEL[cInfo.band], `color:${col}`),
+      mcard("Passengers",`${Math.round(cInfo.load)}`,`of ${Math.round(cInfo.capacity)} capacity`),
+    ];
+    const dayRows=["Weekday","Saturday","Sunday"].filter(d=>cInfo.byDay&&cInfo.byDay[d])
+      .map(d=>{ const x=cInfo.byDay[d]; return kv(d, `<span class="mono">${Math.round(x.vc*100)}%</span> · ${esc(String(x.time).slice(0,5))}`); }).join("");
+    return metricBlock(`Crowding <span class="mono" style="color:var(--paper-4)">${esc(store.crowdingMeta?store.crowdingMeta.year:"")}</span>`,
+      metrics(cards)+
+      kv("Busiest stop",`<span class="vc">${esc(cInfo.stopname)}</span>`,cInfo.stopname)+
+      kv("Peak time",`${esc(cInfo.dayType)} ${esc(String(cInfo.time).slice(0,5))}`)+
+      (dayRows?`<div class="mnote">Peak V/C by day type</div>`+dayRows:"")+
+      `<div class="mnote">V/C = passengers ÷ capacity at the busiest hour (≈100% = full)</div>`+
+      crossLink("source · TfL BUSTO (bus loadings)"));
+  })();
+  const crowdingGroup = crowdingBlock ? group("crowding","Crowding","var(--cyan)", crowdingBlock, cInfo?`${Math.round(cInfo.peakVC*100)}% V/C · ${CROWD_LABEL[cInfo.band]}`:"") : "";
   // ── grouped readout: a handful of collapsible top-level groups ──
   el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
     group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    crowdingGroup+
     riskGroup+
     group("fleet","Fleet","var(--violet)", fleetProfileBlock+fleetBlock, fdata&&fdata.avgAgeYears!=null?`${fdata.avgAgeYears}y avg`:"")+
     group("commercial","Commercial","var(--amber)", commercialBlock+opBlock+tenderAnalysisBlock+tenderBlock, tenders.length?`${tenders.length} tenders`:"");
@@ -2658,11 +2697,12 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name);
         return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
+          cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",
           lt?(isJointBid(lt)?"joint":"sole"):"",
@@ -2753,6 +2793,7 @@ function init(){
       return; }
     else if(k==="ctype"){ colorMode="type"; settings.colorMode="type"; saveSettings(); renderFilters(); renderRouteList(); }
     else if(k==="coper"){ colorMode="operator"; settings.colorMode="operator"; saveSettings(); renderFilters(); renderRouteList(); }
+    else if(k==="ccrowd"){ colorMode="crowding"; settings.colorMode="crowding"; saveSettings(); renderFilters(); renderRouteList(); }
     syncMapCtl(); if(mode==="catch") paintCatch(false); else refreshMap(false);
   });
   document.getElementById("clearAll").addEventListener("click",clearAll);   // in-app reset (keeps caches warm)
