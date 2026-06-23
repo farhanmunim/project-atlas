@@ -451,6 +451,7 @@
     <div class="card-b">
       <div class="toggle-row"><span>Collisions · STATS19</span><label class="sw"><input type="checkbox" id="tgCollisions"><span class="track"></span></label></div>
       <div class="toggle-row" id="rowHeat" style="display:none"><span>Heatmap</span><label class="sw"><input type="checkbox" id="tgHeat"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Crowding · TfL BUSTO</span><label class="sw"><input type="checkbox" id="tgCrowding"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Low bridges &lt;4.4m</span><label class="sw"><input type="checkbox" id="tgBridges"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Road incidents · live</span><label class="sw"><input type="checkbox" id="tgRoad"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
@@ -572,6 +573,7 @@ var state = {
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
   netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
+  crowding:null, crowdingMeta:null, crowdMode:false,   // BUSTO bus crowding (per route) + the "Crowding" colour layer
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
 // ---- shared cross-tool settings (same storage key + shape as the / app) ----
@@ -827,6 +829,17 @@ function operatorColor(op){
   }
   return opColorMap[op]||'#9AA7B2';
 }
+/* BUSTO crowding (peak V/C band) — hex for the canvas-drawn lines + theme var() for dossier text */
+var CROWD_COL={comfortable:'#3FB87A', moderate:'#36C5F0', busy:'#F2A20C', crowded:'#FF463F'};
+var CROWD_TXT={comfortable:'var(--green)', moderate:'var(--cyan)', busy:'var(--amber)', crowded:'var(--red-bright)'};
+var CROWD_LABEL={comfortable:'Comfortable', moderate:'Moderate', busy:'Busy', crowded:'Crowded'};
+function crowdingOf(name){ return (state.crowding&&state.crowding[name])||null; }
+function crowdColor(name){ var c=crowdingOf(name); return c?(CROWD_COL[c.band]||'#9AA7B2'):'#3C4654'; }
+function ensureCrowding(){
+  if(state.crowding) return Promise.resolve();
+  return getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d)||{}; state.crowdingMeta={year:d.year}; })
+    .catch(function(){ state.crowding={}; });
+}
 function ensureNetworkData(){
   var jobs=[];
   if(!state.overview) jobs.push(getJSON(atlasBase()+'/routes-overview').then(function(g){ state.overview=g; }));
@@ -841,7 +854,7 @@ function drawNetwork(){
   feats.forEach(function(f){
     var p=f.properties||{}, name=p.name; if(!f.geometry) return;
     if(!routePasses(name)) return;   // respect active filters
-    var op=((state.meta||{})[name]||{}).operator, col=operatorColor(op);
+    var op=((state.meta||{})[name]||{}).operator, col=state.crowdMode?crowdColor(name):operatorColor(op);
     var rings = f.geometry.type==='LineString' ? [f.geometry.coordinates]
               : f.geometry.type==='MultiLineString' ? f.geometry.coordinates : [];
     rings.forEach(function(seg){
@@ -1158,6 +1171,7 @@ function ensureDossierData(){
   if(!state.perf)    jobs.push(getJSON(atlasBase()+'/route-performance').then(function(d){ state.perf=(d.routes||d); }));
   if(!state.tenders) jobs.push(getJSON(atlasBase()+'/tenders').then(function(d){ state.tenders=(d.byRoute||d); }));
   if(!state.fleet)   jobs.push(getJSON(atlasBase()+'/fleet').then(function(d){ state.fleet=(d.byRoute||d); }));
+  if(!state.crowding) jobs.push(getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d); state.crowdingMeta={year:d.year}; }).catch(function(){ state.crowding={}; }));
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1230,6 +1244,17 @@ function renderDossier(){
       if(f) rc+=dsec('Fleet', 'live sample')+f;
     }
 
+    // Crowding subsection (TfL BUSTO) — the route's busiest point: peak V/C, busiest stop + time.
+    var cw=state.crowding && state.crowding[name];
+    if(cw){
+      var cwb='';
+      cwb+=drow('Peak load', Math.round(cw.peakVC*100)+'% V/C', CROWD_TXT[cw.band]||null);
+      cwb+=drow('Passengers', Math.round(cw.load)+' of '+Math.round(cw.capacity));
+      cwb+=drow('Busiest stop', cw.stopname);
+      cwb+=drow('Peak time', cw.dayType+' '+String(cw.time).slice(0,5));
+      rc+=dsec('Crowding', (CROWD_LABEL[cw.band]||'')+(state.crowdingMeta&&state.crowdingMeta.year?' · '+state.crowdingMeta.year:''))+cwb;
+    }
+
     cards+=dcardHTML(rtitle, null, rc, true);
 
     // ── Commercial card — latest award + won price, previous operator, contract expiry ──
@@ -1279,9 +1304,10 @@ function renderDossier(){
 function drawRoute(){
   routeLayer.clearLayers();
   var all=[];
+  var rcol = (state.crowdMode && state.routeName) ? crowdColor(state.routeName) : '#DC241F';   // Crowding layer tints the corridor by band
   state.routeSegments.forEach(function(seg){
-    L.polyline(seg, {color:'#DC241F', weight:3.5, opacity:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
-    L.polyline(seg, {color:'#DC241F', weight:9, opacity:.10}).addTo(routeLayer); // glow
+    L.polyline(seg, {color:rcol, weight:3.5, opacity:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
+    L.polyline(seg, {color:rcol, weight:9, opacity:.10}).addTo(routeLayer); // glow
     seg.forEach(function(p){all.push(p);});
   });
   state.routePath=all;
@@ -1943,6 +1969,15 @@ $('exportBtn').addEventListener('click', exportCurrentCSV);
 /* ============================ BOOT ============================ */
 $('tgCollisions').addEventListener('change', function(){ toggleCollisions(this.checked); });
 $('tgBridges').addEventListener('change', function(){ renderBridges(this.checked); });
+// Crowding colour layer — tints route lines (network or the selected corridor) by BUSTO peak-load band.
+function toggleCrowding(on){
+  state.crowdMode=on;
+  ensureCrowding().then(function(){
+    if(state.routeId){ drawRoute(); } else if(state.overview){ drawNetwork(); }
+    status(on?'Routes coloured by crowding · TfL BUSTO peak load':'Crowding layer off','ok');
+  });
+}
+$('tgCrowding').addEventListener('change', function(){ toggleCrowding(this.checked); });
 $('tgHeat').addEventListener('change', function(){ setHeat(this.checked); });
 ['wFatal','wSerious','wSlight'].forEach(function(id){
   $(id).addEventListener('input', function(){
