@@ -103,7 +103,7 @@ export async function fetchBusto({ log } = {}) {
         if (!route || !Number.isFinite(vc)) { bad++; return; }
         parsed++;
         let agg = routes.get(route);
-        if (!agg) { agg = { route, peak: null, byDay: {}, maxLoad: 0, maxCapacity: 0, stopRows: 0 }; routes.set(route, agg); }
+        if (!agg) { agg = { route, peak: null, byDay: {}, maxLoad: 0, maxCapacity: 0, stopRows: 0, timeMax: {}, stopMax: {} }; routes.set(route, agg); }
         agg.stopRows++;
         if (load > agg.maxLoad) agg.maxLoad = load;
         if (cap > agg.maxCapacity) agg.maxCapacity = cap;
@@ -112,6 +112,14 @@ export async function fetchBusto({ log } = {}) {
         if (!agg.peak || vc > agg.peak.vc) agg.peak = rec;
         const d = agg.byDay[dayType];
         if (!d || vc > d.vc) agg.byDay[dayType] = rec;
+        // time-of-day curve: per (day-type, timeband) keep the max V/C across stops + its hour.
+        const tk = dayType + "|" + timeband;
+        const tm = agg.timeMax[tk];
+        if (!tm || vc > tm.vc) agg.timeMax[tk] = { vc, t: time, dayType, tb: timeband };
+        // load-along-route: per (direction, stop) keep the max V/C that stop reaches all day.
+        const sk = direction + "|" + stopSeq;
+        const sm = agg.stopMax[sk];
+        if (!sm || vc > sm.vc) agg.stopMax[sk] = { vc, name: stopname, seq: stopSeq, dir: direction };
       });
       rl.on("close", resolve);
       res.on("error", reject);

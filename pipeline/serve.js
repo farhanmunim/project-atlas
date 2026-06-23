@@ -79,6 +79,7 @@ function apiData(name) {
   if (name === "accidents")     { try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", "accidents.json"), "utf8")) }; } catch { return { code: 404, obj: { error: "no accidents" } }; } }
   if (name === "bridges")       { try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", "bridges.json"), "utf8")) }; } catch { return { code: 404, obj: { error: "no bridges" } }; } }
   if (name === "crowding")      { try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", "crowding.json"), "utf8")) }; } catch { return { code: 404, obj: { error: "no crowding" } }; } }
+  if (name === "crowding-profile") { try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", "crowding-profile.json"), "utf8")) }; } catch { return { code: 404, obj: { error: "no crowding-profile" } }; } }
   if (name === "routes-overview") {
     const features = dbx.allCurrent("route_geometry").map((x) => { const [routeId, direction] = x.id.split(":");
       return { type: "Feature", properties: { routeId, direction, lengthKm: x.data.lengthKm, stops: x.data.stops }, geometry: { type: "LineString", coordinates: x.data.coords } }; });
@@ -112,6 +113,7 @@ const V1_SETS = {
   "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, casualties, plus decoded context: roadType, speedLimit, junction, light, weather, roadSurface, day, timeBand." },
   "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
   "crowding":          { file: "crowding.json",           desc: "Bus crowding per route (TfL BUSTO) — peak V/C (load÷capacity at the max-demand hour), band (comfortable→crowded), busiest stop/time/day, and the per-day-type peak." },
+  "crowding-profile":  { file: "crowding-profile.json",   desc: "Per-route crowding detail (TfL BUSTO) — load-along-route (V/C by stop in sequence) and the time-of-day curve (V/C per timeband, per day type). Powers the corridor gradient + dossier charts." },
   "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };
 // Read a v1 dataset straight from its committed file (mirrors the prod function).

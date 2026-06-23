@@ -35,34 +35,62 @@ export async function build(ctx) {
     log.warn(`crowding: live BUSTO failed (${e.message}) — keeping last-good`);
   }
 
-  let data;
+  let summary, profile;
   if (live) {
-    data = finalise(live);
+    ({ summary, profile } = finalise(live));
   } else if (prev && prev.routes && Object.keys(prev.routes).length >= MIN_ROUTES) {
     log.info("crowding: keeping last-good data");
-    data = { ...prev, generatedAt: new Date().toISOString() };
+    summary = { ...prev, generatedAt: new Date().toISOString() };
+    profile = (await sink.readDataset("crowding-profile")) || null;   // keep the matching last-good profile
   } else {
     throw new Error("crowding: no live data and no last-good to fall back to");
   }
 
   // Hard gate: route count within sane bounds (a cratered pull throws → last-good kept).
-  rowsWithin(Object.keys(data.routes), MIN_ROUTES, MAX_ROUTES, "crowding routes");
+  rowsWithin(Object.keys(summary.routes), MIN_ROUTES, MAX_ROUTES, "crowding routes");
 
-  await sink.writeDataset("crowding", data, { pretty: false });
+  // Two files: a LIGHT per-route summary (band/peak — the network colour layer + dossier headline),
+  // and a HEAVY per-route profile (load-along-route + time-of-day curve) loaded only on route select.
+  await sink.writeDataset("crowding", summary, { pretty: false });
+  if (profile) await sink.writeDataset("crowding-profile", profile, { pretty: false });
 
-  const crowded = Object.values(data.routes).filter((r) => r.band === "crowded").length;
-  const note = `${data.count} routes · ${data.year} · crowded(≥0.8 V/C)=${crowded}`;
+  const crowded = Object.values(summary.routes).filter((r) => r.band === "crowded").length;
+  const note = `${summary.count} routes · ${summary.year} · crowded(≥0.8 V/C)=${crowded}`;
   log.info(`crowding: ${note}`);
-  return { source: data.source, rows: data.count, files: ["data/crowding.json"], note };
+  return { source: summary.source, rows: summary.count, files: ["data/crowding.json", "data/crowding-profile.json"], note };
 }
 
 function slimDay(rec) {
   if (!rec) return undefined;
   return { vc: rec.vc, load: rec.load, capacity: rec.capacity, time: rec.time, stopname: rec.stopname };
 }
+const r3 = (n) => Math.round(n * 1000) / 1000;
+
+// Load-along-route (the "where"): the busiest direction's stops in sequence, each at its
+// all-day max V/C — drives the corridor crowding gradient + the load-profile chart.
+function loadProfileOf(a, peakDir) {
+  return Object.values(a.stopMax || {})
+    .filter((s) => s.dir === peakDir)
+    .sort((x, y) => x.seq - y.seq)
+    .map((s) => ({ seq: s.seq, name: s.name, vc: r3(s.vc) }));
+}
+// Time-of-day curve (the "when"): per day type, the timebands in CHRONOLOGICAL order with the
+// peak V/C + hour (sorted by clock time — the timeband index isn't time-ordered).
+function timeOfDayOf(a) {
+  const out = {};
+  for (const day of ["Weekday", "Saturday", "Sunday"]) {
+    const pts = Object.values(a.timeMax || {})
+      .filter((x) => x.dayType === day)
+      .map((x) => ({ t: String(x.t).slice(0, 5), vc: r3(x.vc) }))
+      .sort((x, y) => x.t.localeCompare(y.t));
+    if (pts.length) out[day] = pts;
+  }
+  return out;
+}
 
 function finalise(live) {
-  const routes = {};
+  const routes = {};        // light summary (network colour + dossier headline)
+  const profiles = {};      // heavy per-route detail (loaded on route select)
   for (const a of live.routes) {
     const p = a.peak;
     if (!p) continue;
@@ -77,14 +105,16 @@ function finalise(live) {
       maxLoad: a.maxLoad, maxCapacity: a.maxCapacity,
       byDay,
     };
+    profiles[a.route] = {
+      profileDir: p.direction,                 // direction the load profile is for (the busiest)
+      loadProfile: loadProfileOf(a, p.direction),   // the "where" — V/C by stop in sequence
+      timeOfDay: timeOfDayOf(a),               // the "when" — V/C curve by day type
+    };
   }
+  const meta = { generatedAt: live.generatedAt, source: live.source, year: live.year, sourceFile: live.sourceFile, count: Object.keys(routes).length };
+  const bands = CROWDING_BANDS.map((b) => ({ key: b.key, label: b.label, max: b.max === Infinity ? null : b.max }));
   return {
-    generatedAt: live.generatedAt,
-    source: live.source,
-    year: live.year,
-    sourceFile: live.sourceFile,
-    count: Object.keys(routes).length,
-    bands: CROWDING_BANDS.map((b) => ({ key: b.key, label: b.label, max: b.max === Infinity ? null : b.max })),
-    routes,
+    summary: { ...meta, bands, routes },
+    profile: { ...meta, routes: profiles },
   };
 }

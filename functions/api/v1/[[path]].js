@@ -27,6 +27,7 @@ const DATASETS = {
   "accidents":         { file: "accidents.json",          desc: "STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, casualties, plus decoded context: roadType, speedLimit, junction, light, weather, roadSurface, day, timeBand." },
   "bridges":           { file: "bridges.json",            desc: "Low bridges / height restrictions — lat/lng, clearance (m + imperial), name, road." },
   "crowding":          { file: "crowding.json",           desc: "Bus crowding per route (TfL BUSTO) — peak V/C (load÷capacity at the max-demand hour), band (comfortable→crowded), busiest stop/time/day, and the per-day-type peak." },
+  "crowding-profile":  { file: "crowding-profile.json",   desc: "Per-route crowding detail (TfL BUSTO) — load-along-route (V/C by stop in sequence) and the time-of-day curve (V/C per timeband, per day type). Powers the corridor gradient + dossier charts." },
   "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };
 

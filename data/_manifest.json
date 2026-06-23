@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T07:12:40.813Z",
+  "generatedAt": "2026-06-23T08:20:47.368Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -127,11 +127,12 @@
     },
     "crowding": {
       "source": "TfL BUSTO 2025-2026 (crowding.data.tfl.gov.uk)",
-      "fetchedAt": "2026-06-23T07:12:40.813Z",
+      "fetchedAt": "2026-06-23T08:20:47.368Z",
       "status": "ok",
       "rows": 606,
       "files": [
-        "data/crowding.json"
+        "data/crowding.json",
+        "data/crowding-profile.json"
       ],
       "cadence": "annual · TfL BUSTO (crowding.data.tfl.gov.uk)",
       "note": "606 routes · 2025-2026 · crowded(≥0.8 V/C)=27"
