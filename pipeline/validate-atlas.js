@@ -93,6 +93,27 @@ try {
   const casBad = rows.filter((r) => r.casualties != null && !(Number.isInteger(r.casualties) && r.casualties >= 1)).length;
   ok("casualties are positive integers (or null)", casBad === 0, `${casBad} invalid`);
 
+  // ── crowding.json — TfL BUSTO bus crowding (deep checks) ───────────────────
+  section("crowding.json (TfL BUSTO)");
+  const cw = load("crowding.json");
+  const cwRoutes = cw.routes || {};
+  const cwKeys = Object.keys(cwRoutes);
+  ok("count reconciles with routes", cw.count === cwKeys.length, `count=${cw.count} routes=${cwKeys.length}`);
+  ok("has routes (>300)", cwKeys.length > 300, `${cwKeys.length} routes`);
+  const cwVals = cwKeys.map((k) => cwRoutes[k]);
+  ok("every route has numeric peakVC in (0,2]", cwVals.every((r) => typeof r.peakVC === "number" && r.peakVC > 0 && r.peakVC <= 2), "");
+  const BANDS = ["comfortable", "moderate", "busy", "crowded"];
+  const cwBandVocab = new Set(cwVals.map((r) => r.band));
+  ok("band vocab ⊆ {comfortable,moderate,busy,crowded}", [...cwBandVocab].every((b) => BANDS.includes(b)), [...cwBandVocab].join(","));
+  // band must agree with peakVC against the published thresholds (0.5/0.65/0.8)
+  const bandFor = (v) => v < 0.5 ? "comfortable" : v < 0.65 ? "moderate" : v < 0.8 ? "busy" : "crowded";
+  const bandBad = cwVals.filter((r) => r.band !== bandFor(r.peakVC)).length;
+  ok("band matches peakVC thresholds", bandBad === 0, `${bandBad} mismatched`);
+  // V/C reconciles with load÷capacity (within rounding)
+  const vcBad = cwVals.filter((r) => r.capacity > 0 && Math.abs(r.peakVC - r.load / r.capacity) > 0.02).length;
+  ok("peakVC ≈ load ÷ capacity", vcBad === 0, `${vcBad} off`);
+  ok("every route has a busiest stop + day type", cwVals.every((r) => r.stopname && r.dayType), "");
+
   // ── manifest freshness ─────────────────────────────────────────────────────
   section("manifest");
   const man = load("_manifest.json");

@@ -250,7 +250,9 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   the noisy overlays): route lines · garages · stops · **live buses (BODS GPS)** ·
   **collisions (STATS19)** · **low bridges** (clearance-graded bridge-icon markers) ·
   **live road incidents** (TfL Road Disruptions via `/api/v1/live/road-disruptions` —
-  collisions/breakdowns/delays/works/closures, category-coloured). Live · collisions ·
+  collisions/breakdowns/delays/works/closures, category-coloured) · **crowding** (TfL BUSTO —
+  route lines tinted by peak-load band comfortable→crowded; in `/` it's the third **colour-by**
+  mode beside Operator/Type, in `/v2` a Layers toggle). Live · collisions ·
   bridges · incidents **always start OFF each session** (reset on load, not persisted-on);
   the user enables them explicitly, and when on they scope to the selected/searched
   route(s). A contextual **Map key** legend (`updateLegend`) labels every visible symbol.
@@ -281,7 +283,11 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`
   — per collision: severity/date/borough/vehicles/**casualties** **plus decoded context** roadType/
   speedLimit/junction/light/weather/roadSurface/day/timeBand, which surface as the lens "aggregate
-  by" dimensions, the apps' "Collision context" risk readouts, and a Casualties metric).
+  by" dimensions, the apps' "Collision context" risk readouts, and a Casualties metric), and
+  **crowding.json** (TfL BUSTO, `pipeline/build/crowding.js` + `sources/busto.js` — streams the
+  ~98MB "MAX DEMAND HOUR BY ROUTE BY TIMEBAND" CSV and reduces to one record per route: peak **V/C**
+  = load÷capacity at the max-demand hour, banded comfortable→crowded, with the per-day-type peak;
+  powers the **Crowding colour layer** + the dossier's Crowding readout in both `/` and `/v2`).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
@@ -324,7 +330,10 @@ can never block the Cloudflare site.
   (adds decoded STATS19 collision-context columns `road_type`/`speed_limit`/`junction`/
   `light`/`weather`/`road_surface` to `accidents` — decoded at the fetch boundary in
   `fetch-accidents.js`, mirrored in `pipeline/sources/stats19.js`), `0018_accidents_temporal.sql`
-  (adds `day` + `time_band`). The accidents upsert is **self-healing** — it strips columns a
+  (adds `day` + `time_band`), `0020_bus_crowding.sql` (the BUSTO crowding warehouse table, keyed
+  `(route_id, busto_year)` so crowding accrues year-over-year — the time-series behind
+  `/api/v1/history/crowding`, which self-heals to the `data/crowding.json` snapshot until the table
+  is populated). The accidents upsert is **self-healing** — it strips columns a
   pending migration hasn't added yet and writes the base record, so a new field never blocks the
   ingest. The rest pre-existed. Don't reshape existing tables; add a migration for anything new.
 - **Workflows** (all `permissions: contents: read` — Supabase-only, no

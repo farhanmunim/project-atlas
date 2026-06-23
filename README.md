@@ -79,6 +79,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/route-performance` | Reliability per route — EWT/OTP vs MPS, % mileage |
 | `GET /api/v1/accidents` | STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, `casualties`, plus decoded context: `roadType`, `speedLimit`, `junction`, `light`, `weather`, `roadSurface`, `day`, `timeBand` |
 | `GET /api/v1/bridges` | Low bridges / height restrictions — lat/lng, clearance, name |
+| `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load÷capacity at the max-demand hour), `band` (comfortable→crowded), busiest stop/time/day, per-day-type peak |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 The API has three groups, all listed in the `/api/v1` discovery index:
@@ -119,6 +120,7 @@ Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
 | `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |
 | `GET /api/v1/history/vehicle-sightings?route=25` | Vehicle-on-route sightings over time |
+| `GET /api/v1/history/crowding?route=25` | Bus crowding per route per year (TfL BUSTO) — filter by `route`, `band`, `year`, `day_type` |
 | `GET /api/v1/history/accidents?from=2024-01-01&to=2024-12-31` *(also `severity=`, `borough=`, `road_type=`, `speed_limit=`)* | STATS19 bus collisions over time — incl. decoded road_type/speed_limit/junction/light/weather/road_surface; the temporal source behind the `/api/v1/accidents` snapshot |
 
 > The history group needs Supabase read credentials configured (see **Historical API
