@@ -80,6 +80,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/accidents` | STATS19 bus collisions — lat/lng, severity, date, borough, vehicles, `casualties`, plus decoded context: `roadType`, `speedLimit`, `junction`, `light`, `weather`, `roadSurface`, `day`, `timeBand` |
 | `GET /api/v1/bridges` | Low bridges / height restrictions — lat/lng, clearance, name |
 | `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load÷capacity at the max-demand hour), `band` (comfortable→crowded), busiest stop/time/day, per-day-type peak |
+| `GET /api/v1/crowding-profile` | Per-route crowding detail (TfL BUSTO) — load-along-route (`V/C` by stop in sequence) + time-of-day curve (`V/C` per timeband, per day type); powers the corridor gradient + dossier charts |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 The API has three groups, all listed in the `/api/v1` discovery index:

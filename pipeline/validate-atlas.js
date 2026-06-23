@@ -113,6 +113,23 @@ try {
   const vcBad = cwVals.filter((r) => r.capacity > 0 && Math.abs(r.peakVC - r.load / r.capacity) > 0.02).length;
   ok("peakVC ≈ load ÷ capacity", vcBad === 0, `${vcBad} off`);
   ok("every route has a busiest stop + day type", cwVals.every((r) => r.stopname && r.dayType), "");
+  ok("summary stays light (no profiles leaked in)", cwVals.every((r) => !("loadProfile" in r)), "summary keeps band-only");
+
+  // ── crowding-profile.json — the per-route detail (load-along-route + time-of-day) ──
+  section("crowding-profile.json (TfL BUSTO detail)");
+  const cwp = load("crowding-profile.json");
+  const cwpRoutes = cwp.routes || {};
+  ok("profile present for (nearly) all summary routes", Object.keys(cwpRoutes).length >= cwKeys.length * 0.95, `${Object.keys(cwpRoutes).length} / ${cwKeys.length}`);
+  const cwpVals = Object.values(cwpRoutes);
+  ok("every profile has a load-along-route array", cwpVals.every((p) => Array.isArray(p.loadProfile) && p.loadProfile.length >= 2), "");
+  ok("load profile V/C all in [0,2]", cwpVals.every((p) => p.loadProfile.every((s) => typeof s.vc === "number" && s.vc >= 0 && s.vc <= 2)), "0 = empty terminus");
+  ok("every profile has a time-of-day curve", cwpVals.every((p) => p.timeOfDay && Object.keys(p.timeOfDay).length >= 1), "");
+  // time curves are chronologically ordered (the fix)
+  const ooo = cwpVals.filter((p) => { const w = (p.timeOfDay && p.timeOfDay.Weekday) || []; for (let i = 1; i < w.length; i++) if (w[i].t < w[i - 1].t) return true; return false; }).length;
+  ok("time-of-day curves are time-ordered", ooo === 0, `${ooo} out of order`);
+  // a profile's peak V/C reconciles with the summary's peak (same source, same number)
+  const r25p = cwpRoutes["25"], r25s = cwRoutes["25"];
+  if (r25p && r25s) ok("route 25 profile peak ≈ summary peak", Math.abs(Math.max(...r25p.loadProfile.map((s) => s.vc)) - r25s.peakVC) < 0.01, `profile ${Math.max(...r25p.loadProfile.map((s) => s.vc))} vs summary ${r25s.peakVC}`);
 
   // ── manifest freshness ─────────────────────────────────────────────────────
   section("manifest");

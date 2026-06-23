@@ -287,7 +287,12 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   **crowding.json** (TfL BUSTO, `pipeline/build/crowding.js` + `sources/busto.js` — streams the
   ~98MB "MAX DEMAND HOUR BY ROUTE BY TIMEBAND" CSV and reduces to one record per route: peak **V/C**
   = load÷capacity at the max-demand hour, banded comfortable→crowded, with the per-day-type peak;
-  powers the **Crowding colour layer** + the dossier's Crowding readout in both `/` and `/v2`).
+  powers the **Crowding colour layer** + the dossier's Crowding readout in both `/` and `/v2`), and
+  **crowding-profile.json** (the per-route DETAIL split out of the summary so the network colour layer
+  stays light: `loadProfile` = V/C by stop in sequence along the busiest direction, `timeOfDay` = V/C
+  per timeband per day type — served at `/api/v1/crowding-profile`, lazy-loaded only on route select,
+  and drives the **corridor crowding gradient** (the line painted by per-stop V/C, not one flat band)
+  + the dossier's **load-along-route** and **time-of-day** mini-charts in both apps).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
