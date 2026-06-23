@@ -174,6 +174,7 @@ const HIST_EP = {
   "tender-programme":    { table: "tender_programme", filters: { route: ["route_id", "eq"], year: ["programme_year", "eq"] }, defaultOrder: "contract_start_date.asc", desc: "TfL forward tendering programme per route." },
   "vehicle-sightings":   { table: "route_vehicle_observations", filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] }, defaultOrder: "observed_at.desc", desc: "Vehicle-on-route observations over time (months of history)." },
   "accidents":           { table: "accidents", filters: { from: ["collision_date", "gte"], to: ["collision_date", "lte"], severity: ["severity", "eq"], borough: ["borough", "eq"], road_type: ["road_type", "eq"], speed_limit: ["speed_limit", "eq"], day: ["day", "eq"], time_band: ["time_band", "eq"] }, defaultOrder: "collision_date.desc", desc: "STATS19 bus collisions over time — filter by from/to date, severity, borough, road_type, speed_limit, day, time_band; rows also carry junction/light/weather/road_surface." },
+  "crowding":            { table: "bus_crowding", filters: { route: ["route_id", "eq"], band: ["band", "eq"], year: ["busto_year", "eq"], day_type: ["day_type", "eq"] }, defaultOrder: "peak_vc.desc", desc: "Bus crowding per route per year (TfL BUSTO) — peak V/C, band, busiest stop/time/day; filter by route, band, year, day_type." },
 };
 function liveDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
   return { group: "live", version: "v1", description: "Live bus + road feeds proxied from the TfL Unified API, edge-cached. Read-only, CORS-open.",
@@ -233,15 +234,37 @@ function accidentsSnapshot(q, limit, order) {
   rows = rows.slice(0, limit).map((a) => ({ collision_id: a.id, lat: a.lat, lng: a.lng, severity: a.severity, collision_date: a.date, borough: a.borough, vehicles: a.vehicles, casualties: a.casualties, road_type: a.roadType, speed_limit: a.speedLimit, junction: a.junction, light: a.light, weather: a.weather, road_surface: a.roadSurface, day: a.day, time_band: a.timeBand }));
   return { dataset: "accidents", table: "accidents", source: "snapshot (data/accidents.json — warehouse migration pending)", count: rows.length, limit, rows };
 }
+// Crowding fallback (mirrors functions/api/v1/history/[[path]].js): flatten the per-route crowding
+// snapshot into warehouse-shaped rows so /api/v1/history/crowding works before the migration lands.
+function crowdingSnapshot(q, limit, order) {
+  let snap, year;
+  try { const d = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "crowding.json"), "utf8")); snap = d && d.routes; year = d && d.year; } catch { return null; }
+  if (!snap || typeof snap !== "object") return null;
+  const byDayVC = (c, day) => (c.byDay && c.byDay[day] && c.byDay[day].vc != null ? c.byDay[day].vc : null);
+  let rows = Object.keys(snap).map((route) => { const c = snap[route]; return {
+    route_id: route, busto_year: year, peak_vc: c.peakVC, band: c.band, load: c.load, capacity: c.capacity,
+    seats: c.seats, boardings: c.boardings, day_type: c.dayType, peak_time: c.time, timeband: c.timeband,
+    direction: c.direction, stopcode: c.stopcode, stopname: c.stopname, stop_sequence: c.stopSeq,
+    max_load: c.maxLoad, max_capacity: c.maxCapacity,
+    weekday_vc: byDayVC(c, "Weekday"), saturday_vc: byDayVC(c, "Saturday"), sunday_vc: byDayVC(c, "Sunday") }; });
+  const f = { route: "route_id", band: "band", year: "busto_year", day_type: "day_type" };
+  for (const [param, col] of Object.entries(f)) { const v = q.get(param); if (v != null && v !== "") rows = rows.filter((x) => String(x[col]) === v); }
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(order || ""); const ocol = om ? om[1] : "peak_vc", desc = om ? om[2] === "desc" : true;
+  rows.sort((a, b) => { const av = a[ocol], bv = b[ocol]; const c = (typeof av === "number" && typeof bv === "number") ? (av - bv) : String(av == null ? "" : av).localeCompare(String(bv == null ? "" : bv)); return desc ? -c : c; });
+  rows = rows.slice(0, limit);
+  return { dataset: "crowding", table: "bus_crowding", source: "snapshot (data/crowding.json — warehouse migration pending)", count: rows.length, limit, rows };
+}
+const HIST_SNAPSHOTS = { accidents: accidentsSnapshot, crowding: crowdingSnapshot };
 async function serveHistory(req, res, name) {
   const ep = HIST_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown history dataset: " + name, available: Object.keys(HIST_EP) });
   const q = new URL(req.url, "http://x").searchParams;
   let limit = parseInt(q.get("limit"), 10); limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
   const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
-  const canSnapshot = name === "accidents";
+  const snapshot = HIST_SNAPSHOTS[name];
+  const canSnapshot = !!snapshot;
   const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !key) {
-    if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
+    if (canSnapshot) { const fb = snapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
     return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
   }
   const parts = [];
@@ -251,11 +274,11 @@ async function serveHistory(req, res, name) {
   const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
   try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!r.ok) {
-      if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
+      if (canSnapshot) { const fb = snapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
       return jsonCors(res, (r.status >= 400 && r.status < 500) ? r.status : 502, { error: `historical query failed (${r.status})`, detail: (await r.text()).slice(0, 300) });
     }
     const rows = await r.json(); return jsonCors(res, 200, { dataset: name, table: ep.table, count: Array.isArray(rows) ? rows.length : 0, limit, rows }); }
-  catch (e) { if (canSnapshot) { const fb = accidentsSnapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); } return jsonCors(res, 502, { error: "historical store unreachable" }); }
+  catch (e) { if (canSnapshot) { const fb = snapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); } return jsonCors(res, 502, { error: "historical store unreachable" }); }
 }
 
 http.createServer(async (req, res) => {

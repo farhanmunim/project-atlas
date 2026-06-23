@@ -53,6 +53,12 @@ const ENDPOINTS = {
     defaultOrder: "collision_date.desc",
     desc: "STATS19 bus/coach-involved collisions over time — lat/lng, severity, date, borough (ONS code), vehicle count, plus decoded context: road_type, speed_limit, junction, light, weather, road_surface, day, time_band. Filter by from/to date, severity, borough, road_type, speed_limit, day, time_band. The temporal source behind the /api/v1/accidents snapshot.",
   },
+  "crowding": {
+    table: "bus_crowding",
+    filters: { route: ["route_id", "eq"], band: ["band", "eq"], year: ["busto_year", "eq"], day_type: ["day_type", "eq"] },
+    defaultOrder: "peak_vc.desc",
+    desc: "Bus crowding per route over time (TfL BUSTO, one row per route per year) — peak V/C (load÷capacity at the max-demand hour), band, busiest stop/time/day, per-day-type peak. Filter by route, band, year, day_type. The temporal source behind the /api/v1/crowding snapshot.",
+  },
 };
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS", "Access-Control-Allow-Headers": "*" };
@@ -116,6 +122,49 @@ async function accidentsSnapshot(origin, q, limit, order) {
   return json({ dataset: "accidents", table: "accidents", source: "snapshot (data/accidents.json — warehouse migration pending)", count: rows.length, limit, rows });
 }
 
+// Crowding fallback: the per-route crowding snapshot also ships statically (/api/v1/crowding —
+// keyed by route). When the warehouse can't serve it (unconfigured, or the bus_crowding migration
+// is still pending), flatten the snapshot's routes into warehouse-shaped (snake_case) rows so the
+// documented filters still return data. Supports route/band/year/day_type filters + the order column.
+async function crowdingSnapshot(origin, q, limit, order) {
+  let snap, year;
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    let r;
+    try { r = await fetch(`${origin}/data/crowding.json`, { cf: { cacheTtl: 600, cacheEverything: true }, signal: ctrl.signal }); }
+    finally { clearTimeout(t); }
+    if (!r.ok) return null;
+    const d = await r.json();
+    snap = d && d.routes; year = d && d.year;
+  } catch { return null; }
+  if (!snap || typeof snap !== "object") return null;
+  const byDayVC = (c, day) => (c.byDay && c.byDay[day] && c.byDay[day].vc != null ? c.byDay[day].vc : null);
+  let rows = Object.keys(snap).map((route) => {
+    const c = snap[route];
+    return {
+      route_id: route, busto_year: year, peak_vc: c.peakVC, band: c.band, load: c.load, capacity: c.capacity,
+      seats: c.seats, boardings: c.boardings, day_type: c.dayType, peak_time: c.time, timeband: c.timeband,
+      direction: c.direction, stopcode: c.stopcode, stopname: c.stopname, stop_sequence: c.stopSeq,
+      max_load: c.maxLoad, max_capacity: c.maxCapacity,
+      weekday_vc: byDayVC(c, "Weekday"), saturday_vc: byDayVC(c, "Saturday"), sunday_vc: byDayVC(c, "Sunday"),
+    };
+  });
+  const f = { route: "route_id", band: "band", year: "busto_year", day_type: "day_type" };
+  for (const [param, col] of Object.entries(f)) { const v = q.get(param); if (v != null && v !== "") rows = rows.filter((x) => String(x[col]) === v); }
+  const om = /^([a-z_]+)\.(asc|desc)$/.exec(order || "");
+  const ocol = om ? om[1] : "peak_vc", desc = om ? om[2] === "desc" : true;
+  rows.sort((a, b) => {
+    const av = a[ocol], bv = b[ocol];
+    const c = (typeof av === "number" && typeof bv === "number") ? (av - bv) : String(av == null ? "" : av).localeCompare(String(bv == null ? "" : bv));
+    return desc ? -c : c;
+  });
+  rows = rows.slice(0, limit);
+  return json({ dataset: "crowding", table: "bus_crowding", source: "snapshot (data/crowding.json — warehouse migration pending)", count: rows.length, limit, rows });
+}
+
+const SNAPSHOTS = { accidents: accidentsSnapshot, crowding: crowdingSnapshot };
+
 export async function onRequest(context) {
   const { request, params, env } = context;
   if (request.method === "OPTIONS") return new Response(null, { headers: { ...CORS, "Access-Control-Max-Age": "86400" } });
@@ -142,11 +191,12 @@ export async function onRequest(context) {
   let limit = parseInt(q.get("limit"), 10);
   limit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, MAX_LIMIT) : DEFAULT_LIMIT;
   const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
-  const canSnapshot = name === "accidents";   // accidents' full enriched set also lives in the static snapshot
+  const snapshot = SNAPSHOTS[name];   // datasets whose set also lives in a static /api/v1 snapshot
+  const canSnapshot = !!snapshot;
 
   const base = env.SUPABASE_URL, key = env.SUPABASE_KEY || env.SUPABASE_ANON_KEY;
   if (!base || !key) {
-    if (canSnapshot) { const fb = await accidentsSnapshot(origin, q, limit, order); if (fb) return fb; }
+    if (canSnapshot) { const fb = await snapshot(origin, q, limit, order); if (fb) return fb; }
     return json({ error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set)" }, { status: 503 });
   }
 
@@ -174,7 +224,7 @@ export async function onRequest(context) {
     if (!r.ok) {
       // e.g. PostgREST 400 because a filter targets a column whose migration is still pending —
       // serve the enriched snapshot instead of erroring, then fall back to a client status.
-      if (canSnapshot) { const fb = await accidentsSnapshot(origin, q, limit, order); if (fb) return fb; }
+      if (canSnapshot) { const fb = await snapshot(origin, q, limit, order); if (fb) return fb; }
       return json({ error: `historical query failed (${r.status})`, detail: body.slice(0, 300) }, { status: (r.status >= 400 && r.status < 500) ? r.status : 502 });
     }
     let rows; try { rows = JSON.parse(body); } catch { return json({ error: "historical store returned non-JSON", detail: body.slice(0, 200) }, { status: 502 }); }
