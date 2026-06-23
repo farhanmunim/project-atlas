@@ -47,6 +47,7 @@ const STEPS = [
   { label: 'Step 13/19 — Tender programme PDFs (TfL)',              script: 'fetch-tender-programme.js' },
   { label: 'Step 14/19 — Accidents (DfT STATS19, bus-involved)',    script: 'fetch-accidents.js' },
   { label: 'Step 14b/19 — Route schedule (SWT, scheduled km)',      script: 'fetch-schedule.js' },
+  { label: 'Step 14c/19 — Bus crowding (TfL BUSTO)',                script: 'fetch-crowding.js' },
   { label: 'Step 15/19 — Build classifications',                    script: 'build-classifications.js' },
   { label: 'Step 16/19 — Build overview + snapshot',                script: 'build-overview.js' },
   { label: 'Step 17/19 — Garage locations (frontend JSON)',         script: 'build-garage-locations.js' },
@@ -74,6 +75,7 @@ const SOFT_FAIL = new Set([
   'fetch-tender-programme.js',
   'fetch-accidents.js',
   'fetch-schedule.js',
+  'fetch-crowding.js',
   'build-garage-locations.js',
   'push-to-supabase.js',
 ]);

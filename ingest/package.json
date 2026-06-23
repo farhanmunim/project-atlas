@@ -21,6 +21,7 @@
     "fetch-tender-programme": "node scripts/fetch-tender-programme.js",
     "fetch-accidents": "node scripts/fetch-accidents.js",
     "fetch-schedule": "node scripts/fetch-schedule.js",
+    "fetch-crowding": "node scripts/fetch-crowding.js",
     "sample-headways": "node scripts/sample-headways.js",
     "build-reliability": "node scripts/build-reliability.js",
     "build-classifications": "node scripts/build-classifications.js",

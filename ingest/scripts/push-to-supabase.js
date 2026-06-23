@@ -660,6 +660,44 @@ async function pushSchedule() {
   await upsertInBatches('route_schedule', rows, 'route_id,snapshot_date');
 }
 
+// bus_crowding — TfL BUSTO crowding per route (migration 0020). One row per
+// (route_id, busto_year) so crowding accrues year-over-year; a re-run of the
+// same year upserts in place. Feeds Atlas's Crowding layer + dossier readout.
+async function pushCrowding() {
+  const file = readJsonOrNull(path.join(DATA_DIR, 'source', 'crowding.json'));
+  if (!file?.routes) {
+    console.log('  bus_crowding: no crowding.json — skipping');
+    return;
+  }
+  const extractedAt = file.generatedAt ?? new Date().toISOString();
+  const year = file.year ?? null;
+  const dayVC = (c, d) => (c.byDay && c.byDay[d] && Number.isFinite(c.byDay[d].vc) ? c.byDay[d].vc : null);
+  const rows = Object.entries(file.routes).map(([route, c]) => ({
+    route_id:      String(route),
+    busto_year:    year,
+    peak_vc:       Number.isFinite(c.peakVC) ? c.peakVC : null,
+    band:          c.band ?? null,
+    load:          Number.isFinite(c.load) ? c.load : null,
+    capacity:      Number.isFinite(c.capacity) ? c.capacity : null,
+    seats:         Number.isFinite(c.seats) ? c.seats : null,
+    boardings:     Number.isFinite(c.boardings) ? c.boardings : null,
+    day_type:      c.dayType ?? null,
+    peak_time:     c.time ?? null,
+    timeband:      Number.isFinite(c.timeband) ? c.timeband : null,
+    direction:     c.direction != null ? String(c.direction) : null,
+    stopcode:      c.stopcode != null ? String(c.stopcode) : null,
+    stopname:      c.stopname ?? null,
+    stop_sequence: Number.isFinite(c.stopSeq) ? c.stopSeq : null,
+    max_load:      Number.isFinite(c.maxLoad) ? c.maxLoad : null,
+    max_capacity:  Number.isFinite(c.maxCapacity) ? c.maxCapacity : null,
+    weekday_vc:    dayVC(c, 'Weekday'),
+    saturday_vc:   dayVC(c, 'Saturday'),
+    sunday_vc:     dayVC(c, 'Sunday'),
+    extracted_at:  extractedAt,
+  })).filter((r) => r.route_id && r.busto_year);
+  await upsertInBatches('bus_crowding', rows, 'route_id,busto_year');
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────
 async function main() {
   console.log(`Pushing to Supabase at ${SUPABASE_URL}`);
@@ -672,6 +710,7 @@ async function main() {
   await pushRoutePerformance();
   await pushTenders();
   await pushTenderProgramme();
+  await pushCrowding();
   console.log('Done.');
 }
 
