@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T07:02:13.623Z",
+  "generatedAt": "2026-06-23T07:12:40.813Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -124,6 +124,17 @@
       ],
       "cadence": "annual · London Datastore EPOWR (TfL height restrictions)",
       "note": "877 structures · live · sub-double-deck(<4.4m)=599"
+    },
+    "crowding": {
+      "source": "TfL BUSTO 2025-2026 (crowding.data.tfl.gov.uk)",
+      "fetchedAt": "2026-06-23T07:12:40.813Z",
+      "status": "ok",
+      "rows": 606,
+      "files": [
+        "data/crowding.json"
+      ],
+      "cadence": "annual · TfL BUSTO (crowding.data.tfl.gov.uk)",
+      "note": "606 routes · 2025-2026 · crowded(≥0.8 V/C)=27"
     }
   }
 }
