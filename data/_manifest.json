@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T06:45:46.684Z",
+  "generatedAt": "2026-06-23T07:02:13.623Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-22T14:36:16.435Z",
+      "fetchedAt": "2026-06-23T07:02:13.108Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-21T08:10:57.812Z",
+      "fetchedAt": "2026-06-23T07:02:13.622Z",
       "status": "ok",
-      "rows": 10535,
+      "rows": 13740,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 3244 (3244△); line_status 676 (676△); route_geometry 1315 (1315△)"
+      "note": "route 676 (676△); route_meta 679 (679△); route_stops 675 (675△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6449 (6449△); line_status 676 (676△); route_geometry 1315 (1315△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -59,25 +59,25 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-06-21T08:10:52.819Z",
+      "fetchedAt": "2026-06-23T07:02:09.062Z",
       "status": "ok",
       "rows": 676,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "520 routes with vehicles, DVLA-enriched"
+      "note": "601 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache",
-      "fetchedAt": "2026-06-21T08:10:52.840Z",
+      "fetchedAt": "2026-06-23T07:02:09.102Z",
       "status": "ok",
-      "rows": 3244,
+      "rows": 6449,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · derived from fleet (no API calls)",
-      "note": "0 multi-route"
+      "note": "6 multi-route"
     },
     "tenders": {
       "status": "ok",
@@ -124,17 +124,6 @@
       ],
       "cadence": "annual · London Datastore EPOWR (TfL height restrictions)",
       "note": "877 structures · live · sub-double-deck(<4.4m)=599"
-    },
-    "crowding": {
-      "source": "TfL BUSTO 2025-2026 (crowding.data.tfl.gov.uk)",
-      "fetchedAt": "2026-06-23T06:45:46.684Z",
-      "status": "ok",
-      "rows": 606,
-      "files": [
-        "data/crowding.json"
-      ],
-      "cadence": "annual · TfL BUSTO (crowding.data.tfl.gov.uk)",
-      "note": "606 routes · 2025-2026 · crowded(≥0.8 V/C)=27"
     }
   }
 }
