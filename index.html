@@ -413,6 +413,10 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .xlink{margin-top:6px;font-size:9.5px;color:var(--paper-4);font-family:var(--mono)}
 .xlink a{color:var(--cyan)}
 .mnote{margin-top:var(--s2);font-size:10px;color:var(--paper-3)}   /* secondary note under a metric */
+/* crowding mini-charts (load-along-route + time-of-day) */
+.crowdlbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-3);margin:10px 0 3px}
+.crowdchart{display:block;background:var(--panel-3);border-radius:5px}
+.crowdsub{font-family:var(--mono);font-size:10px;color:var(--paper-2);margin-top:3px}
 /* thin meter bar (concept .meter) — one bar style across the panel */
 .pbar{display:flex;height:6px;border-radius:6px;overflow:hidden;background:var(--panel-3)}
 .pbar>i{display:block;height:100%}
@@ -786,6 +790,45 @@ const CROWD_COL = { comfortable:"var(--green)", moderate:"var(--cyan)", busy:"va
 const CROWD_LABEL = { comfortable:"Comfortable", moderate:"Moderate", busy:"Busy", crowded:"Crowded" };
 function crowdingOf(name){ return (store.crowding && store.crowding[name]) || null; }
 function crowdingColor(name){ const c=crowdingOf(name); return c ? (CROWD_COL[c.band]||"#647691") : "var(--paper-4)"; }
+const CROWD_HEX = { comfortable:"#3fb87a", moderate:"#37c5c5", busy:"#f5a524", crowded:"#ff5470" };   // raw hex for canvas/SVG (var() won't resolve there)
+function crowdBandOf(vc){ return vc<0.5?"comfortable":vc<0.65?"moderate":vc<0.8?"busy":"crowded"; }
+function crowdProfileOf(name){ return (store.crowdingProfile && store.crowdingProfile[name]) || null; }
+// lazy-load the 1.6MB per-route crowding profile once (only when a route's dossier needs it), then re-render.
+let _crowdProfileLoading=false;
+function ensureCrowdingProfile(){
+  if(store.crowdingProfile || _crowdProfileLoading) return;
+  _crowdProfileLoading=true;
+  (async()=>{
+    for(const url of [`/api/v1/crowding-profile`,`${CONFIG.storeBase}/crowding-profile.json`]){
+      try{ const r=await fetch(url,{cache:"no-cache"}); if(r.ok){ const d=await r.json(); store.crowdingProfile=(d&&d.routes)||{}; break; } }catch(e){}
+    }
+    if(!store.crowdingProfile) store.crowdingProfile={};
+    _crowdProfileLoading=false;
+    if(selected.length){ renderContext(); if(colorMode==="crowding" && selectMode==="single") drawRoutes(false); }   // charts + corridor gradient now have data
+  })();
+}
+// compact inline-SVG bar strip (one bar per point, height ∝ V/C, coloured by band)
+function crowdBars(points, getVC, opts={}){
+  const n=points.length; if(!n) return "";
+  const W=260, H=opts.h||36, gap=n>40?0:1, bw=(W-(n-1)*gap)/n;
+  const maxVC=Math.max(1, opts.max||Math.max(...points.map(getVC)));
+  const bars=points.map((p,i)=>{ const vc=getVC(p), h=Math.max(1.5, vc/maxVC*H), x=i*(bw+gap), col=CROWD_HEX[crowdBandOf(vc)]||"#647691";
+    return `<rect x="${x.toFixed(2)}" y="${(H-h).toFixed(2)}" width="${Math.max(0.5,bw).toFixed(2)}" height="${h.toFixed(2)}" fill="${col}"><title>${esc(opts.label?opts.label(p,i):Math.round(vc*100)+"% V/C")}</title></rect>`; }).join("");
+  return `<svg class="crowdchart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" role="img" aria-label="${esc(opts.aria||"crowding chart")}">${bars}</svg>`;
+}
+// Corridor crowding gradient: a layerGroup of short polylines, each coloured by V/C sampled at its
+// fractional position along the route (from the load-along-route profile) → a heatmap down the line.
+function corridorGradientLayer(coords, vcs, weight){
+  const L1=vcs.length; if(L1<2 || coords.length<2) return null;
+  let total=0; const lens=[];
+  for(let i=1;i<coords.length;i++){ const d=map.distance(coords[i-1],coords[i]); lens.push(d); total+=d; }
+  if(total<=0) return null;
+  const vcAt=f=>{ let idx=Math.round(f*(L1-1)); return vcs[idx<0?0:(idx>L1-1?L1-1:idx)]; };
+  const grp=L.layerGroup(); let cum=0;
+  for(let i=1;i<coords.length;i++){ const d=lens[i-1], col=CROWD_HEX[crowdBandOf(vcAt((cum+d/2)/total))]||"#647691";
+    grp.addLayer(L.polyline([coords[i-1],coords[i]],{color:col,weight:weight||4,opacity:.95,lineCap:"round",lineJoin:"round",interactive:false})); cum+=d; }
+  return grp;
+}
 function colorLabel(){ return colorMode==="crowding" ? "crowding" : colorMode==="operator" ? "operator" : "type"; }
 const OP_INITIALS = {
   "Arriva London":"AR", "Go-Ahead London":"GA", "Metroline":"ML", "Stagecoach London":"SC",
@@ -1005,7 +1048,7 @@ function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)
    warehouse lands, only this loader changes. Falls back silently to live TfL +
    sample if the store can't be read (e.g. opened as a file:// page).
    =========================================================================== */
-const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null };
+const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null };
 async function loadStore(){
   if(!CONFIG.preferStore) return false;
   // Read our own public API first (/api/v1/* — the versioned, CORS-open surface served
@@ -1257,8 +1300,16 @@ function drawRoutes(fit=true){
   const allBounds=[];
   withSeq.forEach((r,i)=>{
     const col=colorFor(i);
-    if(showRoutes){ const line=L.polyline(r._seq.coords,{color:col,weight:4,opacity:.9,interactive:false}); routeLayer.addLayer(line); allBounds.push(line.getBounds()); }
     const single = selectMode==="single";
+    if(showRoutes){
+      // colour-by crowding + a single route → paint the corridor as a per-stop V/C gradient (heatmap)
+      const cp = (colorMode==="crowding" && single) ? crowdProfileOf(r.name) : null;
+      const vcs = (cp && cp.loadProfile && cp.loadProfile.length>=2) ? cp.loadProfile.map(s=>s.vc) : null;
+      const grad = vcs ? corridorGradientLayer(r._seq.coords, vcs, 4) : null;
+      if(grad){ routeLayer.addLayer(grad); allBounds.push(L.latLngBounds(r._seq.coords)); }
+      else { const line=L.polyline(r._seq.coords,{color:col,weight:4,opacity:.9,interactive:false}); routeLayer.addLayer(line); allBounds.push(line.getBounds());
+        if(colorMode==="crowding" && single) ensureCrowdingProfile(); }   // kick the lazy load → redraw with gradient
+    }
     if(showStops) r._seq.stops.forEach((s,si)=>{
       const term=(si===0||si===r._seq.stops.length-1);
       if(!single && !term) return;     // in multi, only draw termini to keep the map legible
@@ -1798,7 +1849,7 @@ async function refreshAll(){
   const btn=document.getElementById("refresh"); if(!reduceMotion()) btn.classList.add("spin"); btn.disabled=true;
   try{
     store.via=null; store.overviewByRoute=new Map();
-    store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.crowding=store.manifest=null;
+    store.routes=store.stops=store.meta=store.tenders=store.garages=store.fleet=store.crowding=store.crowdingProfile=store.manifest=null;
     seqCache.clear(); secCache.clear(); statusCache.clear(); fleetCache.clear(); disruptCache.clear(); roadIncidents=null;   // drop ALL in-memory caches → genuinely re-pull
     await loadStore();              // routes, geometry, stops, route-meta, tenders, garages
     await loadRoutes();             // sets lastFetched = now → badge confirms the refresh
@@ -2639,11 +2690,27 @@ function renderContext(){
     ];
     const dayRows=["Weekday","Saturday","Sunday"].filter(d=>cInfo.byDay&&cInfo.byDay[d])
       .map(d=>{ const x=cInfo.byDay[d]; return kv(d, `<span class="mono">${Math.round(x.vc*100)}%</span> · ${esc(String(x.time).slice(0,5))}`); }).join("");
+    ensureCrowdingProfile();   // kick the lazy profile load → charts appear on the re-render
+    const cp = crowdProfileOf(r.name);
+    let charts="";
+    if(cp && cp.loadProfile && cp.loadProfile.length){
+      const lp=cp.loadProfile, pk=lp.reduce((m,s)=>s.vc>m.vc?s:m, lp[0]);
+      charts+=`<div class="crowdlbl">Along the route ${cp.profileDir==="2"?"(inbound)":"(outbound)"} · start → end</div>`+
+        crowdBars(lp,s=>s.vc,{aria:"Crowding by stop along the route",label:s=>`${s.name} · ${Math.round(s.vc*100)}% V/C`})+
+        `<div class="crowdsub">Busiest: ${esc(pk.name)} (${Math.round(pk.vc*100)}%)</div>`;
+    }
+    const tod = cp && cp.timeOfDay && (cp.timeOfDay.Weekday||cp.timeOfDay.Saturday||cp.timeOfDay.Sunday);
+    if(tod && tod.length){
+      charts+=`<div class="crowdlbl">Through the day (weekday)</div>`+
+        crowdBars(tod,p=>p.vc,{aria:"Crowding by time of day",label:p=>`${p.t} · ${Math.round(p.vc*100)}% V/C`})+
+        `<div class="crowdsub">${tod[0].t} – ${tod[tod.length-1].t}</div>`;
+    }
     return metricBlock(`Crowding <span class="mono" style="color:var(--paper-4)">${esc(store.crowdingMeta?store.crowdingMeta.year:"")}</span>`,
       metrics(cards)+
       kv("Busiest stop",`<span class="vc">${esc(cInfo.stopname)}</span>`,cInfo.stopname)+
       kv("Peak time",`${esc(cInfo.dayType)} ${esc(String(cInfo.time).slice(0,5))}`)+
       (dayRows?`<div class="mnote">Peak V/C by day type</div>`+dayRows:"")+
+      charts+
       `<div class="mnote">V/C = passengers ÷ capacity at the busiest hour (≈100% = full)</div>`+
       crossLink("source · TfL BUSTO (bus loadings)"));
   })();
