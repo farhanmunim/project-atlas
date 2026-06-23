@@ -299,6 +299,11 @@
   /* in-card subsection divider (Reliability / Fleet folded into the Route card) */
   .dossier-b .dsec{display:flex; align-items:baseline; gap:8px; font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding:11px 0 5px; margin-top:4px; border-top:1px solid var(--border-soft)}
   .dossier-b .dsec .da{margin-left:auto; letter-spacing:.06em; text-transform:none; color:var(--faint)}
+  /* crowding mini-charts (load-along-route + time-of-day) */
+  .dossier-b .crowdlbl{font-family:var(--mono); font-size:8.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin:9px 0 3px}
+  .dossier-b .crowdchart{display:block; background:var(--inset,rgba(0,0,0,.18)); border-radius:5px}
+  [data-theme="light"] .dossier-b .crowdchart{background:#EEF2F8}
+  .dossier-b .crowdsub{font-family:var(--mono); font-size:9.5px; color:var(--muted); margin-top:3px}
   .sevline{display:flex; gap:6px; flex-wrap:wrap; margin:-2px 0 9px}
   .sv{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:20px; border:1px solid var(--border)}
   .sv.f{color:#FF6B66; border-color:rgba(220,36,31,.5)}
@@ -574,6 +579,7 @@ var state = {
   netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   crowding:null, crowdingMeta:null, crowdMode:false,   // BUSTO bus crowding (per route) + the "Crowding" colour layer
+  crowdingProfile:null,  // BUSTO per-route detail (load-along-route + time-of-day), lazy-loaded
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
 };
 // ---- shared cross-tool settings (same storage key + shape as the / app) ----
@@ -839,6 +845,24 @@ function ensureCrowding(){
   if(state.crowding) return Promise.resolve();
   return getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d)||{}; state.crowdingMeta={year:d.year}; })
     .catch(function(){ state.crowding={}; });
+}
+function ensureCrowdingProfile(){
+  if(state.crowdingProfile) return Promise.resolve();
+  return getJSON(atlasBase()+'/crowding-profile').then(function(d){ state.crowdingProfile=(d.routes||d)||{}; })
+    .catch(function(){ state.crowdingProfile={}; });
+}
+function crowdProfileOf(name){ return (state.crowdingProfile && state.crowdingProfile[name]) || null; }
+function crowdBandOf(vc){ return vc<0.5?'comfortable':vc<0.65?'moderate':vc<0.8?'busy':'crowded'; }
+// compact inline-SVG bar strip: one bar per point, height ∝ vc, coloured by band. `peakI` highlights.
+function crowdBars(points, getVC, opts){
+  opts=opts||{}; var n=points.length; if(!n) return '';
+  var W=opts.w||260, H=opts.h||34, gap=n>40?0:1, bw=(W-(n-1)*gap)/n;
+  var maxVC=Math.max(1, opts.max||Math.max.apply(null, points.map(getVC)));
+  var bars=points.map(function(p,i){
+    var vc=getVC(p), h=Math.max(1.5, vc/maxVC*H), x=i*(bw+gap), y=H-h, col=CROWD_COL[crowdBandOf(vc)]||'#9AA7B2';
+    return '<rect x="'+x.toFixed(2)+'" y="'+y.toFixed(2)+'" width="'+Math.max(0.5,bw).toFixed(2)+'" height="'+h.toFixed(2)+'" fill="'+col+'"><title>'+esc(opts.label?opts.label(p,i):(Math.round(vc*100)+'% V/C'))+'</title></rect>';
+  }).join('');
+  return '<svg class="crowdchart" viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" preserveAspectRatio="none" role="img" aria-label="'+esc(opts.aria||'crowding chart')+'">'+bars+'</svg>';
 }
 function ensureNetworkData(){
   var jobs=[];
@@ -1172,6 +1196,7 @@ function ensureDossierData(){
   if(!state.tenders) jobs.push(getJSON(atlasBase()+'/tenders').then(function(d){ state.tenders=(d.byRoute||d); }));
   if(!state.fleet)   jobs.push(getJSON(atlasBase()+'/fleet').then(function(d){ state.fleet=(d.byRoute||d); }));
   if(!state.crowding) jobs.push(getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d); state.crowdingMeta={year:d.year}; }).catch(function(){ state.crowding={}; }));
+  if(!state.crowdingProfile) jobs.push(ensureCrowdingProfile());   // load-along-route + time-of-day charts
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1252,6 +1277,20 @@ function renderDossier(){
       cwb+=drow('Passengers', Math.round(cw.load)+' of '+Math.round(cw.capacity));
       cwb+=drow('Busiest stop', cw.stopname);
       cwb+=drow('Peak time', cw.dayType+' '+String(cw.time).slice(0,5));
+      // charts: load-along-route (the "where") + time-of-day curve (the "when"), from crowding-profile
+      var cp=crowdProfileOf(name);
+      if(cp && cp.loadProfile && cp.loadProfile.length){
+        var lp=cp.loadProfile, pk=lp.reduce(function(m,s){return s.vc>m.vc?s:m;}, lp[0]);
+        cwb+='<div class="crowdlbl">Along the route '+(cp.profileDir==='2'?'(inbound)':'(outbound)')+' · start → end</div>'+
+          crowdBars(lp, function(s){return s.vc;}, {h:36, aria:'Crowding by stop along the route', label:function(s){return s.name+' · '+Math.round(s.vc*100)+'% V/C';}})+
+          '<div class="crowdsub">Busiest: '+esc(pk.name)+' ('+Math.round(pk.vc*100)+'%)</div>';
+      }
+      var tod=cp && cp.timeOfDay && (cp.timeOfDay.Weekday||cp.timeOfDay.Saturday||cp.timeOfDay.Sunday);
+      if(tod && tod.length){
+        cwb+='<div class="crowdlbl">Through the day (weekday)</div>'+
+          crowdBars(tod, function(p){return p.vc;}, {h:36, aria:'Crowding by time of day', label:function(p){return p.t+' · '+Math.round(p.vc*100)+'% V/C';}})+
+          '<div class="crowdsub">'+tod[0].t+' – '+tod[tod.length-1].t+'</div>';
+      }
       rc+=dsec('Crowding', (CROWD_LABEL[cw.band]||'')+(state.crowdingMeta&&state.crowdingMeta.year?' · '+state.crowdingMeta.year:''))+cwb;
     }
 
@@ -1278,6 +1317,7 @@ function renderDossier(){
 
     cont.innerHTML = cards || dcardHTML(rtitle, null, '<div class="dempty">No detail on record for route '+esc(name)+'.</div>', true);
     cont.querySelectorAll('.card-h').forEach(wireCardHeader);
+    if(state.crowdMode && state.routeId && state.routeName===name) drawRoute();   // profile now loaded → repaint the corridor gradient
 
     // live line status (non-cached) — fills the Route card's status slot when it arrives.
     getJSON(atlasBase()+'/live/status?route='+encodeURIComponent(name)).then(function(j){
@@ -1301,15 +1341,42 @@ function renderDossier(){
     }).catch(function(){});
   }).catch(function(e){ cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>', true); cont.querySelectorAll('.card-h').forEach(wireCardHeader); });
 }
+// Corridor crowding gradient: colour each piece of the route by V/C sampled at its fractional
+// position along the line (from the load-along-route profile) → a "heatmap" down the corridor.
+function corridorGradientVCs(){
+  if(!state.crowdMode || !state.routeName) return null;
+  var cp=crowdProfileOf(state.routeName);
+  return (cp && cp.loadProfile && cp.loadProfile.length>=2) ? cp.loadProfile.map(function(s){return s.vc;}) : null;
+}
+function drawCorridorGradient(vcs){
+  var L1=vcs.length, total=0, segLens=[];
+  state.routeSegments.forEach(function(seg){ var sl=[]; for(var i=1;i<seg.length;i++){ var d=map.distance(seg[i-1],seg[i]); sl.push(d); total+=d; } segLens.push(sl); });
+  if(total<=0) return false;
+  var vcAt=function(f){ var idx=Math.round(f*(L1-1)); return vcs[idx<0?0:(idx>L1-1?L1-1:idx)]; };
+  var cum=0;
+  state.routeSegments.forEach(function(seg,si){
+    for(var i=1;i<seg.length;i++){
+      var d=segLens[si][i-1], col=CROWD_COL[crowdBandOf(vcAt((cum+d/2)/total))]||'#9AA7B2';
+      L.polyline([seg[i-1],seg[i]], {color:col, weight:5, opacity:.95, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
+      cum+=d;
+    }
+  });
+  return true;
+}
 function drawRoute(){
   routeLayer.clearLayers();
   var all=[];
-  var rcol = (state.crowdMode && state.routeName) ? crowdColor(state.routeName) : '#DC241F';   // Crowding layer tints the corridor by band
-  state.routeSegments.forEach(function(seg){
-    L.polyline(seg, {color:rcol, weight:3.5, opacity:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
-    L.polyline(seg, {color:rcol, weight:9, opacity:.10}).addTo(routeLayer); // glow
-    seg.forEach(function(p){all.push(p);});
-  });
+  var grad = corridorGradientVCs();
+  if(grad && drawCorridorGradient(grad)){
+    state.routeSegments.forEach(function(seg){ seg.forEach(function(p){all.push(p);}); });
+  } else {
+    var rcol = (state.crowdMode && state.routeName) ? crowdColor(state.routeName) : '#DC241F';   // flat band until the profile loads
+    state.routeSegments.forEach(function(seg){
+      L.polyline(seg, {color:rcol, weight:3.5, opacity:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
+      L.polyline(seg, {color:rcol, weight:9, opacity:.10}).addTo(routeLayer); // glow
+      seg.forEach(function(p){all.push(p);});
+    });
+  }
   state.routePath=all;
   // length
   var km=0;
@@ -1972,9 +2039,9 @@ $('tgBridges').addEventListener('change', function(){ renderBridges(this.checked
 // Crowding colour layer — tints route lines (network or the selected corridor) by BUSTO peak-load band.
 function toggleCrowding(on){
   state.crowdMode=on;
-  ensureCrowding().then(function(){
+  Promise.all([ensureCrowding(), on && state.routeId ? ensureCrowdingProfile() : Promise.resolve()]).then(function(){
     if(state.routeId){ drawRoute(); } else if(state.overview){ drawNetwork(); }
-    status(on?'Routes coloured by crowding · TfL BUSTO peak load':'Crowding layer off','ok');
+    status(on?(state.routeId?'Corridor coloured by crowding · TfL BUSTO':'Routes coloured by crowding · TfL BUSTO peak load'):'Crowding layer off','ok');
   });
 }
 $('tgCrowding').addEventListener('change', function(){ toggleCrowding(this.checked); });
