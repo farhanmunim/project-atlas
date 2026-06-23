@@ -22,6 +22,7 @@ import { build as buildStatus } from "./build/status.js";
 import { build as buildPerformance } from "./build/performance.js";
 import { build as buildAccidents } from "./build/accidents.js";
 import { build as buildBridges } from "./build/bridges.js";
+import { build as buildCrowding } from "./build/crowding.js";
 import { build as buildDbMirror } from "./build/db-mirror.js";
 
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -96,6 +97,13 @@ export const DATASETS = [
     ttlMs: 0,              // live snapshot — always re-pull when the pipeline runs
     soft: true,
     cadence: "≈5 min (TfL caches 30s)",
+  },
+  {
+    name: "crowding",
+    build: buildCrowding,
+    ttlMs: 30 * DAY,       // BUSTO is annual — a monthly TTL re-checks without re-pulling 98MB needlessly
+    soft: true,
+    cadence: "annual · TfL BUSTO (crowding.data.tfl.gov.uk)",
   },
   {
     name: "db-mirror",
