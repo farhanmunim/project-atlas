@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-24T06:56:02.324Z",
+  "generatedAt": "2026-06-24T09:17:48.397Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -26,7 +26,7 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-06-17T15:21:13.786Z",
+      "fetchedAt": "2026-06-24T09:17:48.397Z",
       "status": "ok",
       "rows": 679,
       "files": [
