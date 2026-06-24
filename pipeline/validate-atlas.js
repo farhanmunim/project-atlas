@@ -44,6 +44,23 @@ try {
     ok(f, d && typeof d === "object", Array.isArray(d?.[key]) ? `${d[key].length} ${key}` : "object");
   }
 
+  // ── propulsion ↔ fleet reconciliation (guards the stale-electrification fix) ──
+  // route-meta.propulsion is upgraded from the DVLA fleet when a route is clearly zero-emission
+  // (build/route-meta.js → reconcilePropulsion). After that, a route whose sampled fleet is ≥75%
+  // electric should NOT still read diesel/null — that would mean the reconciliation regressed.
+  section("propulsion ↔ fleet consistency");
+  try {
+    const rm = (load("route-meta.json").routes) || {};
+    const fl = (load("fleet.json").byRoute) || {};
+    const stale = [];
+    for (const r of Object.keys(rm)) {
+      const f = fl[r]; if (!f || !f.propulsion) continue;
+      const p = f.propulsion, tot = (p.electric || 0) + (p.hydrogen || 0) + (p.hybrid || 0) + (p.diesel || 0);
+      if (tot >= 4 && (p.electric || 0) / tot >= 0.75 && rm[r].propulsion !== "electric") stale.push(r);
+    }
+    ok("no route reads non-electric while its fleet is ≥75% electric", stale.length === 0, stale.length ? `stale: ${stale.slice(0, 12).join(",")}` : "all reconciled");
+  } catch (e) { ok("propulsion↔fleet check ran", false, e.message); }
+
   // ── routes-overview.geojson (geometry + direction encoding) ────────────────
   section("routes-overview.geojson");
   const geo = load("routes-overview.geojson");

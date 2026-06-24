@@ -58,6 +58,28 @@ export function propulsionOf(fuel) {
   return null;
 }
 
+// ── propulsion reconciliation (route-meta ↔ live DVLA fleet) ──────────────────
+// route-meta's propulsion (from the londonbusroutes vehicle-type string) goes STALE when a
+// route electrifies — it can read "diesel" long after the buses are battery-electric. The DVLA
+// fleet is the opposite: it reliably identifies zero-emission (electric/hydrogen) and only ever
+// mis-reports *hybrids* as diesel (never the reverse). So a fleet sample that's clearly
+// zero-emission is trustworthy and should override a stale route-meta diesel/null — while
+// hybrid-vs-diesel stays route-meta's call (where DVLA is unreliable). `mix` is the fleet's
+// { electric, hydrogen, hybrid, diesel } count.
+export function reconcilePropulsion(metaProp, mix) {
+  if (!mix) return metaProp;
+  // Keep an explicit hydrogen claim: DVLA reports fuel-cell (FCEV) buses as ELECTRICITY, so the
+  // fleet can't tell hydrogen from electric — the route-meta spec ("…FCEV") is the authority there.
+  if (metaProp === "hydrogen") return metaProp;
+  const e = mix.electric || 0, hy = mix.hydrogen || 0, d = mix.diesel || 0, hb = mix.hybrid || 0;
+  const total = e + hy + d + hb;
+  if (total < 4) return metaProp;                 // sample too small to trust
+  // Only upgrade on a CLEAR zero-emission supermajority (≥75%) — a bare majority can be a
+  // half-electrified route or cross-running noise, where route-meta's hybrid/diesel still holds.
+  if ((e + hy) / total >= 0.75) return e >= hy ? "electric" : "hydrogen";
+  return metaProp;
+}
+
 // ── operator brand ───────────────────────────────────────────────────────────
 let ALIASES = null;
 function loadAliases() {

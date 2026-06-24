@@ -17,6 +17,7 @@
 import { fetchRouteDetails, fetchGarageRouteMap } from "../sources/londonbusroutes.js";
 import { deriveType } from "./routes.js";
 import { overrideFor } from "../lib/overrides.js";
+import { reconcilePropulsion } from "../lib/normalize.js";
 import { rowsWithin, notAllNull } from "../lib/validate.js";
 
 function propFromVehicle(v) {
@@ -48,6 +49,14 @@ export async function build(ctx) {
   for (const d of details) detailByRoute[d.route] = d;
   const allRoutes = new Set([...Object.keys(garages), ...details.map((d) => d.route)]);
 
+  // Last-good fleet (DVLA-derived, changes slowly) — used to upgrade a route's propulsion to
+  // zero-emission when the vehicle-type string has gone stale. Read defensively; absent on a
+  // cold first run, in which case propulsion just falls back to the vehicle-type string.
+  let fleetByRoute = {};
+  try { const fl = await sink.readDataset("fleet"); fleetByRoute = (fl && fl.byRoute) || {}; }
+  catch { /* no last-good fleet yet — vehicle-type string stands */ }
+  let propUpgrades = 0;
+
   const meta = {};
   let withOperator = 0, withFleet = 0;
   for (const rt of allRoutes) {
@@ -55,11 +64,14 @@ export async function build(ctx) {
     const d = detailByRoute[rt] || {};
     const [cs, ce] = CONTRACT[rt] || [];
     const ov = overrideFor(rt);
+    const metaProp = propFromVehicle(d.vehicleType);
+    const reconProp = reconcilePropulsion(metaProp, (fleetByRoute[rt] || {}).propulsion);
+    if (reconProp !== metaProp) propUpgrades++;
     meta[rt] = {
       type: ov.type || deriveType(rt),         // regular | night | twentyfour | school
       operator: g.operator || null,
       company: g.company || null,
-      propulsion: propFromVehicle(d.vehicleType),
+      propulsion: reconProp,
       garage: d.garage || g.garageCode || null,
       garageName: g.garageName || null,
       pvr: d.pvr ?? null,
@@ -83,6 +95,6 @@ export async function build(ctx) {
   rowsWithin(metaRows, 400, undefined, "route-meta routes");
   notAllNull(metaRows, "operator", "route-meta");
   await sink.writeDataset("route-meta", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net (garages.csv + details.htm)", routes: meta });
-  log.info(`route-meta: ${allRoutes.size} routes · ${withOperator} operator · ${withFleet} fleet`);
+  log.info(`route-meta: ${allRoutes.size} routes · ${withOperator} operator · ${withFleet} fleet · ${propUpgrades} propulsion upgraded from fleet (ZEV)`);
   return { source: "londonbusroutes.net (garages.csv + details.htm)", rows: allRoutes.size, files: ["data/route-meta.json"], note: `${withOperator} operators` };
 }
