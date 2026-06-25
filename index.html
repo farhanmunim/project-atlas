@@ -219,6 +219,8 @@ svg:not([width]){width:1em;height:1em;flex:none}
 .routeitem .rtype{font-size:10.5px;color:var(--paper-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .routeitem .tdot{width:7px;height:7px;border-radius:50%;flex:none}
 .rail-empty{padding:var(--s4);font-size:var(--fz-sm);color:var(--paper-3);text-align:center}
+.rail-note{padding:var(--s3) var(--s4);font-size:var(--fz-sm);color:var(--paper-2);line-height:1.5;border-bottom:1px solid var(--line)}
+.rail-note b{color:var(--amber);font-family:var(--mono);font-weight:650}
 .rail-group{display:flex;align-items:center;gap:6px;padding:8px var(--s2) 4px;margin-top:2px;position:sticky;top:0;z-index:1;background:var(--panel);border-bottom:1px solid var(--line)}
 .rail-group:first-child{margin-top:0}
 .rail-group .rg-dot{width:8px;height:8px;border-radius:50%;flex:none}
@@ -1979,7 +1981,20 @@ function renderRouteList(){
     document.getElementById("clearSel").hidden=true; return; }
   const shown=applyFilters(routes);
   ul.innerHTML="";
-  if(!shown.length){ ul.innerHTML=`<li class="rail-empty">No routes match the current filters.</li>`; }
+  // Honest "no exact match" note. Search filters by SUBSTRING, so typing a full route
+  // designation that isn't in the current TfL network (a withdrawn route like 10/507/521/RV1,
+  // or a renumbering) otherwise silently lists only the substring hits (100, C10, SL10…) with
+  // no standalone "10" — which reads as "the app is missing route 10". Tell the user why.
+  const q=document.getElementById("routeSearch").value.trim();
+  const looksLikeRoute=/^[A-Za-z]{0,2}\d{1,3}[A-Za-z]?$/.test(q);
+  const noExact=q && !routes.some(r=>r.name.toLowerCase()===q.toLowerCase());
+  if(q && looksLikeRoute && noExact){
+    const li=document.createElement("li"); li.className="rail-note";
+    li.innerHTML = shown.length
+      ? `No current route <b>${esc(q)}</b> — it may have been withdrawn or renumbered. Showing ${shown.length} route${shown.length===1?"":"s"} containing “${esc(q)}”.`
+      : `No current route <b>${esc(q)}</b> in the TfL network — it may have been withdrawn or renumbered.`;
+    ul.appendChild(li);
+  } else if(!shown.length){ ul.innerHTML=`<li class="rail-empty">No routes match the current filters.</li>`; }
   const byOp = colorMode==="operator";   // grouping follows the colour mode → list dots always match their group header
   // build a route-item <li>; the per-row dot+label encodes the OTHER dimension to the grouping
   const mkItem=(r)=>{
