@@ -46,8 +46,18 @@ try {
 
   // ── propulsion ↔ fleet reconciliation (guards the stale-electrification fix) ──
   // route-meta.propulsion is upgraded from the DVLA fleet when a route is clearly zero-emission
-  // (build/route-meta.js → reconcilePropulsion). After that, a route whose sampled fleet is ≥75%
-  // electric should NOT still read diesel/null — that would mean the reconciliation regressed.
+  // (build/route-meta.js → reconcilePropulsion). This guard catches a *regression* of that fix
+  // (the original bug: ~37 routes read diesel while battery-electric, contradicting our own fleet).
+  //
+  // It must NOT be a strict per-route gate, because the two datasets refresh on different cadences:
+  // route-meta.propulsion is reconciled only at route-meta BUILD time (weekly TTL), whereas this
+  // validator (and the fleet builder) see a fresh, independent, per-MINUTE live arrivals snapshot
+  // (build/fleet.js samples vehicleIds on the road this minute — not an accumulated roster). So a
+  // small route mid-electrification (e.g. R1, ~5 buses) legitimately crosses the 75% line in the
+  // live snapshot between weekly route-meta rebuilds, and self-heals at the next rebuild. That lag
+  // is expected — failing the whole refresh on it would let one volatile sample abort the deploy.
+  // A *large* disagreement, by contrast, means the reconciliation genuinely regressed. So gate on
+  // the systemic case only: a handful of lagging routes passes (with a visible note); a flood fails.
   section("propulsion ↔ fleet consistency");
   try {
     const rm = (load("route-meta.json").routes) || {};
@@ -58,7 +68,13 @@ try {
       const p = f.propulsion, tot = (p.electric || 0) + (p.hydrogen || 0) + (p.hybrid || 0) + (p.diesel || 0);
       if (tot >= 4 && (p.electric || 0) / tot >= 0.75 && rm[r].propulsion !== "electric") stale.push(r);
     }
-    ok("no route reads non-electric while its fleet is ≥75% electric", stale.length === 0, stale.length ? `stale: ${stale.slice(0, 12).join(",")}` : "all reconciled");
+    // Threshold sits well above the normal weekly cross-cadence lag (a few borderline routes) and
+    // well below a reconciliation regression (~50+ upgraded routes would all revert at once).
+    const SYSTEMIC = 20;
+    const detail = stale.length
+      ? `${stale.length} lagging${stale.length > SYSTEMIC ? " — REGRESSION" : " (within expected weekly cross-cadence lag)"}: ${stale.slice(0, 12).join(",")}`
+      : "all reconciled";
+    ok("propulsion reconciliation not systemically stale (fleet ≥75% electric ⇒ route-meta electric)", stale.length <= SYSTEMIC, detail);
   } catch (e) { ok("propulsion↔fleet check ran", false, e.message); }
 
   // ── routes-overview.geojson (geometry + direction encoding) ────────────────
