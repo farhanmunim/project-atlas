@@ -116,7 +116,7 @@ Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `
 | Endpoint | What it returns |
 |---|---|
 | `GET /api/v1/history` | Index of historical datasets |
-| `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability (EWT/OTD/lost mileage) |
+| `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability (EWT/OTD/lost mileage). **Experimental** — surfaced in the app's route dossier + table as an "Atlas estimate" (cyan, `~`-prefixed), currently biased high (the ~30-min Arrivals sampling under-observes short headways); shown alongside, and explicitly not comparable to, TfL's published QSI. |
 | `GET /api/v1/history/performance-history?route=25` | TfL quarterly performance, all periods |
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
 | `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |

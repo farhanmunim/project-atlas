@@ -801,6 +801,32 @@ function crowdingColor(name){ const c=crowdingOf(name); return c ? (CROWD_COL[c.
 const CROWD_HEX = { comfortable:"#3fb87a", moderate:"#37c5c5", busy:"#f5a524", crowded:"#ff5470" };   // raw hex for canvas/SVG (var() won't resolve there)
 function crowdBandOf(vc){ return vc<0.5?"comfortable":vc<0.65?"moderate":vc<0.8?"busy":"crowded"; }
 function crowdProfileOf(name){ return (store.crowdingProfile && store.crowdingProfile[name]) || null; }
+// Our OWN estimated reliability (EWT high-freq / OTD low-freq / lost mileage) from the Supabase
+// warehouse via /api/v1/history/reliability-daily — the decoupled ingest/ pipeline derives it daily
+// from live TfL Arrivals sampling (AWT−SWT, OTD, operated÷scheduled km). This is DISTINCT from TfL's
+// published quarterly QSI figures (store.perf): a higher-frequency estimate, labelled as such. We
+// bulk-load the latest row per route once (rows come day.desc → first-seen per route_id = latest);
+// the history API returns 503 when Supabase is unconfigured, so we degrade silently to {} and the UI
+// simply omits the estimate (graceful — TfL's QSI block + everything else still render).
+async function loadReliabilityLatest(){
+  try{
+    const r=await fetch(`/api/v1/history/reliability-daily?limit=1000`,{cache:"no-cache"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d=await r.json(); const rows=(d&&d.rows)||[];
+    const latest={};
+    for(const row of rows){ const k=row.route_id; if(k==null) continue; if(!(k in latest)) latest[k]=row; }
+    store.reliabilityLatest=latest;
+  }catch(e){ store.reliabilityLatest=store.reliabilityLatest||{}; }
+}
+// latest estimated-reliability row for a route, keyed tolerant of TfL line-id vs display name + case
+// (warehouse route_id can be e.g. "n73"/"sl1" while the app holds name "N73"/"SL1").
+function reliabilityOf(r){
+  const m=store.reliabilityLatest; if(!m||!r) return null;
+  for(const k of [r.id, r.name, String(r.id||"").toLowerCase(), String(r.name||"").toLowerCase(), String(r.name||"").toUpperCase()]){
+    if(k!=null && m[k]) return m[k];
+  }
+  return null;
+}
 // lazy-load the 1.6MB per-route crowding profile once (only when a route's dossier needs it), then re-render.
 let _crowdProfileLoading=false;
 function ensureCrowdingProfile(){
@@ -1056,7 +1082,7 @@ function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)
    warehouse lands, only this loader changes. Falls back silently to live TfL +
    sample if the store can't be read (e.g. opened as a file:// page).
    =========================================================================== */
-const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null };
+const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null, reliabilityLatest:null };
 async function loadStore(){
   if(!CONFIG.preferStore) return false;
   // Read our own public API first (/api/v1/* — the versioned, CORS-open surface served
@@ -1091,6 +1117,9 @@ async function loadStore(){
     if(bridges && Array.isArray(bridges.bridges)) store.bridges = bridges;   // low bridges: { bridges:[{lat,lng,height_m,name,road}], sample }
     const crowding = await fetchData("crowding","crowding.json");
     if(crowding && crowding.routes){ store.crowding = crowding.routes; store.crowdingMeta = { year:crowding.year, bands:crowding.bands, source:crowding.source }; }   // BUSTO: { [routeName]: { peakVC, band, load, capacity, stopname, time, dayType, byDay } }
+    // Our own estimated reliability — fire-and-forget (history API / Supabase, not a static file):
+    // never block first paint on it, and repaint the dossier/table once it lands.
+    loadReliabilityLatest().then(()=>{ if(selected.length) renderContext(); if(canvasView==="table") renderTable(); });
     store.manifest = manifest;
     if(overview && Array.isArray(overview.features)){
       overview.features.forEach(f => {
@@ -1920,6 +1949,8 @@ function routesTableHTML(){
     const prop=m.prop?PROP_DEFS[m.prop]:null;
     const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]);
     const rel = pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)}<span class="u">EWT</span>` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}<span class="u">%OTP</span>` : "—") : "—";
+    const er = reliabilityOf(r);
+    const erCell = er ? (er.service_class==="high-frequency"&&er.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — biased high">~${(+er.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : er.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental">~${Math.round(+er.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
     const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?esc(fmtDate(m.contractDate)):"—");
     const lt=latestTender(r.name); const cpm=(lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:null;
     const jbCell = lt ? (isJointBid(lt)?`<span style="color:var(--amber)">joint</span>`:`<span style="color:var(--paper-3)">sole</span>`) : "—";
@@ -1933,6 +1964,7 @@ function routesTableHTML(){
       <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
+      <td class="num">${erCell}</td>
       <td class="num" title="${cw?esc(CROWD_LABEL[cw.band]+" · peak "+Math.round(cw.peakVC*100)+"% V/C "+cw.dayType+" "+String(cw.time).slice(0,5)):"no BUSTO data"}">${cwCell}</td>
       <td class="num" style="font-size:10px">${contract}</td>
       <td class="num">${cpm!=null?"£"+cpm:"—"}</td>
@@ -1940,8 +1972,8 @@ function routesTableHTML(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num">Reliability</th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="15" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="16" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2682,6 +2714,32 @@ function renderContext(){
       `<div class="mnote">${isHF?"high-frequency":"low-frequency"} service · actual vs contractual minimum standard (MPS)</div>`+
       crossLink("source · TfL Bus Performance (QSI) + per-route MPS"));
   })();
+  // Atlas's OWN estimated reliability (cyan = our secondary/derived data, never the alert-red of a
+  // contractual breach). From the warehouse's live-sampled daily build — a higher-frequency
+  // supplement to TfL's quarterly QSI above, labelled honestly as an estimate. Hidden when the
+  // warehouse has no row for this route yet (graceful — it lights up as samples accrue).
+  const liveEstimateBlock = (()=>{
+    const e = reliabilityOf(r);
+    if(!e) return "";
+    const isHF = e.service_class==="high-frequency";
+    // EXPERIMENTAL. Only the headline wait metric — EWT (high-freq) / OTD (low-freq). NOT
+    // lost-mileage: operated_km is a sliver of sampled vehicle-trips, so mileage_operated_percent
+    // reads ~2–10% (sampling-coverage artifact, not real lost mileage). The EWT estimate is
+    // currently biased HIGH (sampling predicted arrivals every ~30 min under-observes short
+    // headways → inflated AWT), so it's labelled experimental and must NOT be read as TfL's EWT.
+    const cards=[];
+    if(isHF && e.ewt_minutes!=null) cards.push(mcard("Excess wait",`~${(+e.ewt_minutes).toFixed(1)}<span class="u">min</span>`,"experimental","color:var(--cyan)"));
+    else if(!isHF && e.otd_percent!=null) cards.push(mcard("On time",`~${(+e.otd_percent).toFixed(0)}<span class="u">%</span>`,"experimental","color:var(--cyan)"));
+    if(!cards.length) return "";
+    const when = e.day ? esc(fmtDate(e.day)) : "";
+    const caveat = isHF
+      ? "rough live-sampled estimate, currently biased high (under-observes short headways)"
+      : "rough live-sampled estimate";
+    return metricBlock(`Reliability — Atlas estimate <span class="mono" style="color:var(--amber)">experimental</span>`,
+      metrics(cards)+
+      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} · ${caveat} — not comparable to TfL's QSI above${e.sample_count?` · ${e.sample_count} samples`:""}${when?` · ${when}`:""}</div>`+
+      crossLink("Experimental Atlas estimate from live TfL Arrivals sampling — methodology being refined; indicative only, not TfL's measured EWT/OTP."));
+  })();
   const servicePatternsBlock = sections.length?metricBlock(`Service patterns <span class="mono">${sections.length}</span>`,
        sections.map(s=>kv(`<span style="text-transform:capitalize">${esc(s.direction)}</span>`,`<span class="vc">${esc(trunc(s.origin+" → "+s.destination,30))}</span>`,s.origin+" → "+s.destination)).join("")+
        (sections[0]&&sections[0].validFrom?kv("Valid from",esc(fmtDate(sections[0].validFrom))):"")):"";
@@ -2741,7 +2799,7 @@ function renderContext(){
   // ── grouped readout: a handful of collapsible top-level groups ──
   el.innerHTML=ctxHead("Route "+seq.name,direction)+ identityPills + diversionPanelHtml(r) +
     group("live","Live","var(--cyan)", liveOpsHtml(r)+statusBlock, liveSummary)+
-    group("route","Route","var(--green)", perfBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
+    group("route","Route","var(--green)", perfBlock+liveEstimateBlock+geometryBlock+analysisBlock+servicePatternsBlock+connectionsBlock+stopsBlock, `${stops.length} stops · ${km?fmtDist(km):"—"}`)+
     crowdingGroup+
     riskGroup+
     group("fleet","Fleet","var(--violet)", fleetProfileBlock+fleetBlock, fdata&&fdata.avgAgeYears!=null?`${fdata.avgAgeYears}y avg`:"")+
@@ -2787,11 +2845,12 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r);
         return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
+          (er&&er.ewt_minutes!=null)?(+er.ewt_minutes).toFixed(2):"", (er&&er.otd_percent!=null)?Math.round(+er.otd_percent):"", (er&&er.sample_count!=null)?er.sample_count:"", (er&&er.day)?er.day:"",
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",

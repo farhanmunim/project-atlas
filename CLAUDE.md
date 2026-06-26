@@ -258,7 +258,15 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   route(s). A contextual **Map key** legend (`updateLegend`) labels every visible symbol.
 - **Route dossier** (right rail, `renderContext`) — accordion `group()`s: Live ops ·
   **Route** (incl. a **Reliability** block — EWT/OTP vs MPS + % mileage, from
-  `store.perf`) · **Risk & accidents** (collisions near the route: density, KSI,
+  `store.perf` (TfL QSI); plus a separate **Reliability — Atlas estimate** block
+  (`reliabilityOf`, from `/api/v1/history/reliability-daily` via `loadReliabilityLatest`)
+  showing our OWN live-sampled EWT (high-freq) / OTD (low-freq) — flagged **EXPERIMENTAL**
+  and currently biased high (the ~30-min Arrivals sampling under-observes short headways),
+  so it's cyan/`~`-prefixed and explicitly "not comparable to TfL's QSI"; lost-mileage is
+  deliberately NOT shown (operated_km is a sampling-coverage sliver). Mirrored as the
+  table's "Est. rel. (exp)" column + the CSV's "Est EWT/OTD (exp)" fields. The estimate's
+  methodology is being refined; the warehouse calc lives in `ingest/build-reliability.js`) ·
+  **Risk & accidents** (collisions near the route: density, KSI,
   severity split, by-year trend, hotspot boroughs — `sentinelBody`; plus a **low-bridge
   diversion-risk** readout that flags bridges under the 4.4 m double-deck height near the
   route, and a **user-set alert-proximity slider** (`riskRadius`, persisted) that drives
