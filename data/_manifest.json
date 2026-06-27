@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-26T08:17:42.057Z",
+  "generatedAt": "2026-06-27T06:35:23.018Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-26T08:17:41.550Z",
+      "fetchedAt": "2026-06-27T06:35:22.515Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-26T08:17:42.056Z",
+      "fetchedAt": "2026-06-27T06:35:23.018Z",
       "status": "ok",
       "rows": 13669,
       "files": [
@@ -48,7 +48,7 @@
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
-      "fetchedAt": "2026-06-19T16:44:07.208Z",
+      "fetchedAt": "2026-06-27T06:35:22.210Z",
       "status": "ok",
       "rows": 86,
       "files": [
@@ -80,9 +80,9 @@
       "note": "6 multi-route"
     },
     "tenders": {
-      "status": "ok",
+      "status": "failed",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
-      "lastAttempt": "2026-06-19T08:39:47.250Z",
+      "lastAttempt": "2026-06-27T06:35:22.299Z",
       "source": "TfL tender award results (13923/13796.aspx)",
       "fetchedAt": "2026-06-19T18:00:54.502Z",
       "rows": 2508,
