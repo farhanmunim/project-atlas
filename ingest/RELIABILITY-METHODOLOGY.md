@@ -112,17 +112,23 @@ route 1 = 27.5 min vs TfL's ~1–2. Causes, mapped to the methodology above:
    */30 cron yields much denser coverage. **Passing detection** — ✅ **done**: `passingsByStop()`
    times each passing by the **most-converged** sighting (smallest `expected_at − recorded_at`),
    i.e. the prediction closest to the actual passing, not the earliest/furthest-out one.
-2. **Restrict to QSI points** — ✅ **mostly**: the sampler already records only the route's
-   representative timing-point stop (`route_schedule.timing_point_stop_id`). Further work: use the
-   full QSI-point set and drop the terminus / any point within 1 km of it.
+2. **Restrict to QSI points** — ✅ **done** (migration `0021`): `fetch-schedule.js` derives a
+   mid-route QSI-point set (`qsi_point_stop_ids`), excluding the terminus and any stop within 1 km
+   of either end; `sample-headways.js` observes all of them so AWT spans the corridor. (NB this also
+   fixed a latent bug — `push-to-supabase.js` never populated `timing_point_stop_id`, so the sampler
+   had been recording *every* stop incl. termini.) Approximation: the Unified API doesn't flag true
+   timing points, so we use evenly-spaced stops; SWT is read at the representative point (≈invariant
+   across mid-route points, so EWT = AWT-across-points − SWT-at-point stays consistent).
 3. **Per-hour headway blocks** — ✅ **done**: `awtHourly()` buckets passings by clock-hour, first
    bus of each hour carries no headway, headways diffed only within the hour, service hours only.
    Plus passing-event clustering so a vehicle's later trips count. (Self-test: `--selftest`.)
 4. **Aggregate** weighted by observed buses (EB/OB; passenger-journey weights unavailable → OB) —
    ✅ **done**. `ewt_minutes` stored to 2 dp.
-5. **Low-freq OTD** — ⚠️ **partial**: window corrected to 2.5-early/5-late, but still anchored on a
-   synthetic scheduled grid (no per-trip scheduled times). Further work: pull per-trip departures
-   from the Timetable API.
+5. **Low-freq OTD** — ✅ **done** (migration `0021`): `fetch-schedule.js` stores per-trip
+   `scheduled_departures` (minutes-after-midnight by day-type, already parsed from the Timetable);
+   `build-reliability.js` scores each observed passing at the timing point against the nearest
+   *scheduled* departure in TfL's 2.5-early..5-late window (`otdAgainstSchedule`), falling back to
+   the synthetic grid only until the schedule is populated.
 6. **Sanity-gate** — ✅ **done**: negative EWT ⇒ null; a minimum observed-bus count
    (`MIN_OBSERVED_BUSES`) is required before publishing; within-hour headways capped at 60 min.
 7. **History depth** — ongoing: TfL aggregates over a quarter; accrue **several weeks** of the

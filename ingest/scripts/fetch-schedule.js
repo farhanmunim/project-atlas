@@ -127,6 +127,33 @@ function lengthKmFromSequence(seq) {
   return best > 0 ? +best.toFixed(3) : null;
 }
 
+// ── QSI points (TfL's measurement locations) ────────────────────────────────
+// TfL measures at QSI points = timing points EXCLUDING the terminus and any point
+// within ~1 km of the terminus. The Unified API doesn't flag timing points, so we
+// approximate: drop the two termini and any stop within 1 km of either, then take a
+// few evenly-spaced mid-route stops. The sampler observes all of them so AWT spans
+// the corridor (catching bunching that builds along the route), not one point.
+const QSI_MAX_POINTS       = 4;
+const QSI_TERMINUS_EXCL_KM = 1.0;
+function qsiPointsFromStops(stops) {
+  const pts = (stops ?? [])
+    .map(s => ({ id: s.id ?? s.stationId ?? null, lng: s.lon, lat: s.lat }))
+    .filter(s => s.id);
+  if (pts.length < 3) return pts.map(p => p.id);
+  const first = pts[0], last = pts[pts.length - 1];
+  const near = (p, t) =>
+    Number.isFinite(p.lng) && Number.isFinite(p.lat) && Number.isFinite(t.lng) && Number.isFinite(t.lat)
+      ? haversineKm([p.lng, p.lat], [t.lng, t.lat]) < QSI_TERMINUS_EXCL_KM : false;
+  const eligible = pts.slice(1, -1).filter(p => !near(p, first) && !near(p, last));
+  const pool = eligible.length ? eligible : pts.slice(1, -1);   // fallback if exclusion emptied it
+  if (pool.length <= QSI_MAX_POINTS) return [...new Set(pool.map(p => p.id))];
+  const out = [];
+  for (let k = 0; k < QSI_MAX_POINTS; k++) {
+    out.push(pool[Math.round((k * (pool.length - 1)) / (QSI_MAX_POINTS - 1))].id);
+  }
+  return [...new Set(out)];
+}
+
 // ── Scheduled headways + SWT at a timing point ──────────────────────────────
 // Map a TfL schedule day-type name to a bucket (mirrors fetch-frequencies).
 function classifyScheduleName(name) {
@@ -188,6 +215,7 @@ const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
 function deriveSchedule(timetable) {
   const weekday  = journeysFor(timetable, 'weekday');
   const saturday = journeysFor(timetable, 'saturday');
+  const sunday   = journeysFor(timetable, 'sunday');
   const anyDay   = journeysFor(timetable, 'any');
   const windows = [
     headwaysInBand(weekday,  10 * 60, 16 * 60),
@@ -211,6 +239,9 @@ function deriveSchedule(timetable) {
     swt_minutes:     swt,
     headway_min:     headwayMin != null ? +headwayMin.toFixed(1) : null,
     scheduled_trips: scheduledTrips,
+    // Per-trip scheduled departure minutes by day-type — drives real-schedule OTD
+    // (build-reliability matches observed passings to the nearest scheduled departure).
+    scheduled_departures: { weekday, saturday, sunday },
   };
 }
 
@@ -228,9 +259,15 @@ async function fetchRouteSchedule(id) {
   const lengthKm = lengthKmFromSequence(seq);
   if (!stopId) return { status: 'no_stop', length_km: lengthKm };
 
+  // QSI-point set the sampler observes for AWT (terminus + within-1km excluded). The
+  // representative timing point (where we read SWT + the scheduled departures) is always
+  // included — SWT is ~invariant across mid-route points (same buses), so EWT = AWT(across
+  // points) − SWT(representative) stays consistent. See RELIABILITY-METHODOLOGY.md.
+  const qsiPoints = [...new Set([stopId, ...qsiPointsFromStops(stops)])];
+
   const tt = await fetchJson(apiUrl(`/Line/${encodeURIComponent(id)}/Timetable/${encodeURIComponent(stopId)}`));
   const derived = tt ? deriveSchedule(tt) : null;
-  if (!derived) return { status: 'no_timetable', timing_point_stop_id: stopId, length_km: lengthKm };
+  if (!derived) return { status: 'no_timetable', timing_point_stop_id: stopId, qsi_point_stop_ids: qsiPoints, length_km: lengthKm };
 
   const scheduledKm = (derived.scheduled_trips != null && lengthKm != null)
     ? +(derived.scheduled_trips * lengthKm).toFixed(2)
@@ -239,6 +276,7 @@ async function fetchRouteSchedule(id) {
   return {
     ...derived,
     timing_point_stop_id: stopId,
+    qsi_point_stop_ids:   qsiPoints,
     length_km:            lengthKm,
     scheduled_km:         scheduledKm,
     status:               200,

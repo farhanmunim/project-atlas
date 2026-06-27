@@ -84,18 +84,22 @@ async function fetchJson(url, retries = 4) {
 // Best-effort: if it's empty (schedule not yet built) we fall back to recording
 // arrivals at whatever stops the /Arrivals feed reports.
 async function loadTimingPoints(supabase) {
-  const map = {};
+  const map = {};   // route → Set(stop ids) of QSI points to observe
   try {
     const { data, error } = await supabase
       .from('route_schedule')
-      .select('route_id, timing_point_stop_id')
-      .not('timing_point_stop_id', 'is', null);
+      .select('route_id, timing_point_stop_id, qsi_point_stop_ids');
     if (error) throw error;
     for (const r of (data ?? [])) {
-      if (r.timing_point_stop_id) map[String(r.route_id).toUpperCase()] = String(r.timing_point_stop_id);
+      const ids = new Set();
+      // prefer the multi-point QSI set (migration 0021); fall back to the single timing point
+      const qsi = Array.isArray(r.qsi_point_stop_ids) ? r.qsi_point_stop_ids : null;
+      if (qsi) for (const s of qsi) { if (s) ids.add(String(s)); }
+      if (r.timing_point_stop_id) ids.add(String(r.timing_point_stop_id));
+      if (ids.size) map[String(r.route_id).toUpperCase()] = ids;
     }
   } catch (err) {
-    console.warn(`  route_schedule timing points unavailable (${err.message}) — using feed stop ids`);
+    console.warn(`  route_schedule QSI points unavailable (${err.message}) — using feed stop ids`);
   }
   return map;
 }
@@ -103,13 +107,13 @@ async function loadTimingPoints(supabase) {
 // From one route's /Arrivals payload, keep each vehicle's SOONEST prediction at
 // the route's timing-point stop (or, if none known, at every stop). Returns
 // rows ready for arrival_samples.
-function rowsFromArrivals(routeId, arrivals, timingStopId, recordedAt) {
+function rowsFromArrivals(routeId, arrivals, stopSet, recordedAt) {
   if (!Array.isArray(arrivals)) return [];
   // soonest expected per (stop, vehicle)
   const soonest = new Map();   // key `${stop}|${reg}` → { stopId, reg, dir, expected }
   for (const p of arrivals) {
     const stopId = String(p?.naptanId ?? '');
-    if (timingStopId && stopId !== timingStopId) continue;       // restrict to timing point
+    if (stopSet && stopSet.size && !stopSet.has(stopId)) continue;   // restrict to QSI points
     const reg = String(p?.vehicleId ?? '').toUpperCase().replace(/\s+/g, '');
     if (!BUS_REG_RE.test(reg)) continue;
     const expected = p?.expectedArrival ? new Date(p.expectedArrival) : null;

@@ -71,6 +71,7 @@ const SERVICE_START_HR  = 5;    // 05:00–23:59 daytime QSI window (UTC ≈ Lon
 const SERVICE_END_HR    = 24;
 const MAX_HEADWAY_MIN   = 60;   // within-hour cap; a longer "gap" is a sampling artifact, dropped
 const MIN_OBSERVED_BUSES = 12;  // need enough passings before an EWT is trustworthy; else null
+const MIN_OTD_DEPARTURES = 5;   // low-freq: need a few observed departures before an OTD; else null
 
 loadEnv();
 const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
@@ -169,6 +170,32 @@ function distinctVehicleTrips(samples) {
   const regs = new Set();
   for (const s of samples) if (s.vehicle_id) regs.add(s.vehicle_id);
   return regs.size;
+}
+
+// Day-type for a YYYY-MM-DD (noon-anchored to dodge TZ edges).
+function pickDayType(dayStr) {
+  const d = new Date(`${dayStr}T12:00:00Z`).getUTCDay();   // 0=Sun … 6=Sat
+  return d === 0 ? 'sunday' : d === 6 ? 'saturday' : 'weekday';
+}
+
+// Real-schedule OTD: score each observed passing (ms) at the timing point against the
+// nearest SCHEDULED departure (minutes-after-midnight). On-time = 2.5 min early .. 5 min
+// late (TfL's window). Far better than the synthetic grid — uses actual scheduled times.
+function otdAgainstSchedule(passMs, schedMins) {
+  if (!Array.isArray(schedMins) || schedMins.length < 2 || !Array.isArray(passMs) || !passMs.length) return null;
+  const sched = [...schedMins].sort((a, b) => a - b);
+  let onTime = 0, n = 0;
+  for (const ms of passMs) {
+    const d = new Date(ms);
+    const hr = d.getUTCHours();
+    if (hr < SERVICE_START_HR || hr >= SERVICE_END_HR) continue;
+    const mins = hr * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60;
+    let dev = Infinity;
+    for (const s of sched) { const e = mins - s; if (Math.abs(e) < Math.abs(dev)) dev = e; }  // + = late
+    n++;
+    if (dev >= -2.5 && dev <= 5) onTime++;
+  }
+  return n >= MIN_OTD_DEPARTURES ? +(100 * onTime / n).toFixed(1) : null;
 }
 
 // OTD estimate for low-frequency routes. Without per-trip scheduled times we
@@ -275,7 +302,18 @@ async function main() {
         }
       }
     } else if (serviceClass === 'low-frequency') {
-      otd = estimateOtd(rsamples, Number.isFinite(sched?.headway_min) ? Number(sched.headway_min) : null);
+      // Prefer real scheduled departures (migration 0021) at the representative timing point;
+      // fall back to the synthetic-grid estimate when the schedule isn't populated yet.
+      const sd = sched?.scheduled_departures;
+      const repStop = sched?.timing_point_stop_id != null ? String(sched.timing_point_stop_id) : null;
+      if (sd && repStop) {
+        const dayType = pickDayType(day);
+        const schedMins = (Array.isArray(sd[dayType]) && sd[dayType].length) ? sd[dayType]
+                        : (Array.isArray(sd.weekday) ? sd.weekday : []);
+        const passMs = passingsByStop(rsamples).get(repStop) || [];
+        otd = otdAgainstSchedule(passMs, schedMins);
+      }
+      if (otd == null) otd = estimateOtd(rsamples, Number.isFinite(sched?.headway_min) ? Number(sched.headway_min) : null);
     }
 
     // Lost mileage.
@@ -366,6 +404,14 @@ function selfTest() {
   ok('nearest-passing picks the most-converged prediction',
     np.length === 1 && new Date(np[0]).toISOString() === '2026-06-26T09:00:30.000Z',
     np.map(t => new Date(t).toISOString()));
+
+  // 8) Real-schedule OTD: 5 passings vs scheduled [08:00,08:20,08:40,09:00] → 4 on-time = 80%.
+  const toMs = (t) => new Date(`2026-06-26T${t}:00Z`).getTime();   // 2026-06-26 = a Friday (weekday)
+  const otdv = otdAgainstSchedule(
+    ['08:01', '08:18', '08:23', '08:48', '09:00'].map(toMs),       // 08:48 nearest 08:40 = +8 late
+    [480, 500, 520, 540],
+  );
+  ok('real-schedule OTD = 80% (4/5 within 2.5-early..5-late)', otdv === 80, otdv);
 
   console.log(`\nselftest: ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

@@ -655,6 +655,9 @@ async function pushSchedule() {
     scheduled_trips: Number.isFinite(r.scheduled_trips) ? r.scheduled_trips : null,
     scheduled_km:    Number.isFinite(r.scheduled_km) ? r.scheduled_km : null,
     headway_min:     Number.isFinite(r.headway_min) ? r.headway_min : null,
+    timing_point_stop_id: r.timing_point_stop_id ?? null,
+    scheduled_departures: r.scheduled_departures ?? null,   // per-trip OTD (migration 0021)
+    qsi_point_stop_ids:   r.qsi_point_stop_ids ?? null,     // multi-point AWT (migration 0021)
     source:          'TfL Timetable',
   })).filter(r => r.route_id);
   await upsertInBatches('route_schedule', rows, 'route_id,snapshot_date');

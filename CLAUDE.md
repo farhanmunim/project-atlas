@@ -348,7 +348,11 @@ can never block the Cloudflare site.
   (adds `day` + `time_band`), `0020_bus_crowding.sql` (the BUSTO crowding warehouse table, keyed
   `(route_id, busto_year)` so crowding accrues year-over-year — the time-series behind
   `/api/v1/history/crowding`, which self-heals to the `data/crowding.json` snapshot until the table
-  is populated). The accidents upsert is **self-healing** — it strips columns a
+  is populated), `0021_route_schedule_qsi.sql` (adds `scheduled_departures` + `qsi_point_stop_ids`
+  to `route_schedule` for higher-fidelity live reliability — per-trip OTD vs the real timetable, and
+  a multi-QSI-point AWT set with the terminus/within-1km excluded per TfL; both nullable + additive,
+  the builder falls back to the single timing point / synthetic-grid OTD until populated. See
+  `ingest/RELIABILITY-METHODOLOGY.md`). The accidents upsert is **self-healing** — it strips columns a
   pending migration hasn't added yet and writes the base record, so a new field never blocks the
   ingest. The rest pre-existed. Don't reshape existing tables; add a migration for anything new.
 - **Workflows** (all `permissions: contents: read` — Supabase-only, no
