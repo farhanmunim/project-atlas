@@ -92,30 +92,39 @@ const PASSING_GAP_MIN = 25;   // sightings of one vehicle ≤25 min apart = same
 // Reconstruct distinct PASSING events per stop. A vehicle is sampled repeatedly as it
 // approaches (converging predictions) and also reappears on its LATER trips hours later;
 // collapsing to one time per (stop,vehicle) would drop those later trips. So cluster each
-// vehicle's sightings: consecutive sightings ≤PASSING_GAP_MIN apart are one event (take its
-// earliest time); a larger gap starts a new passing. Returns Map<stop, number[] (ms)>.
+// vehicle's sightings (one per sweep): consecutive sightings ≤PASSING_GAP_MIN apart are one
+// event; a larger gap starts a new passing.
+//
+// Passing TIME per event = the expected_at of the sighting with the SMALLEST predicted
+// time-to-station (expected_at − recorded_at). As a bus nears the stop its prediction
+// converges to the true passing, so the most-converged sighting is the best measured-ish
+// passing time — far better than the earliest (furthest-out, least-accurate) prediction.
+// Falls back to the earliest expected_at when recorded_at is absent. Returns Map<stop, ms[]>.
 function passingsByStop(samples) {
-  const byVeh = new Map();   // stop|vehicle → [times ms]
+  const byVeh = new Map();   // stop|vehicle → [{ exp, ttsMin }]
   for (const s of samples) {
     const reg = s.vehicle_id; if (!reg) continue;
     const stop = s.stop_id ?? '∅';
-    const t = s.expected_at ? new Date(s.expected_at).getTime() : NaN;
-    if (!Number.isFinite(t)) continue;
-    const key = `${stop}|${reg}`;
-    (byVeh.get(key) ?? byVeh.set(key, []).get(key)).push(t);
+    const exp = s.expected_at ? new Date(s.expected_at).getTime() : NaN;
+    if (!Number.isFinite(exp)) continue;
+    const rec = s.recorded_at ? new Date(s.recorded_at).getTime() : NaN;
+    const ttsMin = Number.isFinite(rec) ? (exp - rec) / 60_000 : Infinity;   // ∞ = unknown → deprioritised
+    (byVeh.get(`${stop}|${reg}`) ?? byVeh.set(`${stop}|${reg}`, []).get(`${stop}|${reg}`)).push({ exp, ttsMin });
   }
   const gapMs = PASSING_GAP_MIN * 60_000;
   const byStop = new Map();
-  for (const [key, times] of byVeh) {
+  // the best passing time within a cluster of sightings = the most-converged one
+  const passingOf = (cluster) => cluster.reduce((best, c) => (c.ttsMin < best.ttsMin ? c : best)).exp;
+  for (const [key, sights] of byVeh) {
     const stop = key.slice(0, key.lastIndexOf('|'));
-    times.sort((a, b) => a - b);
+    sights.sort((a, b) => a.exp - b.exp);
     const out = byStop.get(stop) ?? byStop.set(stop, []).get(stop);
-    let eventStart = times[0], last = times[0];
-    for (let i = 1; i < times.length; i++) {
-      if (times[i] - last > gapMs) { out.push(eventStart); eventStart = times[i]; }  // new passing
-      last = times[i];
+    let cluster = [sights[0]], last = sights[0].exp;
+    for (let i = 1; i < sights.length; i++) {
+      if (sights[i].exp - last > gapMs) { out.push(passingOf(cluster)); cluster = []; }  // new passing
+      cluster.push(sights[i]); last = sights[i].exp;
     }
-    out.push(eventStart);
+    out.push(passingOf(cluster));
   }
   return byStop;
 }
@@ -345,6 +354,18 @@ function selfTest() {
     v('2026-06-26T12:00:00Z'),                                                       // later trip → 1
   ]).get('S1') || [];
   ok('one vehicle → 2 distinct passings (approach cluster + later trip)', clustered.length === 2, clustered.length);
+
+  // 6) Nearest-passing: within a cluster, the passing time is the MOST-CONVERGED prediction
+  //    (smallest expected−recorded), not the earliest/furthest-out one.
+  const s = (exp, rec) => ({ vehicle_id: 'VP', stop_id: 'S1', expected_at: exp, recorded_at: rec });
+  const np = passingsByStop([
+    s('2026-06-26T09:02:00Z', '2026-06-26T08:50:00Z'),  // tts 12 min
+    s('2026-06-26T09:01:00Z', '2026-06-26T08:58:00Z'),  // tts 3 min
+    s('2026-06-26T09:00:30Z', '2026-06-26T09:00:00Z'),  // tts 0.5 min ← should win
+  ]).get('S1') || [];
+  ok('nearest-passing picks the most-converged prediction',
+    np.length === 1 && new Date(np[0]).toISOString() === '2026-06-26T09:00:30.000Z',
+    np.map(t => new Date(t).toISOString()));
 
   console.log(`\nselftest: ${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

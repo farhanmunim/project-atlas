@@ -109,8 +109,9 @@ route 1 = 27.5 min vs TfL's ~1–2. Causes, mapped to the methodology above:
 
 1. **Sample far more frequently** (the biggest lever) — ✅ **done**: `sample-headways.js` now takes
    `SAMPLE_SWEEPS` (default 4) sweeps per run, ~`SAMPLE_SWEEP_INTERVAL_SEC` (180s) apart, so the
-   */30 cron yields much denser coverage. Further work: detect the actual **passing** (when a
-   vehicle's `timeToStation` crosses ~0) rather than relying on the soonest prediction.
+   */30 cron yields much denser coverage. **Passing detection** — ✅ **done**: `passingsByStop()`
+   times each passing by the **most-converged** sighting (smallest `expected_at − recorded_at`),
+   i.e. the prediction closest to the actual passing, not the earliest/furthest-out one.
 2. **Restrict to QSI points** — ✅ **mostly**: the sampler already records only the route's
    representative timing-point stop (`route_schedule.timing_point_stop_id`). Further work: use the
    full QSI-point set and drop the terminus / any point within 1 km of it.
