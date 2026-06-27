@@ -660,7 +660,10 @@ async function pushSchedule() {
     qsi_point_stop_ids:   r.qsi_point_stop_ids ?? null,     // multi-point AWT (migration 0021)
     source:          'TfL Timetable',
   })).filter(r => r.route_id);
-  await upsertInBatches('route_schedule', rows, 'route_id,snapshot_date');
+  // scheduled_departures + qsi_point_stop_ids land via migration 0021; until it's applied the
+  // upsert strips them and writes the base record (self-healing, like accidents). timing_point_stop_id
+  // already exists (0015) — it was simply never populated before, so it's safe to write unconditionally.
+  await upsertInBatches('route_schedule', rows, 'route_id,snapshot_date', ['scheduled_departures', 'qsi_point_stop_ids']);
 }
 
 // bus_crowding — TfL BUSTO crowding per route (migration 0020). One row per
