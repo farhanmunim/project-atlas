@@ -105,25 +105,30 @@ route 1 = 27.5 min vs TfL's ~1–2. Causes, mapped to the methodology above:
    scheduled), so `mileage_operated_percent` is sampling coverage, not lost mileage. (Already
    excluded from the app display.)
 
-## 7. Fix spec for `ingest/build-reliability.js` (prioritised)
+## 7. Fix spec for `ingest/build-reliability.js` (status)
 
-1. **Sample far more frequently** (the biggest lever). For high-freq routes the headway-sampler
-   must run every ~1–3 min in service hours, not ~30. Detect an actual **passing** as the moment a
-   vehicle's `timeToStation` crosses ~0 (or its prediction disappears after counting down), giving
-   a *measured-ish* passing time rather than a far-future prediction.
-2. **Restrict to QSI points**: from `/Line/{id}/Route/Sequence` keep scheduled **timing points**,
-   drop the terminus and any point within 1 km of it. Compute per point, per direction.
-3. **Per-hour headway blocks** with `hSWT = Σ(SH²)/Σ(2·SH)`, `hAWT = Σ(OH²)/Σ(2·OH)`,
-   `hEWT = hAWT − hSWT`; **first bus of each hour → headway 0**; restrict to 05:00–23:59.
-4. **Aggregate** Step I (EB/OB) → II (passenger journeys; approximate with EB if unavailable) →
-   III. Store `ewt_minutes` to 2 dp.
-5. **Low-freq OTD**: per scheduled departure at the QSI point, band as 2.5-early/5-late etc.;
-   `OT% = on-time / expected`. Needs per-trip scheduled times from the Timetable API.
-6. **Sanity-gate**: drop/flag implausible outputs (e.g. EWT < 0 or > ~10 min, or below a minimum
-   passings-per-hour density) rather than publishing them.
-7. **History depth**: TfL aggregates over a quarter. For stable, QSI-comparable figures accrue
-   **several weeks** of dense samples before treating a route's estimate as meaningful.
+1. **Sample far more frequently** (the biggest lever) — ✅ **done**: `sample-headways.js` now takes
+   `SAMPLE_SWEEPS` (default 4) sweeps per run, ~`SAMPLE_SWEEP_INTERVAL_SEC` (180s) apart, so the
+   */30 cron yields much denser coverage. Further work: detect the actual **passing** (when a
+   vehicle's `timeToStation` crosses ~0) rather than relying on the soonest prediction.
+2. **Restrict to QSI points** — ✅ **mostly**: the sampler already records only the route's
+   representative timing-point stop (`route_schedule.timing_point_stop_id`). Further work: use the
+   full QSI-point set and drop the terminus / any point within 1 km of it.
+3. **Per-hour headway blocks** — ✅ **done**: `awtHourly()` buckets passings by clock-hour, first
+   bus of each hour carries no headway, headways diffed only within the hour, service hours only.
+   Plus passing-event clustering so a vehicle's later trips count. (Self-test: `--selftest`.)
+4. **Aggregate** weighted by observed buses (EB/OB; passenger-journey weights unavailable → OB) —
+   ✅ **done**. `ewt_minutes` stored to 2 dp.
+5. **Low-freq OTD** — ⚠️ **partial**: window corrected to 2.5-early/5-late, but still anchored on a
+   synthetic scheduled grid (no per-trip scheduled times). Further work: pull per-trip departures
+   from the Timetable API.
+6. **Sanity-gate** — ✅ **done**: negative EWT ⇒ null; a minimum observed-bus count
+   (`MIN_OBSERVED_BUSES`) is required before publishing; within-hour headways capped at 60 min.
+7. **History depth** — ongoing: TfL aggregates over a quarter; accrue **several weeks** of the
+   denser samples before treating a route's estimate as meaningful.
 
-> Until items 1–3 land, the app surfaces this only as a clearly-labelled **experimental** estimate
-> (cyan, `~`-prefixed, "not comparable to TfL's QSI"). The honest fix is denser sampling at QSI
-> points with measured passings — then the same UI shows credible numbers.
+> The app surfaces this as a clearly-labelled **experimental** estimate (cyan, `~`-prefixed, "not
+> comparable to TfL's QSI"). With items 1, 3, 4, 6 landed the per-route EWT is no longer inflated by
+> cross-hour sampling holes; coverage tightens (thin-sample routes now read null rather than a wrong
+> number) and improves as denser history accrues. Items 1 (true passing detection), 2 (full QSI
+> points) and 5 (per-trip OTD) remain to reach QSI-comparable accuracy.

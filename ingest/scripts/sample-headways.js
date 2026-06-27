@@ -40,9 +40,17 @@ import { fetchWithTimeout, userAgentHeaders } from './_lib/http.js';
 const BASE_URL       = 'https://api.tfl.gov.uk';
 const SCRIPT         = 'sample-headways';
 const CONC           = 4;
-const REQS_PER_MIN   = 300;
+const REQS_PER_MIN   = 480;   // TfL allows 500/min with an app key — sweep the network faster
 const RETENTION_DAYS = 3;     // only need a trailing window to rebuild daily headways
 const BATCH          = 500;
+// Denser sampling within ONE run. GitHub Actions can't cron faster than ~5 min and the
+// */30 sampler snapshot misses most buses on ≤12-min high-frequency headways, which is the
+// dominant cause of inflated EWT (see ingest/RELIABILITY-METHODOLOGY.md). So take several
+// sweeps per invocation, spaced a few minutes apart — each a distinct timestamp — to catch
+// the buses that actually pass during the window. Tunable via env; defaults stay well inside
+// the 30-min cron and TfL rate limits. SWEEPS=1 reproduces the old single-snapshot behaviour.
+const SWEEPS           = Math.max(1, Number(process.env.SAMPLE_SWEEPS ?? 4));
+const SWEEP_INTERVAL_MS = Math.max(30, Number(process.env.SAMPLE_SWEEP_INTERVAL_SEC ?? 180)) * 1000;
 
 loadEnv();
 const API_KEY = process.env.BUS_API_KEY ?? '';
@@ -152,34 +160,39 @@ async function main() {
   const timingPoints = await loadTimingPoints(supabase);
   console.log(`  ${Object.keys(timingPoints).length} routes have a known timing point`);
 
-  // One timestamp for the whole run so all of this sample's rows agree.
-  const recordedAt = new Date().toISOString();
-
   const minInterval = Math.ceil(60_000 / REQS_PER_MIN);
   let nextSlot = Date.now();
-  let idx = 0, done = 0, withObs = 0;
-  const rows = [];
 
-  async function worker() {
-    while (true) {
-      const i = idx++;
-      if (i >= ids.length) break;
-
-      const wait = nextSlot - Date.now();
-      nextSlot = Math.max(Date.now(), nextSlot) + minInterval;
-      if (wait > 0) await new Promise(r => setTimeout(r, wait));
-
-      const id = ids[i];
-      const arr = await fetchJson(apiUrl(`/Line/${encodeURIComponent(id)}/Arrivals`));
-      const sampleRows = rowsFromArrivals(id, arr, timingPoints[id] ?? null, recordedAt);
-      if (sampleRows.length) { rows.push(...sampleRows); withObs++; }
-      done++;
-      if (done % 100 === 0) console.log(`  ${done}/${ids.length}  withObs=${withObs} rows=${rows.length}`);
+  // One sweep = one /Arrivals snapshot of every route, rate-limited, sharing one timestamp.
+  async function sweep(recordedAt) {
+    let idx = 0, withObs = 0;
+    const rows = [];
+    async function worker() {
+      while (true) {
+        const i = idx++;
+        if (i >= ids.length) break;
+        const wait = nextSlot - Date.now();
+        nextSlot = Math.max(Date.now(), nextSlot) + minInterval;
+        if (wait > 0) await new Promise(r => setTimeout(r, wait));
+        const id = ids[i];
+        const arr = await fetchJson(apiUrl(`/Line/${encodeURIComponent(id)}/Arrivals`));
+        const sr = rowsFromArrivals(id, arr, timingPoints[id] ?? null, recordedAt);
+        if (sr.length) { rows.push(...sr); withObs++; }
+      }
     }
+    await Promise.all(Array.from({ length: CONC }, worker));
+    return { rows, withObs };
   }
-  await Promise.all(Array.from({ length: CONC }, worker));
 
-  console.log(`Collected ${rows.length} arrival samples across ${withObs} routes.`);
+  // Take SWEEPS sweeps spaced SWEEP_INTERVAL apart — denser coverage within this run.
+  const rows = [];
+  for (let s = 0; s < SWEEPS; s++) {
+    if (s > 0) await new Promise(r => setTimeout(r, SWEEP_INTERVAL_MS));
+    const { rows: sr, withObs } = await sweep(new Date().toISOString());
+    rows.push(...sr);
+    console.log(`  sweep ${s + 1}/${SWEEPS}: ${sr.length} rows, ${withObs} routes with observations`);
+  }
+  console.log(`Collected ${rows.length} arrival samples across ${SWEEPS} sweep(s).`);
 
   // ── Write — plain insert (append-only; the builder dedupes downstream) ──────
   let written = 0;

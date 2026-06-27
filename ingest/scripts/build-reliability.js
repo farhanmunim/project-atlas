@@ -10,12 +10,16 @@
  * METHODOLOGY (implements TfL's definitions):
  *
  *   High-frequency routes (service_class = 'high-frequency'):
- *     • Reconstruct OBSERVED headways hₐ: at the timing-point stop, take each
- *       distinct vehicle's soonest passing (min recorded expected_at), sort
- *       those passings by time, diff consecutive → the gaps between buses.
- *     • AWT = Σ(hₐ²) / (2·Σhₐ)              (Actual Waiting Time)
- *     • EWT = AWT − SWT                      (Excess Waiting Time; lower better)
- *       SWT is taken from route_schedule (computed over SCHEDULED headways).
+ *     • Reconstruct OBSERVED passings at the timing point, clustering each vehicle's
+ *       sightings into distinct passing events (so its later trips count too).
+ *     • Compute AWT TfL's way — PER HOUR (the minimum QSI unit), first bus of each
+ *       hour carrying no headway, headways diffed only WITHIN the hour, in service
+ *       hours — then aggregate hourly AWT weighted by observed buses. Per-hour
+ *       blocks stop a cross-hour sampling hole inflating AWT (the old whole-day
+ *       diff produced EWTs of ~17-27 min vs TfL's ~1-2). hAWT = Σ(hₐ²)/(2·Σhₐ).
+ *     • EWT = AWT − SWT (clamped: a negative ⇒ under-observed ⇒ null; needs a
+ *       minimum observed-bus count to publish). SWT from route_schedule.
+ *     See ingest/RELIABILITY-METHODOLOGY.md for the cited TfL definitions.
  *
  *   Low-frequency routes (service_class = 'low-frequency'):
  *     • OTD = % of observed departures running between 2 min EARLY and 5 min
@@ -32,9 +36,10 @@
  * ── ACCURACY CAVEATS (these are ESTIMATES, not TfL's measured figures) ──────
  *   • Sampled predictions, not measured departures: arrival_samples carry
  *     TfL's expectedArrival predictions, which drift from the actual passing.
- *   • Periodic sampling (~30 min) under-observes short headways and can miss a
- *     bus that passed entirely between two samples — so AWT/EWT are
- *     directional, biased toward the larger gaps we DID catch.
+ *   • Sampling is denser than before (the sampler takes several sweeps per run),
+ *     but still coarser than TfL's continuous AVL, so very short headways can be
+ *     under-observed; per-hour blocks + a minimum bus count keep this honest by
+ *     emitting null rather than a noisy number when coverage is thin.
  *   • Observed vehicle-trips is a coarse mileage proxy: a vehicle seen at the
  *     timing point is assumed to run the full route length once; dead mileage,
  *     short-workings and curtailments are ignored.
@@ -49,12 +54,23 @@
  * Run: npm run build-reliability
  */
 
-import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from './_lib/env.js';
+// @supabase/supabase-js is imported lazily inside main() so the pure-function
+// --selftest path runs without ingest/node_modules installed.
 
 const BATCH       = 500;
 const WINDOW_HRS  = 24;     // reconstruct over the trailing 24h of samples
 const PAGE        = 1000;   // Supabase default row cap per select — page through it
+
+// ── TfL-aligned reconstruction parameters (see ingest/RELIABILITY-METHODOLOGY.md) ──
+// TfL computes AWT/SWT PER HOUR (the minimum QSI unit), with the first bus of each hour
+// carrying no headway, only in service hours, then aggregates weighted by observed buses.
+// Doing it per-hour is what stops a sampling hole that spans an hour boundary from being
+// counted as one giant headway (the bug that inflated EWT to ~17-27 min).
+const SERVICE_START_HR  = 5;    // 05:00–23:59 daytime QSI window (UTC ≈ London here)
+const SERVICE_END_HR    = 24;
+const MAX_HEADWAY_MIN   = 60;   // within-hour cap; a longer "gap" is a sampling artifact, dropped
+const MIN_OBSERVED_BUSES = 12;  // need enough passings before an EWT is trustworthy; else null
 
 loadEnv();
 const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
@@ -71,39 +87,69 @@ function waitingTime(headways) {
   return sumSq / (2 * sum);
 }
 
-// Reconstruct observed headways (minutes) from a route's samples.
-// Each sample is one vehicle's predicted passing at a stop. Collapse to one
-// passing per (stop, vehicle) = its EARLIEST recorded expected_at, then within
-// each stop sort passings by time and diff consecutive. Pool gaps across the
-// timing-point stop(s). Drops gaps ≤0 or >120 min (sampling artefacts / breaks).
-function observedHeadways(samples) {
-  // (stop|vehicle) → earliest expected passing time (ms)
-  const passing = new Map();
+const PASSING_GAP_MIN = 25;   // sightings of one vehicle ≤25 min apart = same passing event
+
+// Reconstruct distinct PASSING events per stop. A vehicle is sampled repeatedly as it
+// approaches (converging predictions) and also reappears on its LATER trips hours later;
+// collapsing to one time per (stop,vehicle) would drop those later trips. So cluster each
+// vehicle's sightings: consecutive sightings ≤PASSING_GAP_MIN apart are one event (take its
+// earliest time); a larger gap starts a new passing. Returns Map<stop, number[] (ms)>.
+function passingsByStop(samples) {
+  const byVeh = new Map();   // stop|vehicle → [times ms]
   for (const s of samples) {
+    const reg = s.vehicle_id; if (!reg) continue;
     const stop = s.stop_id ?? '∅';
-    const reg  = s.vehicle_id;
-    if (!reg) continue;
     const t = s.expected_at ? new Date(s.expected_at).getTime() : NaN;
     if (!Number.isFinite(t)) continue;
     const key = `${stop}|${reg}`;
-    const prev = passing.get(key);
-    if (prev == null || t < prev) passing.set(key, t);
+    (byVeh.get(key) ?? byVeh.set(key, []).get(key)).push(t);
   }
-  // group passings by stop
+  const gapMs = PASSING_GAP_MIN * 60_000;
   const byStop = new Map();
-  for (const [key, t] of passing) {
-    const stop = key.split('|')[0];
-    (byStop.get(stop) ?? byStop.set(stop, []).get(stop)).push(t);
-  }
-  const headways = [];
-  for (const times of byStop.values()) {
+  for (const [key, times] of byVeh) {
+    const stop = key.slice(0, key.lastIndexOf('|'));
     times.sort((a, b) => a - b);
+    const out = byStop.get(stop) ?? byStop.set(stop, []).get(stop);
+    let eventStart = times[0], last = times[0];
     for (let i = 1; i < times.length; i++) {
-      const d = (times[i] - times[i - 1]) / 60000;   // ms → min
-      if (d > 0 && d <= 120) headways.push(d);
+      if (times[i] - last > gapMs) { out.push(eventStart); eventStart = times[i]; }  // new passing
+      last = times[i];
+    }
+    out.push(eventStart);
+  }
+  return byStop;
+}
+
+// Actual Waiting Time the TfL way: PER HOUR (the minimum QSI unit), the first bus of
+// each clock-hour carries no headway, headways are diffed only WITHIN the hour, then the
+// hourly AWTs are aggregated weighted by observed buses (OB) — TfL's Step I/II weighting.
+// Returns { awt (min) | null, observedBuses }. Per-hour bucketing is what prevents a gap
+// that spans an hour boundary (e.g. a sampling hole) from inflating AWT.
+function awtHourly(byStop) {
+  let wAwt = 0, wSum = 0, obsTotal = 0;
+  for (const times of byStop.values()) {
+    // bucket passings into absolute clock-hours, in the service window
+    const hours = new Map();
+    for (const t of times) {
+      const hr = new Date(t).getUTCHours();
+      if (hr < SERVICE_START_HR || hr >= SERVICE_END_HR) continue;
+      const bucket = Math.floor(t / 3_600_000);
+      (hours.get(bucket) ?? hours.set(bucket, []).get(bucket)).push(t);
+    }
+    for (const hrTimes of hours.values()) {
+      hrTimes.sort((a, b) => a - b);
+      const hw = [];
+      for (let i = 1; i < hrTimes.length; i++) {   // i=1 ⇒ first bus of the hour has no headway
+        const d = (hrTimes[i] - hrTimes[i - 1]) / 60000;
+        if (d > 0 && d <= MAX_HEADWAY_MIN) hw.push(d);
+      }
+      if (!hw.length) continue;
+      const aw = waitingTime(hw); if (aw == null) continue;
+      const ob = hrTimes.length;                  // observed buses this hour at this stop
+      wAwt += aw * ob; wSum += ob; obsTotal += ob;
     }
   }
-  return headways;
+  return { awt: wSum > 0 ? wAwt / wSum : null, observedBuses: obsTotal };
 }
 
 // Count distinct observed vehicle-trips for the route (proxy for trips run).
@@ -141,7 +187,7 @@ function estimateOtd(samples, schedHeadwayMin) {
   for (const t of times) {
     const slot = Math.round((t - anchor) / stepMs);
     const devMin = (t - (anchor + slot * stepMs)) / 60000;  // + = late, − = early
-    if (devMin >= -2 && devMin <= 5) onTime++;              // 2 early .. 5 late
+    if (devMin >= -2.5 && devMin <= 5) onTime++;            // TfL on-time: 2.5 early .. 5 late
   }
   return +(100 * onTime / times.length).toFixed(1);
 }
@@ -165,6 +211,7 @@ async function main() {
     console.warn('Supabase env not configured — cannot build reliability. Skipping.');
     return;
   }
+  const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -207,11 +254,16 @@ async function main() {
     // Reliability metric by class.
     let awt = null, ewt = null, otd = null;
     if (serviceClass === 'high-frequency') {
-      const hw = observedHeadways(rsamples);
-      const w = waitingTime(hw);
-      if (w != null) {
-        awt = +w.toFixed(2);
-        if (swt != null) ewt = +(awt - swt).toFixed(2);
+      const { awt: awtRaw, observedBuses } = awtHourly(passingsByStop(rsamples));
+      // Only publish an EWT when enough buses were observed; a thin sample is noise.
+      if (awtRaw != null && observedBuses >= MIN_OBSERVED_BUSES) {
+        awt = +awtRaw.toFixed(2);
+        if (swt != null) {
+          const e = awt - swt;
+          // EWT cannot be negative (AWT ≥ SWT in principle); a negative value means we
+          // under-observed this route today → null rather than a misleading number.
+          ewt = e >= 0 ? +e.toFixed(2) : null;
+        }
       }
     } else if (serviceClass === 'low-frequency') {
       otd = estimateOtd(rsamples, Number.isFinite(sched?.headway_min) ? Number(sched.headway_min) : null);
@@ -257,8 +309,53 @@ async function main() {
   console.log(`Wrote ${written} rows to route_reliability_daily.`);
 }
 
-main().catch(err => {
-  // Soft-fail: keep prior daily rows on a Supabase outage; next run rebuilds.
-  console.warn(`build-reliability soft-failed: ${err.message}`);
-  process.exit(0);
-});
+// ── Self-test (no Supabase): `node build-reliability.js --selftest` ─────────────
+// Proves the per-hour reconstruction matches TfL's headway-squared definition and,
+// crucially, that a sampling hole spanning an hour boundary no longer inflates AWT.
+function selfTest() {
+  let pass = 0, fail = 0;
+  const ok = (name, cond, got) => { if (cond) { pass++; console.log(`  ✓ ${name}`); } else { fail++; console.log(`  ✗ ${name} — got ${got}`); } };
+  const approx = (a, b, e = 0.01) => a != null && Math.abs(a - b) <= e;
+
+  // 1) Regular headways: AWT = h/2 (10-min service → 5.0)
+  ok('regular 10-min headways → AWT 5.0', approx(waitingTime([10, 10, 10, 10]), 5), waitingTime([10, 10, 10, 10]));
+  // 2) Irregular headways inflate AWT above half the mean (passenger-weighted)
+  ok('irregular [5,15] → AWT 6.25 (> mean/2=5)', approx(waitingTime([5, 15]), 6.25), waitingTime([5, 15]));
+
+  // 3) THE FIX: 10-min service with a 40-min cross-hour sampling hole must read AWT≈5,
+  //    not the ~10.5 the old whole-day diff produced.
+  const mk = (iso, i) => ({ vehicle_id: `V${i}`, stop_id: 'S1', expected_at: iso });
+  const samples = [];
+  let i = 0;
+  for (const m of ['00','10','20','30','40','50']) samples.push(mk(`2026-06-26T09:${m}:00Z`, i++)); // 09:00–09:50
+  for (const m of ['30','40','50'])                samples.push(mk(`2026-06-26T10:${m}:00Z`, i++)); // 10:30–10:50 (40-min hole before)
+  const { awt, observedBuses } = awtHourly(passingsByStop(samples));
+  ok('per-hour AWT ignores the 40-min cross-hour hole (≈5.0)', approx(awt, 5, 0.2), awt);
+  ok('observed buses counted (9)', observedBuses === 9, observedBuses);
+
+  // 4) Outside service hours (e.g. 03:00) are excluded
+  const night = [mk('2026-06-26T03:00:00Z', 100), mk('2026-06-26T03:10:00Z', 101)];
+  ok('night passings excluded from AWT', awtHourly(passingsByStop(night)).awt == null, awtHourly(passingsByStop(night)).awt);
+
+  // 5) Passing clustering: one vehicle sampled 3× while approaching (≤25 min) = ONE passing;
+  //    the same vehicle on a later trip 3h on = a SECOND passing.
+  const v = (iso) => ({ vehicle_id: 'VC', stop_id: 'S1', expected_at: iso });
+  const clustered = passingsByStop([
+    v('2026-06-26T09:00:00Z'), v('2026-06-26T09:03:00Z'), v('2026-06-26T09:05:00Z'), // approaching → 1
+    v('2026-06-26T12:00:00Z'),                                                       // later trip → 1
+  ]).get('S1') || [];
+  ok('one vehicle → 2 distinct passings (approach cluster + later trip)', clustered.length === 2, clustered.length);
+
+  console.log(`\nselftest: ${pass} passed, ${fail} failed`);
+  process.exit(fail ? 1 : 0);
+}
+
+if (process.argv.includes('--selftest')) {
+  selfTest();
+} else {
+  main().catch(err => {
+    // Soft-fail: keep prior daily rows on a Supabase outage; next run rebuilds.
+    console.warn(`build-reliability soft-failed: ${err.message}`);
+    process.exit(0);
+  });
+}

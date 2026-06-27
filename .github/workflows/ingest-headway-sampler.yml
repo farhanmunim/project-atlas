@@ -2,8 +2,10 @@ name: Ingest — Headway Sampler
 
 # Live-reliability raw capture: every ~30 min during service hours, sample each
 # route's TfL arrivals at its representative timing point and append the observed
-# passings to Supabase `arrival_samples`. The daily reliability build then
-# reconstructs observed headways → AWT → EWT (and OTD, operated/lost mileage).
+# passings to Supabase `arrival_samples`. Each run takes SEVERAL sweeps a few
+# minutes apart (denser coverage than one snapshot — the dominant fix for EWT
+# bias; see ingest/RELIABILITY-METHODOLOGY.md). The daily reliability build then
+# reconstructs observed headways per hour → AWT → EWT (and OTD, operated mileage).
 # Lightweight: TfL → Supabase only, no DVLA/geometry/git. Reads `route_schedule`
 # (populated by the weekly run) to know which routes/stops to sample.
 on:
@@ -25,7 +27,7 @@ defaults:
 jobs:
   sample:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 28   # multi-sweep run (~15-18 min); stays under the 30-min cron gap
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
