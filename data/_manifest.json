@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-27T06:35:23.018Z",
+  "generatedAt": "2026-06-28T07:10:51.042Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-06-27T06:35:22.515Z",
+      "fetchedAt": "2026-06-28T07:10:50.583Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-06-27T06:35:23.018Z",
+      "fetchedAt": "2026-06-28T07:10:51.042Z",
       "status": "ok",
-      "rows": 13669,
+      "rows": 10053,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 679 (679△); route_stops 676 (676△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6347 (6347△); line_status 676 (676△); route_geometry 1345 (1345△)"
+      "note": "route 676 (676△); route_meta 679 (679△); route_stops 676 (676△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 2731 (2731△); line_status 676 (676△); route_geometry 1345 (1345△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -59,30 +59,30 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-06-26T08:17:38.046Z",
+      "fetchedAt": "2026-06-28T07:10:46.679Z",
       "status": "ok",
       "rows": 676,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "541 routes with vehicles, DVLA-enriched"
+      "note": "522 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache",
-      "fetchedAt": "2026-06-26T08:17:38.090Z",
+      "fetchedAt": "2026-06-28T07:10:46.703Z",
       "status": "ok",
-      "rows": 6347,
+      "rows": 2731,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · derived from fleet (no API calls)",
-      "note": "6 multi-route"
+      "note": "4 multi-route"
     },
     "tenders": {
       "status": "failed",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
-      "lastAttempt": "2026-06-27T06:35:22.299Z",
+      "lastAttempt": "2026-06-28T07:10:46.757Z",
       "source": "TfL tender award results (13923/13796.aspx)",
       "fetchedAt": "2026-06-19T18:00:54.502Z",
       "rows": 2508,
