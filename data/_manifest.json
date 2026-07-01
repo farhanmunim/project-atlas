@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-01T07:21:20.380Z",
+  "generatedAt": "2026-07-01T21:27:10.056Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -26,25 +26,25 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-06-24T09:17:48.397Z",
+      "fetchedAt": "2026-07-01T21:15:16.966Z",
       "status": "ok",
-      "rows": 679,
+      "rows": 676,
       "files": [
         "data/route-meta.json"
       ],
       "cadence": "weekly · londonbusroutes.net (garages.csv + details.htm)",
-      "note": "676 operators"
+      "note": "675 operators"
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-01T07:21:20.380Z",
+      "fetchedAt": "2026-07-01T21:15:52.098Z",
       "status": "ok",
-      "rows": 13882,
+      "rows": 13879,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 679 (679△); route_stops 676 (676△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6560 (6560△); line_status 676 (676△); route_geometry 1345 (1345△)"
+      "note": "route 676 (676△); route_meta 676 (676△); route_stops 676 (676△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6560 (6560△); line_status 676 (676△); route_geometry 1345 (1345△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -136,6 +136,16 @@
       ],
       "cadence": "annual · TfL BUSTO (crowding.data.tfl.gov.uk)",
       "note": "606 routes · 2025-2026 · crowded(≥0.8 V/C)=27"
+    },
+    "localities": {
+      "source": "OSM Overpass (place=town|suburb)",
+      "fetchedAt": "2026-07-01T21:27:10.056Z",
+      "status": "ok",
+      "rows": 530,
+      "files": [
+        "data/localities.json"
+      ],
+      "cadence": "monthly · OSM Overpass (place=town|suburb)"
     }
   }
 }

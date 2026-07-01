@@ -23,6 +23,7 @@ import { build as buildPerformance } from "./build/performance.js";
 import { build as buildAccidents } from "./build/accidents.js";
 import { build as buildBridges } from "./build/bridges.js";
 import { build as buildCrowding } from "./build/crowding.js";
+import { build as buildLocalities } from "./build/localities.js";
 import { build as buildDbMirror } from "./build/db-mirror.js";
 
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
@@ -90,6 +91,13 @@ export const DATASETS = [
     ttlMs: 30 * DAY,       // EPOWR is refreshed annually — a monthly TTL re-checks without hammering the Datastore
     soft: true,
     cadence: "annual · London Datastore EPOWR (TfL height restrictions)",
+  },
+  {
+    name: "localities",
+    build: buildLocalities,
+    ttlMs: 30 * DAY,       // OSM place names barely change — monthly re-check is plenty
+    soft: true,
+    cadence: "monthly · OSM Overpass (place=town|suburb)",
   },
   {
     name: "status",
