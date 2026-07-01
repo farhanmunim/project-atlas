@@ -47,7 +47,21 @@ export async function build(ctx) {
 
   const detailByRoute = {};
   for (const d of details) detailByRoute[d.route] = d;
-  const allRoutes = new Set([...Object.keys(garages), ...details.map((d) => d.route)]);
+  let allRoutes = new Set([...Object.keys(garages), ...details.map((d) => d.route)]);
+
+  // Scope to the TfL network (routes.json — the authoritative /Line/Mode/bus set).
+  // londonbusroutes.net also lists non-TfL services (Uno's UL*, tram-replacement,
+  // recently-withdrawn night/school variants); keeping them would inflate every
+  // downstream operator/route count. Falls back to the full union on a cold run.
+  try {
+    const tfl = await sink.readDataset("routes");
+    const names = new Set((Array.isArray(tfl) ? tfl : []).map((r) => String(r.name)));
+    if (names.size >= 400) {
+      const dropped = [...allRoutes].filter((rt) => !names.has(rt));
+      allRoutes = new Set([...allRoutes].filter((rt) => names.has(rt)));
+      if (dropped.length) log.info(`route-meta: dropped ${dropped.length} non-TfL routes (${dropped.slice(0, 8).join(", ")}…)`);
+    }
+  } catch { /* no routes.json yet — keep the union */ }
 
   // Last-good fleet (DVLA-derived, changes slowly) — used to upgrade a route's propulsion to
   // zero-emission when the vehicle-type string has gone stale. Read defensively; absent on a

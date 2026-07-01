@@ -128,13 +128,9 @@ function columnsFromRuler(ruler) {
 }
 const slice = (line, [s, e]) => (line.slice(s, e) || "").trim();
 
-export async function fetchRouteDetails(opts = {}) {
-  const html = await getText(DETAILS_URL, { encoding: "windows-1252", timeoutMs: 25_000, ...opts });
-  const pres = [...html.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)].map((x) => x[1].replace(/<[^>]+>/g, ""));
-  // the table is the <pre> containing the "Vehicle Type" header
-  const block = pres.find((p) => /Vehicle Type/i.test(p) && /PVR/i.test(p));
-  if (!block) throw new Error("details.htm: route table not found");
-
+/** Parse one fixed-width <pre> route table → rows. Shared first-five-column layout
+ *  across the main / night / school tables: [Rte, VehicleType, Op.Gar, PVR, km]. */
+function parseDetailsBlock(block) {
   const lines = block.split(/\r?\n/);
   // the finer ruler is the dashed line with the most dash-groups (defines columns)
   let rulerIdx = -1, best = 0;
@@ -144,7 +140,7 @@ export async function fetchRouteDetails(opts = {}) {
       if (groups > best) { best = groups; rulerIdx = i; }
     }
   }
-  if (rulerIdx < 0) throw new Error("details.htm: ruler line not found");
+  if (rulerIdx < 0) return [];
   const cols = columnsFromRuler(lines[rulerIdx]);
   // expected layout: [Rte, VehicleType, Garage, PVR, km, mi, minutes, …, contractDate]
   const C = { rte: 0, veh: 1, gar: 2, pvr: 3, km: 4 };
@@ -154,19 +150,47 @@ export async function fetchRouteDetails(opts = {}) {
     const line = lines[i];
     if (!line.trim() || /^[-\s]+$/.test(line)) continue;
     const rte = slice(line, cols[C.rte]);
-    if (!/^[A-Za-z]?\d/.test(rte)) continue;          // data rows start with a route number; skip continuations/notes
+    // data rows start with a route id: digits with up to a 3-letter prefix (25, N137, SL1,
+    // EL1, BL1) or a rare all-letter code (SCS). Skip continuations/notes (empty col, "*…").
+    if (!/^[A-Za-z]{0,3}\d/.test(rte) && !/^[A-Z]{2,4}$/.test(rte)) continue;
     const pvr = parseInt(slice(line, cols[C.pvr]), 10);
     const km = parseFloat(slice(line, cols[C.km]));
     const dates = line.match(/\b\d{2}\/\d{2}\/\d{2}\b/g) || [];
+    // night rows defer their contract spec to the day route ("See 137") — the only date on
+    // such a line is the timetable date, which must NOT be read as a contract date.
+    const seeRef = /\bSee\s+[A-Z]{0,2}\d/i.test(line);
     rows.push({
       route: rte.replace(/\*$/, ""),
       vehicleType: slice(line, cols[C.veh]) || null,
       garage: (slice(line, cols[C.gar]) || "").replace(/\*$/, "") || null,
       pvr: Number.isFinite(pvr) ? pvr : null,
       lengthKm: Number.isFinite(km) ? km : null,
-      contractDate: dates.length ? dates[dates.length - 1] : null,   // last date = contract spec date
+      contractDate: dates.length > 1 ? dates[dates.length - 1]            // last date = contract spec date
+                  : (dates.length === 1 && !seeRef ? dates[0] : null),
     });
   }
+  return rows;
+}
+
+export async function fetchRouteDetails(opts = {}) {
+  const html = await getText(DETAILS_URL, { encoding: "windows-1252", timeoutMs: 25_000, ...opts });
+  const pres = [...html.matchAll(/<pre[^>]*>([\s\S]*?)<\/pre>/gi)].map((x) => x[1].replace(/<[^>]+>/g, ""));
+  // details.htm carries FOUR fixed-width tables: main network · Croydon Tramlink · night
+  // buses · school/mobility. Parse EVERY bus table (night + school routes carry their own
+  // PVR / vehicle type / garage rows there — skipping them starved route-meta of ~130
+  // routes' PVR/fleet). The tram table must stay excluded: its lines 1–4 collide with bus
+  // routes 1–4 (same exclusion as the garages parser).
+  const blocks = pres.filter((p) =>
+    /Vehicle Type/i.test(p) && /PVR/i.test(p) && !/Variobahn|CR4000|Tramlink|Trams from/i.test(p));
+  if (!blocks.length) throw new Error("details.htm: route table not found");
+
+  const byRoute = {};
+  for (const block of blocks) {
+    for (const row of parseDetailsBlock(block)) {
+      if (!byRoute[row.route]) byRoute[row.route] = row;   // first table wins (main network is first)
+    }
+  }
+  const rows = Object.values(byRoute);
   if (rows.length < 300) throw new Error(`details.htm: only ${rows.length} rows parsed (expected ~600+)`);
   return rows;
 }
