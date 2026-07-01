@@ -55,6 +55,10 @@ Atlas serves all of its data through its own **open, read-only, versioned API**.
 CORS-open (any origin), needs **no key**, and is safe to share and build on. The site
 itself consumes this API; you get exactly the same data.
 
+> **Full reference: [`API.md`](API.md)** — the canonical external-facing API doc
+> (endpoints, params, response shapes, caching, attribution). The summary below is
+> kept in sync with it.
+
 - **Base URL:** `https://atlas.farhan.app/api/v1`
 - **Discovery:** `GET /api/v1` returns the service description and every endpoint.
 - **Methods:** `GET` / `HEAD` only. `OPTIONS` is handled for CORS preflight.
@@ -81,6 +85,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/bridges` | Low bridges / height restrictions — lat/lng, clearance, name |
 | `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load÷capacity at the max-demand hour), `band` (comfortable→crowded), busiest stop/time/day, per-day-type peak |
 | `GET /api/v1/crowding-profile` | Per-route crowding detail (TfL BUSTO) — load-along-route (`V/C` by stop in sequence) + time-of-day curve (`V/C` per timeband, per day type); powers the corridor gradient + dossier charts |
+| `GET /api/v1/localities` | London locality labels for maps — towns & suburbs (`name`, `lat`/`lng`, `kind`); source OpenStreetMap (ODbL). Powers the apps' "Place names" layer |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 The API has three groups, all listed in the `/api/v1` discovery index:

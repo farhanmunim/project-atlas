@@ -271,6 +271,7 @@
   /* per-section route cards (dossier) */
   #dossierCards{display:flex; flex-direction:column; gap:10px}
   #dossierCards:empty{display:none}
+  #dossierRiskSlot{display:contents}   /* slot is layout-transparent — no phantom flex gap when empty */
   .dcard .card-h .dot{background:#36C5F0}
   .card-annot{margin-left:auto; font-family:var(--mono); font-size:9px; letter-spacing:.06em; color:var(--faint); text-transform:none}
   .dossier-b{padding:2px 13px 10px}
@@ -327,6 +328,12 @@
   .lens-handle:active{cursor:grabbing}
   .lens-handle b{font-family:var(--mono); font-size:11px; color:#fff; pointer-events:none}
 
+  /* place-name labels — theme-aware halo so they pop over the coloured route lines */
+  .place-lbl span{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;
+    font-family:var(--sans);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);opacity:.92;text-shadow:0 0 3px var(--bg),0 0 5px var(--bg),0 1px 6px var(--bg)}
+  .place-lbl.town span{font-size:12px;font-weight:600;color:var(--text)}
+
   /* status / toast */
   #status{
     bottom:14px; left:50%; transform:translateX(-50%);
@@ -336,8 +343,9 @@
   }
   #status.show{display:flex}
   #status .pulse{width:7px; height:7px; border-radius:50%; background:var(--amber); flex:0 0 auto}
-  /* crowding key — bottom-left map legend for the Crowding layer */
-  #crowdKey{bottom:14px; left:14px; background:var(--panel-solid); border:1px solid var(--border); border-radius:9px;
+  /* crowding key — bottom map legend for the Crowding layer (offset right of the left rail so it
+     can never paint over the rail's cards) */
+  #crowdKey{bottom:14px; left:314px; background:var(--panel-solid); border:1px solid var(--border); border-radius:9px;
     padding:9px 11px; box-shadow:var(--shadow); display:none; flex-direction:column; gap:4px; min-width:138px}
   #crowdKey.show{display:flex}
   #crowdKey .ck-title{font-family:var(--mono); font-size:8.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); margin-bottom:2px}
@@ -388,7 +396,7 @@
 <body>
 
 <a href="#map" class="skip">Skip to map</a>
-<main id="map" role="application" aria-label="Map of the London bus network — route corridor, collisions and live layers"></main>
+<main id="map" role="region" aria-label="Map of the London bus network — route corridor, collisions and live layers"></main>
 
 <div class="empty-state" id="emptyState">
   <div class="es-title">ROUTE LENS</div>
@@ -426,7 +434,7 @@
 <!-- LEFT RAIL -->
 <div class="hud" id="leftrail" role="navigation" aria-label="Route, filters and map layers">
 
-  <div class="card" data-card="">
+  <div class="card open" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Route</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <label class="fld">
@@ -461,7 +469,7 @@
     </div>
   </div>
 
-  <div class="card" data-card="">
+  <div class="card open" data-card="">
     <div class="card-h"><div class="dot"></div><h2>Layers</h2><span class="chev">▶</span></div>
     <div class="card-b">
       <div class="toggle-row"><span>Collisions · STATS19</span><label class="sw"><input type="checkbox" id="tgCollisions"><span class="track"></span></label></div>
@@ -472,6 +480,7 @@
       <div class="toggle-row"><span>Garages</span><label class="sw"><input type="checkbox" id="tgGarages"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Live buses · BODS GPS</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Show stops</span><label class="sw"><input type="checkbox" id="tgStops"><span class="track"></span></label></div>
+      <div class="toggle-row"><span>Place names</span><label class="sw"><input type="checkbox" id="tgPlaces" checked=""><span class="track"></span></label></div>
       <div class="toggle-row"><span>Basemap</span><label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label></div>
       <div class="meta" id="dataMeta" style="margin-top:2px">No data loaded</div>
       <details>
@@ -537,7 +546,7 @@
 </div>
 
 <!-- STATUS -->
-<div class="hud" id="status" role="status" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">676 routes ready</span></div>
+<div class="hud" id="status" role="status" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">Loading…</span></div>
 
 <div class="hud" id="tileWarn" role="status" style="display:none">⚠ Basemap unavailable (offline?) — routes &amp; data still work.</div>
 
@@ -556,6 +565,16 @@
 <script>
 (function(){
 "use strict";
+
+// Graceful degrade (CLAUDE.md): if the Leaflet CDN failed to load, every map call below
+// would throw and the app would die silently — say so honestly instead of looking broken.
+if(typeof L==='undefined'){
+  var _w=document.getElementById('tileWarn');
+  if(_w){ _w.style.display='block'; _w.textContent='⚠ Map library failed to load (offline?) — check your connection and reload.'; }
+  var _s=document.getElementById('status'), _st=document.getElementById('statusText');
+  if(_s&&_st){ _s.className='hud show err'; _st.textContent='Map unavailable — reload to retry'; }
+  return;
+}
 
 /* ============================ CONFIG ============================ */
 // Everything flows through OUR API (the middleware) — same-origin /api/v1.
@@ -598,6 +617,8 @@ var state = {
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
   netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
+  relLatest:null,        // latest Atlas-estimated reliability per route (history API), keyed by route_id
+  localities:null,       // place-name labels (towns/suburbs) for the map — /api/v1/localities
   crowding:null, crowdingMeta:null, crowdMode:false,   // BUSTO bus crowding (per route) + the "Crowding" colour layer
   crowdingProfile:null,  // BUSTO per-route detail (load-along-route + time-of-day), lazy-loaded
   sevCol:null            // detected severity column (fatal/serious/slight) for hotspot scoring
@@ -687,7 +708,7 @@ document.querySelectorAll('[data-card] .card-h').forEach(wireCardHeader);
 
 /* ============================ LOAD ROUTES ============================ */
 // Route-type → a short context label shown beside each route in the combobox.
-var TYPE_LABEL = {night:'Night', twentyfour:'24-hour', school:'School', prefix:'Lettered', local:'Local', superloop:'Superloop', day:''};
+var TYPE_LABEL = {regular:'', night:'Night', twentyfour:'24-hour', school:'School', prefix:'Lettered', local:'Local', superloop:'Superloop', day:''};
 function monthsUntil(ym){ if(!ym) return null; var m=/^(\d{4})-(\d{2})/.exec(String(ym)); if(!m) return null; var d=new Date(+m[1],+m[2]-1,1), n=new Date(); return (d.getFullYear()-n.getFullYear())*12+(d.getMonth()-n.getMonth()); }
 // All route + corridor data now flows through the Atlas API (the middleware,
 // fed by our warehouse) — no direct TfL calls. See atlasBase().
@@ -700,7 +721,7 @@ function loadRoutes(){
       state.routes = list.filter(function(l){
         if(!l || seen[l.id]) return false; seen[l.id]=1; return true;
       }).map(function(l){
-        return {id:l.id, name:l.name||l.id, type:l.type||'day', od:(TYPE_LABEL[l.type]||'')};
+        return {id:l.id, name:l.name||l.id, type:l.type||'regular', od:(TYPE_LABEL[l.type]||'')};
       }).sort(function(a,b){return naturalCmp(a.name,b.name);});
       status(state.routes.length+' routes ready', 'ok');
       buildFilterChips();
@@ -893,6 +914,11 @@ function ensureNetworkData(){
 }
 function showNetLabel(t){ $('netLabelText').textContent=t; $('netLabel').style.display='flex'; }
 function hideNetLabel(){ $('netLabel').style.display='none'; }
+// the top-centre network caption — reflects filters AND the active colour scheme (operator vs crowding)
+function netLabelFor(n){
+  return filtersActive() ? (n+' of '+(state.routes||[]).length+' routes · filtered')
+       : (n+' routes · coloured by '+(state.crowdMode?'crowding':'operator'));
+}
 function drawNetwork(){
   networkLayer.clearLayers(); opColorMap=null;
   var feats=(state.overview.features||[]); var names={};
@@ -940,7 +966,7 @@ function showNetwork(){
     var n=drawNetwork();
     map.fitBounds(L.latLngBounds([[51.28,-0.52],[51.70,0.30]]), {paddingTopLeft:[300,80], paddingBottomRight:[286,30]});
     $('emptyState').style.display='none';
-    showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
+    showNetLabel(netLabelFor(n));
     status(n+' routes ready', 'ok');
     updateKPIs();            // header KPIs reflect the network (or the filtered subset)
     reapplyScopedLayers();   // collisions/bridges/stops/buses left on at top-level → repaint network-wide
@@ -949,7 +975,7 @@ function showNetwork(){
 
 /* ============================ FILTERS (operator / type / propulsion) ============================ */
 var FILTERS={operator:new Set(), type:new Set(), propulsion:new Set()};
-var TYPE_FILTER_LBL={day:'Regular', night:'Night', school:'School', local:'Local', superloop:'Superloop', prefix:'Lettered', twentyfour:'24-hour'};
+var TYPE_FILTER_LBL={regular:'Regular', day:'Regular', night:'Night', school:'School', local:'Local', superloop:'Superloop', prefix:'Lettered', twentyfour:'24-hour'};
 function filtersActive(){ return FILTERS.operator.size||FILTERS.type.size||FILTERS.propulsion.size; }
 // topbar "Clear all" only appears when there's actually a route selection or a filter to clear.
 function syncClearAll(){ var b=$('clearAllBtn'); if(b) b.style.display=(filtersActive()||(state.selected&&state.selected.length))?'flex':'none'; }
@@ -1043,7 +1069,7 @@ function applyFiltersUI(){
   renderList($('routeSearch').value);
   if(!state.routeName && state.overview){
     var n=drawNetwork();
-    showNetLabel(n+(filtersActive()?' of '+(state.routes||[]).length+' routes · filtered':' routes · coloured by operator'));
+    showNetLabel(netLabelFor(n));
   }
   var total=(state.routes||[]).length;
   var shown=(state.routes||[]).filter(function(r){return routePasses(r.name);}).length;
@@ -1205,11 +1231,30 @@ function fetchRoute(){
     if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
     if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route(s)
+    renderRiskCard();   // corridor geometry is in — fill the dossier's Risk & accidents slot
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
   renderDossier();
 }
 
 /* ============================ ROUTE DOSSIER (Atlas API) ============================ */
+// Atlas's OWN estimated reliability (the warehouse's live-sampled daily build, via
+// /api/v1/history/reliability-daily) — a higher-frequency supplement to TfL's quarterly QSI,
+// EXPERIMENTAL and biased high (see ingest/RELIABILITY-METHODOLOGY.md). Bulk-load the latest
+// row per route once (rows arrive day.desc → first-seen per route_id = latest); the history
+// API 503s when Supabase is unconfigured, so degrade silently to {} and omit the block.
+function ensureRelEstimate(){
+  if(state.relLatest) return Promise.resolve();
+  return getJSON(atlasBase()+'/history/reliability-daily?limit=1000').then(function(d){
+    var latest={}; ((d&&d.rows)||[]).forEach(function(row){ var k=row.route_id; if(k!=null && !(k in latest)) latest[k]=row; });
+    state.relLatest=latest;
+  }).catch(function(){ state.relLatest={}; });
+}
+// keyed tolerant of TfL line-id vs display name + case (warehouse route_id can be "n73"/"sl1")
+function relEstimateOf(name, id){
+  var m=state.relLatest||{}, keys=[id, name, String(id||'').toLowerCase(), String(name||'').toLowerCase(), String(name||'').toUpperCase()];
+  for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
+  return null;
+}
 // Lazy-load the per-route info datasets once (operator/reliability/tenders/fleet).
 function ensureDossierData(){
   var jobs=[];
@@ -1219,6 +1264,7 @@ function ensureDossierData(){
   if(!state.fleet)   jobs.push(getJSON(atlasBase()+'/fleet').then(function(d){ state.fleet=(d.byRoute||d); }));
   if(!state.crowding) jobs.push(getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d); state.crowdingMeta={year:d.year}; }).catch(function(){ state.crowding={}; }));
   if(!state.crowdingProfile) jobs.push(ensureCrowdingProfile());   // load-along-route + time-of-day charts
+  if(!state.relLatest) jobs.push(ensureRelEstimate());             // Atlas-estimated reliability (experimental)
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1271,6 +1317,18 @@ function renderDossier(){
       if(pf.onTimePercent!=null) r+=drow('OTP', Math.round(pf.onTimePercent)+'%'+(pf.otpMps!=null?' · MPS '+pf.otpMps:''));
       if(pf.mileagePercent!=null) r+=drow('Mileage', pf.mileagePercent.toFixed(1)+'%'+(pf.mileageMps!=null?' · MPS '+pf.mileageMps:''));
       if(r) rc+=dsec('Reliability', pf.serviceClass)+r;
+    }
+
+    // Reliability — Atlas estimate (EXPERIMENTAL, cyan): our own live-sampled EWT (high-freq) /
+    // OTD (low-freq). Biased high (sparse Arrivals sampling under-observes short headways) — never
+    // to be read as TfL's QSI figures above. Lost-mileage deliberately NOT shown (coverage sliver).
+    var er=relEstimateOf(name, state.routeId);
+    if(er){
+      var isHF=(er.service_class==='high-frequency'), re='';
+      if(isHF && er.ewt_minutes!=null) re+=drow('~EWT', '~'+(+er.ewt_minutes).toFixed(1)+' min · experimental', 'var(--cyan)');
+      else if(!isHF && er.otd_percent!=null) re+=drow('~OTD', '~'+(+er.otd_percent).toFixed(0)+'% on time · experimental', 'var(--cyan)');
+      if(re) rc+=dsec('Reliability — Atlas estimate', (er.sample_count?er.sample_count+' samples':'experimental'))+re+
+        '<div class="dempty">Our own live-sampled estimate — biased high; not comparable to TfL’s QSI.</div>';
     }
 
     // Fleet subsection — the LIVE DVLA sample of what's actually rostered, vs the contracted Spec above.
@@ -1337,8 +1395,13 @@ function renderDossier(){
       cards+=dcardHTML('Commercial', tn.length+' awards', c, false);
     }
 
+    // Risk & accidents renders into a slot once BOTH the corridor geometry and the
+    // STATS19/bridge sets are in (renderRiskCard self-guards + is re-called by fetchRoute).
+    cards+='<div id="dossierRiskSlot"></div>';
+
     cont.innerHTML = cards || dcardHTML(rtitle, null, '<div class="dempty">No detail on record for route '+esc(name)+'.</div>', true);
     cont.querySelectorAll('.card-h').forEach(wireCardHeader);
+    renderRiskCard();
     if(state.crowdMode && state.routeId && state.routeName===name) drawRoute();   // profile now loaded → repaint the corridor gradient
 
     // live line status (non-cached) — fills the Route card's status slot when it arrives.
@@ -1359,10 +1422,69 @@ function renderDossier(){
         if(!vp.length || vp.some(function(p){return p.isNow;})){ active=st; break; }
       }
       var sev = active ? active.statusSeverityDescription : 'Good Service';
-      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, active?'var(--amber)':'var(--green)');
+      var slot=$('dossierStatusSlot'); if(slot) slot.innerHTML=drow('Status', sev, active?'var(--amber)':'var(--green)')+
+        (active&&active.reason ? drow('Disruption', String(active.reason).slice(0,220), 'var(--amber)') : '');
     }).catch(function(){});
   }).catch(function(e){ cont.innerHTML=dcardHTML(rtitle, null, '<div class="dempty">Detail unavailable — '+esc(e.message)+'</div>', true); cont.querySelectorAll('.card-h').forEach(wireCardHeader); });
 }
+/* ============================ RISK & ACCIDENTS (dossier card) ============================ */
+// Sentinel readout for the selected corridor: STATS19 collisions within the alert proximity
+// (count · KSI · severity split · density · hotspot boroughs · by-year) + low-bridge diversion
+// risk (a diverted double-decker needn't follow the booked line, so near-route bridges under
+// the 4.4 m double-deck height are strike risks). Data: /api/v1/accidents + /api/v1/bridges,
+// cached in state.atlasAll / state.bridges (shared with the map layers). "Sentinel" is the
+// legacy internal name — never user-facing copy.
+var RISK_RADIUS_M=250, DD_HEIGHT_M=4.4;
+function ensureRiskData(){
+  var jobs=[];
+  if(!state.atlasAll) jobs.push(getJSON(atlasBase()+'/accidents').then(function(d){ state.atlasAll=(d.accidents||d)||[]; }));
+  if(!state.bridges)  jobs.push(getJSON(atlasBase()+'/bridges').then(function(d){ state.bridges=(d.bridges||d)||[]; }));
+  return Promise.all(jobs);
+}
+function renderRiskCard(){
+  var slot=$('dossierRiskSlot'); if(!slot || !state.routeName) return;
+  if(!state.routePath.length) return;   // corridor not drawn yet — fetchRoute re-calls once it is
+  var name=state.routeName;
+  slot.innerHTML=dcardHTML('Risk & accidents', null, '<div class="dempty">Checking the corridor…</div>', false);
+  slot.querySelectorAll('.card-h').forEach(wireCardHeader);
+  ensureRiskData().then(function(){
+    if(state.routeName!==name || !state.routePath.length) return;   // selection changed mid-load
+    var near=withinCorridor(state.atlasAll||[], RISK_RADIUS_M);
+    var sev={fatal:0,serious:0,slight:0}, years={}, boroughs={};
+    near.forEach(function(a){
+      var s=String(a.severity||'').toLowerCase(); if(sev[s]!=null) sev[s]++;
+      var y=String(a.date||'').slice(0,4); if(/^\d{4}$/.test(y)) years[y]=(years[y]||0)+1;
+      var b=GSS_BOROUGH[a.borough]||null; if(b) boroughs[b]=(boroughs[b]||0)+1;
+    });
+    var ksi=sev.fatal+sev.serious;
+    var r='';
+    r+=drow('Collisions', near.length+' within '+fmtRadius(RISK_RADIUS_M)+' of the route');
+    if(near.length && state.routeLenKm>0) r+=drow('Density', (near.length/state.routeLenKm).toFixed(1)+' per '+(USE_MILES?'mi':'km')+' of route');
+    r+=drow('KSI', ksi+(ksi?' killed or seriously injured':''), ksi?'var(--red-bright)':null);
+    if(near.length) r+='<div class="sevline"><span class="sv f">'+sev.fatal+' fatal</span><span class="sv s">'+sev.serious+' serious</span><span class="sv l">'+sev.slight+' slight</span></div>';
+    var topB=Object.keys(boroughs).sort(function(a,b){return boroughs[b]-boroughs[a];}).slice(0,2);
+    if(topB.length) r+=drow('Hotspot', topB.map(function(b){return b+' ('+boroughs[b]+')';}).join(' · '));
+    var ys=Object.keys(years).sort();
+    if(ys.length>1) r+=drow('By year', ys.map(function(y){return '’'+y.slice(2)+' '+years[y];}).join(' · '));
+    // low bridges — diversion strike risk
+    var lows=withinCorridor(state.bridges||[], RISK_RADIUS_M);
+    var sub=lows.filter(function(b){return Number.isFinite(+b.height_m)&&+b.height_m<DD_HEIGHT_M;});
+    var minB=sub.slice().sort(function(a,b){return (+a.height_m||99)-(+b.height_m||99);})[0];
+    r+=dsec('Low bridges','diversion risk');
+    r+=drow('Near route', lows.length+' within '+fmtRadius(RISK_RADIUS_M));
+    if(sub.length){
+      r+=drow('Strike risk', sub.length+' under the '+DD_HEIGHT_M+' m double-deck height', 'var(--amber)');
+      if(minB) r+=drow('Lowest', (minB.name||minB.road||'bridge')+' · '+minB.height_m+' m', 'var(--amber)');
+    } else {
+      r+=drow('Strike risk', 'none under '+DD_HEIGHT_M+' m nearby', 'var(--green)');
+    }
+    r+='<div class="dempty">Toggle the Collisions layer and drag the lens for the full profile.</div>';
+    var summary = near.length ? (near.length+' · '+ksi+' KSI'+(sub.length?' · ⚠ '+sub.length+' br':'')) : (sub.length?'⚠ '+sub.length+' low br':'clear');
+    slot.innerHTML=dcardHTML('Risk & accidents', summary, r, false);
+    slot.querySelectorAll('.card-h').forEach(wireCardHeader);
+  }).catch(function(){ slot.innerHTML=''; });
+}
+
 // Corridor crowding gradient: colour each piece of the route by V/C sampled at its fractional
 // position along the line (from the load-along-route profile) → a "heatmap" down the corridor.
 function corridorGradientVCs(){
@@ -1449,6 +1571,31 @@ $('tgStops').addEventListener('change', showStops);
 $('tgBase').addEventListener('change', function(){
   if(this.checked) map.addLayer(baseLayer); else map.removeLayer(baseLayer);
 });
+
+/* ---- Place-name labels (Atlas API /localities — OSM towns & suburbs). Text-only markers
+   in a pane above the route lines so main areas read at route-fit zoom; towns from z10,
+   suburbs join at z12. Non-interactive — pure map furniture. ---- */
+var placeLayer=null;
+function drawPlaces(){
+  if(placeLayer){ map.removeLayer(placeLayer); placeLayer=null; }
+  if(!$('tgPlaces').checked || !state.localities) return;
+  if(!map.getPane('placeLabels')){ var p=map.createPane('placeLabels'); p.style.zIndex=610; p.style.pointerEvents='none'; }
+  var z=map.getZoom(); if(z<10) return;
+  var list=state.localities.filter(function(p){ return p.kind==='town' ? true : z>=12; });
+  placeLayer=L.layerGroup(list.map(function(p){
+    return L.marker([p.lat,p.lng], {pane:'placeLabels', interactive:false, keyboard:false,
+      icon:L.divIcon({className:'place-lbl '+p.kind, html:'<span>'+esc(p.name)+'</span>', iconSize:[0,0]})});
+  }));
+  placeLayer.addTo(map);
+}
+function togglePlaces(on){
+  if(!on){ drawPlaces(); return; }   // unchecked → drawPlaces clears and exits
+  if(state.localities){ drawPlaces(); return; }
+  getJSON(atlasBase()+'/localities').then(function(d){ state.localities=(d.localities||d)||[]; drawPlaces(); })
+    .catch(function(){ state.localities=[]; });
+}
+$('tgPlaces').addEventListener('change', function(){ togglePlaces(this.checked); });
+map.on('zoomend', drawPlaces);
 
 /* ============================ CSV PARSING ============================ */
 function detectDelimiter(line){
@@ -2069,7 +2216,7 @@ function toggleCrowding(on){
   state.crowdMode=on;
   syncCrowdKey();
   Promise.all([ensureCrowding(), on && state.routeId ? ensureCrowdingProfile() : Promise.resolve()]).then(function(){
-    if(state.routeId){ drawRoute(); } else if(state.overview){ drawNetwork(); }
+    if(state.routeId){ drawRoute(); } else if(state.overview){ showNetLabel(netLabelFor(drawNetwork())); }
     status(on?(state.routeId?'Corridor coloured by crowding · TfL BUSTO':'Routes coloured by crowding · TfL BUSTO peak load'):'Crowding layer off','ok');
   });
 }
@@ -2149,6 +2296,7 @@ $('radLabel').textContent=fmtRadius(state.radius);   // honour km/mi from the sh
 setInterval(function(){ tickClock(); paintFresh(); }, 1000);
 
 loadRoutes().then(function(){ markFresh(); loadHeaderCounts(); }, markFresh);   // → restoreFromURL() (deep-linked route) or showNetwork(); seed the freshness badge + header KPI tallies
+togglePlaces(true);   // place-name labels default ON — load + draw once the localities dataset arrives
 })();
 </script>
 

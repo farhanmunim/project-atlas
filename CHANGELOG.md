@@ -5,6 +5,84 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-01 — Data parity vs london-buses: night/school/prefix PVR restored (pipeline)
+
+Investigated the user-reported datapoint differences between london-buses.farhan.app
+(747 routes · 8,942 PVR · 76 garages) and Atlas (676 · 6,967 · 86). Verdict:
+
+- **Route count — Atlas is correct.** TfL Unified API lists exactly **676** bus lines;
+  Atlas matches 1:1. The old site's 747 includes 71 ids TfL doesn't serve (withdrawn
+  night/school variants like N23/108D, non-TfL commercial routes like Uno's UL*, and
+  tram-replacement ids) — its headline overstates the TfL network.
+- **PVR — Atlas was wrong (incomplete).** `londonbusroutes.net/details.htm` carries FOUR
+  fixed-width tables (main · **Croydon Tramlink** · **night** · **school/mobility**);
+  our parser read only the first, so every night + school route (and the two-letter
+  prefix routes SL*/EL*/BL1/SCS, which the route-id regex also missed) had no
+  PVR/vehicle/garage/contract. Fixed `fetchRouteDetails` to parse every bus table
+  (tram table stays excluded — its lines 1–4 collide with bus routes 1–4), first-table-
+  wins merge, "See <day route>" contract refs not misread as dates. Network PVR:
+  **6,967 → 7,852** — which reconciles with the old site to ±1 once its non-TfL
+  routes are excluded. Also corrected 4 stale PVRs (83, 245, 483, G1). Remaining 4
+  blanks (389/399/969/R10) are genuine `*`/`0*` shared-allocation rows in the source.
+- **route-meta now scoped to the TfL route set** (routes.json) so the ~65 non-TfL ids
+  in the community source can't inflate operator/route counts (fallback: keep union on
+  a cold run).
+- **Garages 86 vs 76 — Atlas is correct per the current source** (the extra 10 are real
+  garages/outstations with no current TfL routes; the old site also carries the tram
+  depot TK and stale codes HO/UB where the source now says LI/HF).
+
+## 2026-07-01 — / gets v2-style Layers panel + place-name labels (both apps)
+
+- **Layers panel in `/`** — the seven icon-only display toggles + colour-by seg in the
+  topbar are now a single `Layers` button opening a v2-style panel of labelled
+  toggle-switch rows (same `data-k` wiring/persistence), with an enabled-count badge.
+  Also fixes mobile: the old icon strip was hidden under 1000px; the button stays.
+- **Place names layer (new dataset, end-to-end)** — user report: no area/town names
+  visible at route-fit zoom. New `pipeline/build/localities.js` + `sources/osm-places.js`
+  (OSM Overpass, place=town|suburb, London bbox, ODbL) → `data/localities.json` (530
+  places) → `/api/v1/localities` (prod Function + serve.js mirror + discovery + README/
+  API.md) → both apps draw zoom-scaled locality labels (towns z10+, suburbs z12+) in a
+  dedicated pane above the route lines; toggleable ("Place names", default ON — a `/`
+  Layers row and a `/v2` Layers card switch). Verified: Stratford/Bow/Mile End/Stepney/
+  Shadwell all label at z12–13.
+- **`API.md`** — new single-file public reference for `https://atlas.farhan.app/api/v1`
+  (all three groups + `/api/live/vehicles`, params, response shapes, caching, errors,
+  attribution/licences). README's API section now points to it as canonical.
+
+## 2026-07-01 — v2 (Route Lens) wiring review: bug fixes + dossier gaps closed
+
+Full wiring review of `/v2` against the API and the `/` app, plus a runtime audit
+(Puppeteer, desktop 1280×800 + mobile 390×844, zero console/page errors).
+
+**Fixed**
+- Route-type vocabulary mismatch: `routes.json` says `regular`, but v2's label maps
+  only knew `day` — the busiest filter chip rendered as raw lowercase "regular"
+  (now "Regular"), and `loadRoutes` defaulted unknown types to the non-existent `day`.
+- Left rail booted fully collapsed — the route search was hidden behind a closed
+  "Route" header while the empty-state invited you to pick a route. Route + Layers
+  cards now boot open.
+- Leaflet-CDN failure killed the whole script silently while the status bar showed a
+  hardcoded "676 routes ready". Now: honest "Map unavailable" status + offline notice,
+  and the boot status reads "Loading…" until routes actually arrive.
+- The top-centre network caption said "coloured by operator" even with the Crowding
+  colour layer on (now reflects the active scheme, incl. after toggling in network view).
+- The Crowding map key (bottom-left) painted over the left rail's cards — moved clear
+  of the rail.
+- `role="application"` on the map → `role="region"` (mirrors the `/` app's a11y fix).
+
+**Dossier gaps closed (v2 now carries the `/` app's per-route info)**
+- **Risk & accidents card** — STATS19 collisions within 250 m of the corridor (count,
+  KSI, severity split, density per km, hotspot boroughs, by-year), plus low-bridge
+  diversion risk (bridges under the 4.4 m double-deck height, lowest clearance).
+  Reuses the cached `/api/v1/accidents` + `/api/v1/bridges` sets; renders once the
+  corridor geometry is in (slot + re-call from `fetchRoute`, race-safe).
+- **Reliability — Atlas estimate** — our own live-sampled ~EWT (high-freq) / ~OTD
+  (low-freq) from `/api/v1/history/reliability-daily`, cyan + "experimental", sample
+  count shown, explicitly "not comparable to TfL's QSI"; degrades silently when the
+  history API is unconfigured (503).
+- **Disruption reason** — the live Status row now carries TfL's disruption description,
+  not just the severity word.
+
 ## 2026-06-18 — Diversions layer
 
 Live diversions/disruptions now surface on a selected route. A new seam method

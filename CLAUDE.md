@@ -246,8 +246,13 @@ prod as follows — keep both in sync:
 
 What exists in `index.html` today — don't rebuild it, and keep it working:
 
-- **Map layers** (toggles in the topbar `#mapCtl`, persisted in settings *except*
-  the noisy overlays): route lines · garages · stops · **live buses (BODS GPS)** ·
+- **Map layers** (a v2-style **Layers panel** — labelled toggle-switch rows behind one
+  topbar `Layers` button in `#mapCtl`, with an enabled-count badge; persisted in settings
+  *except* the noisy overlays): route lines · **place names** (locality labels from
+  `/api/v1/localities` — OSM towns/suburbs, `pipeline/build/localities.js`; towns from
+  z10, suburbs join at z12, drawn in a dedicated pane above the route lines so main
+  areas read at route-fit zoom; also a `/v2` Layers toggle) · garages · stops ·
+  **live buses (BODS GPS)** ·
   **collisions (STATS19)** · **low bridges** (clearance-graded bridge-icon markers) ·
   **live road incidents** (TfL Road Disruptions via `/api/v1/live/road-disruptions` —
   collisions/breakdowns/delays/works/closures, category-coloured) · **crowding** (TfL BUSTO —
@@ -300,7 +305,10 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   stays light: `loadProfile` = V/C by stop in sequence along the busiest direction, `timeOfDay` = V/C
   per timeband per day type — served at `/api/v1/crowding-profile`, lazy-loaded only on route select,
   and drives the **corridor crowding gradient** (the line painted by per-stop V/C, not one flat band)
-  + the dossier's **load-along-route** and **time-of-day** mini-charts in both apps).
+  + the dossier's **load-along-route** and **time-of-day** mini-charts in both apps), and
+  **localities.json** (`pipeline/build/localities.js` + `sources/osm-places.js` — OSM
+  place=town|suburb nodes for the London bbox via Overpass, ODbL; served at
+  `/api/v1/localities`; powers the **Place names** map layer in `/` and `/v2`).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so

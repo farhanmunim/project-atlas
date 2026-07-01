@@ -523,7 +523,34 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
 .ctxchip b{font-size:12.5px;font-weight:650;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ctxchip span{font-size:9px;color:var(--paper-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .barctl{display:inline-flex;align-items:center;gap:6px}
+/* ---- Layers dropdown (v2-style labelled switch rows) ---- */
+#layersBtn{width:auto;padding:0 10px;gap:6px;display:inline-flex;align-items:center;
+  font-family:var(--mono);font-size:11px;letter-spacing:.05em}
+#layersBtn .lbl{line-height:1}
+#layersBtn .lcount{font-size:9.5px;padding:1px 6px;border-radius:20px;background:color-mix(in srgb,var(--amber) 22%,var(--panel-3));color:var(--amber);line-height:1.4}
+#layersBtn[aria-expanded="true"]{background:var(--panel-3);color:var(--paper);border-color:var(--line-2)}
+#layersPanel{position:fixed;z-index:300;width:250px;padding:5px;background:var(--panel-2);
+  border:1px solid var(--line-2);border-radius:var(--r2);box-shadow:0 14px 38px rgba(0,0,0,.4)}
+#layersPanel .lp-title{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-3);padding:8px 9px 4px}
+#layersPanel .lrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  padding:7px 9px;background:none;border:none;border-radius:var(--r1);color:var(--paper-2);
+  font-size:12.5px;cursor:pointer;text-align:left;transition:background .12s,color .12s}
+#layersPanel .lrow:hover{background:var(--panel-3);color:var(--paper)}
+#layersPanel .lrow .lsw{position:relative;flex:none;width:30px;height:17px;border-radius:20px;
+  background:var(--panel-3);border:1px solid var(--line-2);transition:background .18s,border-color .18s}
+#layersPanel .lrow .lsw::before{content:"";position:absolute;width:11px;height:11px;left:2px;top:2px;
+  border-radius:50%;background:var(--paper-3);transition:transform .18s,background .18s}
+#layersPanel .lrow.on{color:var(--paper)}
+#layersPanel .lrow.on .lsw{background:color-mix(in srgb,var(--amber) 30%,var(--panel-3));border-color:var(--amber)}
+#layersPanel .lrow.on .lsw::before{transform:translateX(13px);background:var(--amber)}
+#layersPanel .seg{display:flex;margin:2px 8px 8px}
+#layersPanel .seg button{flex:1}
 .seg.iconseg button{padding:6px 8px;display:inline-flex;align-items:center;justify-content:center}
+/* locality labels — theme-aware halo so they pop over the coloured route lines */
+.place-lbl span{display:inline-block;transform:translate(-50%,-50%);white-space:nowrap;
+  font-family:var(--sans);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--paper-2);opacity:.9;text-shadow:0 0 3px var(--ink),0 0 5px var(--ink),0 1px 6px var(--ink)}
+.place-lbl.town span{font-size:12px;font-weight:600;color:var(--paper)}
 .seg button svg{width:15px;height:15px}
 .seg button[aria-selected="true"]{background:color-mix(in srgb,var(--amber) 16%,var(--panel-3));color:var(--paper);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amber) 50%,transparent)}
 .bar-sep{width:1px;height:24px;background:var(--line);flex:none;margin:0 2px}
@@ -533,8 +560,7 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
 @media (max-width:1280px){ .ctxchip{display:none} }
 @media (max-width:1160px){ #dirToggle{display:none} }
 /* progressively drop non-essential topbar controls so it never overflows (320→1440) */
-@media (max-width:1120px){ #mapCtl .seg:nth-child(2){display:none} }   /* colour Type/Operator */
-@media (max-width:1000px){ #mapCtl{display:none} #exportBtn{display:none} }
+@media (max-width:1000px){ #exportBtn{display:none} }   /* the Layers button stays — it's one compact control */
 @media (max-width:880px){ #viewToggle{display:none} }
 @media (max-width:1100px){.app{grid-template-columns:224px 1fr}.rail-right{display:none}}
 /* Phone: simple single column that scrolls the whole page — every section stays
@@ -610,26 +636,27 @@ dialog::backdrop{background:rgba(4,7,12,.6)}
         <button type="button" data-v="outbound" aria-pressed="false">Out</button>
       </div>
       <div class="barctl" id="mapCtl" role="group" aria-label="Display">
-        <div class="seg iconseg">
-          <button type="button" data-k="routes" class="on" aria-pressed="true" aria-label="Show or hide route lines" data-tip="Show / hide route lines">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18 9 6 15 18 21 6"/></svg></button>
-          <button type="button" data-k="garages" aria-pressed="false" aria-label="Show or hide garage markers" data-tip="Show / hide garage markers">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21h16M6 21V8l6-4 6 4v13M10 21v-5h4v5"/></svg></button>
-          <button type="button" data-k="stops" class="on" aria-pressed="true" aria-label="Show or hide bus stops" data-tip="Show / hide bus stops">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg></button>
-          <button type="button" data-k="live" aria-pressed="false" aria-label="Show or hide live buses" data-tip="Show / hide live buses">
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 L19 21 L12 16 L5 21 Z"/></svg></button>
-          <button type="button" data-k="accidents" aria-pressed="false" aria-label="Show or hide bus collisions" data-tip="Show / hide bus collisions">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></button>
-          <button type="button" data-k="bridges" aria-pressed="false" aria-label="Show or hide low bridges" data-tip="Show / hide low bridges (height restrictions)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20V9M21 20V9M3 9h18M3 13c4-3 6-3 9 0s5 3 9 0"/></svg></button>
-          <button type="button" data-k="incidents" aria-pressed="false" aria-label="Show or hide live road incidents" data-tip="Show / hide live road incidents (TfL)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></button>
-        </div>
-        <div class="seg" aria-label="Colour routes by">
-          <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
-          <button type="button" data-k="ctype" data-tip="Colour routes by type">Type</button>
-          <button type="button" data-k="ccrowd" data-tip="Colour routes by crowding (TfL BUSTO peak load)">Crowding</button>
+        <!-- v2-style Layers control: one button opens a panel of labelled toggle switches
+             (same data-k wiring as before — the delegated click handler below is unchanged). -->
+        <button type="button" class="iconbtn" id="layersBtn" aria-haspopup="true" aria-expanded="false" aria-controls="layersPanel" data-tip="Map layers &amp; colour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>
+          <span class="lbl">Layers</span><span class="lcount" id="layersCount" hidden>0</span></button>
+        <div id="layersPanel" hidden role="group" aria-label="Map layers and colour">
+          <div class="lp-title">Map layers</div>
+          <button type="button" class="lrow on" data-k="routes" aria-pressed="true"><span>Route lines</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow on" data-k="places" aria-pressed="true"><span>Place names</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow" data-k="garages" aria-pressed="false"><span>Garages</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow on" data-k="stops" aria-pressed="true"><span>Stops</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow" data-k="live" aria-pressed="false"><span>Live buses · BODS GPS</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow" data-k="accidents" aria-pressed="false"><span>Collisions · STATS19</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow" data-k="bridges" aria-pressed="false"><span>Low bridges &lt;4.4 m</span><span class="lsw" aria-hidden="true"></span></button>
+          <button type="button" class="lrow" data-k="incidents" aria-pressed="false"><span>Road incidents · live</span><span class="lsw" aria-hidden="true"></span></button>
+          <div class="lp-title">Colour routes by</div>
+          <div class="seg" aria-label="Colour routes by">
+            <button type="button" data-k="coper" class="on" data-tip="Colour routes by operator">Operator</button>
+            <button type="button" data-k="ctype" data-tip="Colour routes by type">Type</button>
+            <button type="button" data-k="ccrowd" data-tip="Colour routes by crowding (TfL BUSTO peak load)">Crowding</button>
+          </div>
         </div>
       </div>
       <button class="iconbtn" id="exportBtn" type="button" aria-label="Export current view as CSV" data-tip="Export current view as CSV">
@@ -1115,6 +1142,8 @@ async function loadStore(){
     if(accidents && Array.isArray(accidents.accidents)) store.accidents = accidents;   // Sentinel: { accidents:[{lat,lng,severity,date,borough}], sample, period }
     const bridges = await fetchData("bridges","bridges.json");
     if(bridges && Array.isArray(bridges.bridges)) store.bridges = bridges;   // low bridges: { bridges:[{lat,lng,height_m,name,road}], sample }
+    const localities = await fetchData("localities","localities.json");
+    if(localities && Array.isArray(localities.localities)) store.localities = localities.localities;   // [{name,lat,lng,kind:town|suburb}] — the place-name label layer
     const crowding = await fetchData("crowding","crowding.json");
     if(crowding && crowding.routes){ store.crowding = crowding.routes; store.crowdingMeta = { year:crowding.year, bands:crowding.bands, source:crowding.source }; }   // BUSTO: { [routeName]: { peakVC, band, load, capacity, stopname, time, dayType, byDay } }
     // Our own estimated reliability — fire-and-forget (history API / Supabase, not a static file):
@@ -1161,7 +1190,7 @@ let networkToken=0;              // guards against overlapping network draws on 
 /* Leaflet */
 const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London view (init + Clear all reset)
 let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer, bridgeLayer, incidentLayer;
-let showRoutes=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
+let showRoutes=true, showPlaces=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
 let roadIncidents=null;   // cached live road-incident list (fetched on demand when the layer is enabled)
 let riskRadius=250;       // metres — user-set alert proximity for the Risk & accidents panel (collisions + low bridges), hydrated from settings
 let riskRadiusTimer=null;
@@ -1287,7 +1316,7 @@ function initMap(){
   incidentLayer=L.layerGroup().addTo(map);   // live road incidents (TfL Road Disruptions)
   divLayer=L.layerGroup().addTo(map);    // diversion overlays (affected segment + not-served stops)
   liveLayer=L.layerGroup().addTo(map);   // live vehicle GPS markers (BODS), on top
-  map.on("zoomend",()=>{ if(showAccidents) drawAccidents(); });   // re-bin the accident clusters at the new zoom
+  map.on("zoomend",()=>{ if(showAccidents) drawAccidents(); if(showPlaces) drawPlaces(); });   // re-bin accident clusters + re-filter place labels at the new zoom
   map.on("click",e=>{
     if(mode==="catch"){ setPin(e.latlng.lat,e.latlng.lng); return; }
     const names=routesNear(e.latlng);
@@ -1538,6 +1567,23 @@ function drawAccidents(){
 }
 /* Low bridges — discrete clearance-graded markers (red below the 4.4 m double-deck
    threshold). Route-scoped to bridges near the line when a route is selected. */
+/* Locality labels (data/localities.json — OSM towns & suburbs). Text-only markers in a
+   dedicated pane above the route lines, so main areas (Stratford, Bow, Mile End…) read at
+   route-fit zoom where the raster basemap shows nothing yet. Towns from z10; suburbs join
+   at z12. pointer-events:none — pure map furniture, never blocks route/stop clicks. */
+let placeLayer=null;
+function drawPlaces(){
+  if(!mapOK||!map) return;
+  if(placeLayer){ map.removeLayer(placeLayer); placeLayer=null; }
+  if(!showPlaces || !Array.isArray(store.localities)) return;
+  if(!map.getPane("placeLabels")){ const p=map.createPane("placeLabels"); p.style.zIndex=610; p.style.pointerEvents="none"; }
+  const z=map.getZoom();
+  if(z<10) return;
+  const list=store.localities.filter(p=> p.kind==="town" ? true : z>=12);
+  placeLayer=L.layerGroup(list.map(p=> L.marker([p.lat,p.lng], {pane:"placeLabels", interactive:false, keyboard:false,
+    icon:L.divIcon({className:"place-lbl "+p.kind, html:`<span>${esc(p.name)}</span>`, iconSize:[0,0]})})));
+  placeLayer.addTo(map);
+}
 function bridgesData(){ return (store.bridges && Array.isArray(store.bridges.bridges)) ? store.bridges : SAMPLE_BRIDGES; }
 function bridgesForView(){
   const data=bridgesData(); let list=data.bridges||[];
@@ -1880,7 +1926,10 @@ function renderFilters(){
 function syncMapCtl(){
   const c=document.getElementById("mapCtl"); if(!c) return;
   const set=(k,on)=>{ const el=c.querySelector(`[data-k="${k}"]`); el.classList.toggle("on",on); el.setAttribute("aria-pressed",String(on)); };
-  set("routes",showRoutes); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("incidents",showIncidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator"); set("ccrowd",colorMode==="crowding");
+  set("routes",showRoutes); set("places",showPlaces); set("garages",showGarages); set("stops",showStops); set("live",showLive); set("accidents",showAccidents); set("bridges",showBridges); set("incidents",showIncidents); set("ctype",colorMode==="type"); set("coper",colorMode==="operator"); set("ccrowd",colorMode==="crowding");
+  // the Layers button carries a live count of enabled layers so the closed panel isn't a mystery
+  const n=[showRoutes,showPlaces,showGarages,showStops,showLive,showAccidents,showBridges,showIncidents].filter(Boolean).length;
+  const lc=document.getElementById("layersCount"); if(lc){ lc.textContent=n; lc.hidden=!n; }
 }
 /* ⟳ — refresh ALL data Atlas uses (every store dataset + the selected route's live
    status), not just the filtered view. Clears all caches first so nothing is stale. */
@@ -2925,12 +2974,13 @@ function init(){
   // hydrate map display prefs + wire the control bar
   // Live vehicles + collisions are noisy overlays — always start OFF each session; the user
   // turns them on explicitly (not persisted as "on" across reloads). Other layers persist.
-  showRoutes = settings.showRoutes!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; riskRadius = +settings.riskRadius || 250; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showPlaces = settings.showPlaces!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; riskRadius = +settings.riskRadius || 250; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
-    const k=b.dataset.k;
+    const k=b.dataset.k; if(!k) return;   // e.g. the Layers button itself — has its own handler
     // display toggles are global overrides — they re-paint in place and must NOT
     // refit/zoom the map (refreshMap(false)).
-    if(k==="routes"){ showRoutes=!showRoutes; settings.showRoutes=showRoutes; saveSettings(); }
+    if(k==="places"){ showPlaces=!showPlaces; settings.showPlaces=showPlaces; saveSettings(); syncMapCtl(); drawPlaces(); return; }   // locality labels
+    else if(k==="routes"){ showRoutes=!showRoutes; settings.showRoutes=showRoutes; saveSettings(); }
     else if(k==="garages"){ showGarages=!showGarages; settings.showGarages=showGarages; saveSettings(); }
     else if(k==="stops"){ showStops=!showStops; settings.showStops=showStops; saveSettings(); }
     else if(k==="live"){ showLive=!showLive; settings.showLive=showLive; saveSettings(); syncMapCtl(); applyDataMode(); return; }   // start/stop live tracking
@@ -2945,6 +2995,21 @@ function init(){
     else if(k==="ccrowd"){ colorMode="crowding"; settings.colorMode="crowding"; saveSettings(); renderFilters(); renderRouteList(); }
     syncMapCtl(); if(mode==="catch") paintCatch(false); else refreshMap(false);
   });
+  // Layers dropdown open/close. position:fixed (anchored to the button on open) so the
+  // panel can't be clipped by the topbar's overflow scroller on small screens.
+  {
+    const lbtn=document.getElementById("layersBtn"), lpanel=document.getElementById("layersPanel");
+    const openLayers=(open)=>{
+      lbtn.setAttribute("aria-expanded",String(open)); lpanel.hidden=!open;
+      if(open){ const r=lbtn.getBoundingClientRect();
+        lpanel.style.top=(r.bottom+6)+"px";
+        lpanel.style.left=Math.max(8, Math.min(r.left, window.innerWidth-lpanel.offsetWidth-8))+"px"; }
+    };
+    lbtn.addEventListener("click",()=>openLayers(lpanel.hidden));
+    document.addEventListener("click",e=>{ if(!lpanel.hidden && !e.target.closest("#mapCtl")) openLayers(false); });
+    document.addEventListener("keydown",e=>{ if(e.key==="Escape" && !lpanel.hidden){ openLayers(false); lbtn.focus(); } });
+    window.addEventListener("resize",()=>{ if(!lpanel.hidden) openLayers(true); });
+  }
   document.getElementById("clearAll").addEventListener("click",clearAll);   // in-app reset (keeps caches warm)
   document.getElementById("themeBtn").addEventListener("click",()=>{ settings.theme=effectiveTheme()==="dark"?"light":"dark"; saveSettings(); applyTheme(); });
   document.getElementById("exportBtn").addEventListener("click",exportCurrent);
@@ -3013,7 +3078,7 @@ function init(){
   let rsz; window.addEventListener("resize",()=>{ clearTimeout(rsz); rsz=setTimeout(()=>{ if(mapOK) map.invalidateSize(); },150); });   // keep the map sized correctly through layout reflows (mobile/orientation)
   // default view = the whole (filtered) network on the map, nothing pre-selected.
   // Read our store first (all 676 routes, no API dependency), then live for detail.
-  loadStore().then(()=>loadRoutes()).then(()=>{ renderFilters(); if(!selected.length){ refreshMap(); renderContext(); } });
+  loadStore().then(()=>loadRoutes()).then(()=>{ renderFilters(); drawPlaces(); if(!selected.length){ refreshMap(); renderContext(); } });
   applyDataMode();
   setInterval(renderBadge,30_000);
 }
