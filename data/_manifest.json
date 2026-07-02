@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-01T21:27:10.056Z",
+  "generatedAt": "2026-07-02T06:49:48.799Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-01T07:21:19.515Z",
+      "fetchedAt": "2026-07-02T06:49:48.302Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-01T21:15:52.098Z",
+      "fetchedAt": "2026-07-02T06:49:48.799Z",
       "status": "ok",
       "rows": 13879,
       "files": [
@@ -82,7 +82,7 @@
     "tenders": {
       "status": "failed",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
-      "lastAttempt": "2026-07-01T07:21:14.773Z",
+      "lastAttempt": "2026-07-02T06:49:45.752Z",
       "source": "TfL tender award results (13923/13796.aspx)",
       "fetchedAt": "2026-06-19T18:00:54.502Z",
       "rows": 2508,
