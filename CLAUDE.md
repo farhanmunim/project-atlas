@@ -383,11 +383,11 @@ can never block the Cloudflare site.
   the Coolify `ingest` resource's environment (and, until the old GitHub Actions
   workflows are fully retired, the equivalently-named repo secrets). The service key
   is server-only; never in code or the browser.
-- **Known gap:** `backfill-route-vehicle-sightings.js` calls a Postgres function
-  (`route_vehicle_recurrence`) that was created directly in Supabase's SQL Editor,
-  outside the migrations — not yet ported. It's already coded to soft-fail (missing
-  RPC → leaves `route-vehicles.json` untouched), so nothing breaks; a future migration
-  should recreate it.
+- **RLS parity note:** the anon read policies for the history tables live in the
+  migrations (`0003`/`0004`/`0006`/`0014`/`0015`/`0020`), and `route_vehicle_recurrence`
+  (the RPC `backfill-route-vehicle-sightings.js` calls) is in `0013` — all in the bundle.
+  The one policy that was previously a manual Supabase SQL step, `route_vehicle_observations`
+  anon read (serves `/api/v1/history/vehicle-sightings`), is now ported as `0022`.
 - **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode) used to
   persist between GitHub Actions runs via `actions/cache`; on Coolify this needs a
   persistent volume on the `ingest` resource instead (TBD) so runs don't cold-pull
