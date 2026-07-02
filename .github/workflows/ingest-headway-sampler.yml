@@ -36,9 +36,9 @@ jobs:
           cache: npm
           cache-dependency-path: ingest/package-lock.json
       - run: npm ci --no-audit --no-fund
-      - name: Sample headways → Supabase
+      - name: Sample headways → warehouse
         env:
-          BUS_API_KEY:               ${{ secrets.TFL_APP_KEY }}
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BUS_API_KEY:           ${{ secrets.TFL_APP_KEY }}
+          WAREHOUSE_URL:         ${{ secrets.WAREHOUSE_URL }}
+          WAREHOUSE_SERVICE_KEY: ${{ secrets.WAREHOUSE_SERVICE_KEY }}
         run: npm run sample-headways

@@ -38,17 +38,17 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const BATCH     = 500;        // Supabase recommends ≤1000 rows per upsert; 500 is safely under
 
 loadEnv();
-const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const WAREHOUSE_URL          = process.env.WAREHOUSE_URL ?? '';
+const WAREHOUSE_SERVICE_KEY  = process.env.WAREHOUSE_SERVICE_KEY ?? '';
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn('Supabase env not configured (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing) — skipping push.');
+if (!WAREHOUSE_URL || !WAREHOUSE_SERVICE_KEY) {
+  console.warn('Warehouse env not configured (WAREHOUSE_URL / WAREHOUSE_SERVICE_KEY missing) — skipping push.');
   process.exit(0);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient(WAREHOUSE_URL, WAREHOUSE_SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
-  // Service-role key bypasses RLS so we can write freely.
+  // service_role bypasses RLS so we can write freely.
 });
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -706,7 +706,7 @@ async function pushCrowding() {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log(`Pushing to Supabase at ${SUPABASE_URL}`);
+  console.log(`Pushing to warehouse at ${WAREHOUSE_URL}`);
   await pushVehicles();
   await pushRouteSnapshots();
   await pushObservations();

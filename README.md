@@ -115,8 +115,8 @@ GET /api/live/vehicles?line=<route>      # e.g. ?line=25 or ?line=25,86
 
 ### Historical / time-series — `/api/v1/history`
 
-Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `reg`,
-`year`, `limit` (max 1000), `order` (e.g. `day.desc`).
+Time-series from our self-hosted warehouse (Postgres + PostgREST). Common params:
+`route`, `from`, `to`, `reg`, `year`, `limit` (max 1000), `order` (e.g. `day.desc`).
 
 | Endpoint | What it returns |
 |---|---|
@@ -129,12 +129,12 @@ Time-series from our Supabase warehouse. Common params: `route`, `from`, `to`, `
 | `GET /api/v1/history/crowding?route=25` | Bus crowding per route per year (TfL BUSTO) — filter by `route`, `band`, `year`, `day_type` |
 | `GET /api/v1/history/accidents?from=2024-01-01&to=2024-12-31` *(also `severity=`, `borough=`, `road_type=`, `speed_limit=`)* | STATS19 bus collisions over time — incl. decoded road_type/speed_limit/junction/light/weather/road_surface; the temporal source behind the `/api/v1/accidents` snapshot |
 
-> The history group needs Supabase read credentials configured (see **Historical API
+> The history group needs warehouse read credentials configured (see **Historical API
 > setup** below). Without them it returns `503` and the live + current groups still work.
 > **Exception — `history/accidents`:** the full enriched multi-year STATS19 set also ships as
 > the static snapshot, so this endpoint **falls back to filtering `data/accidents.json`** when
-> Supabase is unconfigured or a filter targets a column whose migration is still pending — the
-> documented filters (`severity`, `borough`, `road_type`, `speed_limit`, `day`, `time_band`,
+> the warehouse is unconfigured or a filter targets a column whose migration is still pending —
+> the documented filters (`severity`, `borough`, `road_type`, `speed_limit`, `day`, `time_band`,
 > `from`/`to`) return enriched rows regardless. Responses carry a `source` field when served from
 > the snapshot.
 
@@ -160,53 +160,43 @@ same locally and in production. In production it is served by Pages Functions
 (`functions/api/v1/[[path]].js`, `…/live/[[path]].js`, `…/history/[[path]].js`); keep the
 dev mirror in sync.
 
-### Historical API setup (Supabase read key)
+### Historical API setup (self-hosted warehouse)
 
-The `/api/v1/history/*` endpoints read our Supabase warehouse. The key is held
-**server-side** in the Pages Function (never sent to the browser). To enable them:
+The `/api/v1/history/*` endpoints read our own warehouse — a **self-hosted Postgres +
+PostgREST** (no external database vendor). The key is held **server-side** in the Pages
+Function (never sent to the browser). To enable them:
 
-**1 — Get the values from Supabase**
-1. Open your project at <https://supabase.com/dashboard> → **Project Settings** (gear) → **API**.
-2. Copy the **Project URL** (e.g. `https://abcdxyz.supabase.co`) → this is `SUPABASE_URL`.
-3. Under **Project API keys**, copy the **`anon` `public`** key → this is `SUPABASE_KEY`.
-   *(Use the `anon` key, not `service_role`. The `anon` key is designed to be used with
-   row-level security; never put the `service_role` key in a public-facing Function.)*
+**1 — Stand up Postgres + PostgREST** (e.g. on a Coolify VPS)
+1. Deploy a plain Postgres instance and load `ingest/db/migrations-bundle.sql`
+   (concatenates every file in `ingest/db/migrations/`).
+2. Create the roles PostgREST switches into per request — `authenticator` (its own
+   login role), `anon` (read-only, matches every `TO anon` RLS policy already in the
+   migrations), `service_role` (full read-write, `BYPASSRLS`, used by the ingest
+   pipeline), `authenticated` (unused today, kept for parity).
+3. Deploy `postgrest/postgrest`, pointed at that Postgres via `authenticator`, with
+   `PGRST_DB_SCHEMA=public`, `PGRST_DB_ANON_ROLE=anon`, and a `PGRST_JWT_SECRET` you
+   generate yourself.
+4. Mint two JWTs signed with that secret — one with `{"role":"anon"}`, one with
+   `{"role":"service_role"}` — these become `WAREHOUSE_ANON_KEY` and
+   `WAREHOUSE_SERVICE_KEY` below.
+5. Route a public domain's `/rest/v1/*` to PostgREST (stripping the `/rest/v1` prefix,
+   since PostgREST serves tables at its root) — this domain is `WAREHOUSE_URL`.
 
-**2 — Allow public read on the historical tables (one-time SQL)**
-In Supabase → **SQL Editor**, run this. It's idempotent and **skips any table that
-doesn't exist in your project**, so it won't fail if your warehouse is missing one:
-```sql
-do $$
-declare t text;
-begin
-  foreach t in array array[
-    'route_reliability_daily','route_performance','route_schedule',
-    'tender_programme','route_vehicle_observations'
-  ] loop
-    if exists (select 1 from information_schema.tables
-               where table_schema='public' and table_name=t) then
-      execute format('alter table public.%I enable row level security', t);
-      if not exists (select 1 from pg_policies
-                     where schemaname='public' and tablename=t and policyname='public read') then
-        execute format('create policy "public read" on public.%I for select using (true)', t);
-      end if;
-    end if;
-  end loop;
-end $$;
-```
-*(RLS stays off for the ingest pipeline because it uses the `service_role` key, which
-bypasses RLS — so this does not affect data loading.)*
-
-**3 — Add the secrets to Cloudflare Pages**
+**2 — Add the secrets to Cloudflare Pages**
 1. Cloudflare dashboard → **Workers & Pages** → your **Atlas** Pages project → **Settings** → **Environment variables**.
 2. Under **Production**, **Add variable** twice:
-   - `SUPABASE_URL` = the Project URL from step 1.
-   - `SUPABASE_KEY` = the `anon` key from step 1. *(Click **Encrypt** to store it as a secret.)*
+   - `WAREHOUSE_URL` = the PostgREST domain from step 1.5.
+   - `WAREHOUSE_ANON_KEY` = the anon-role JWT from step 1.4. *(Click **Encrypt** to store it as a secret.)*
 3. Add the same two to **Preview** if you want history on preview deployments.
 4. **Save**, then trigger a redeploy (**Deployments → Retry deployment**, or push any commit).
 
 After redeploy, `GET /api/v1/history/reliability-daily?route=25` returns rows instead of
-`503`. To test locally, put `SUPABASE_URL` and `SUPABASE_KEY` in your `.env`.
+`503`. To test locally, put `WAREHOUSE_URL` and `WAREHOUSE_ANON_KEY` in your `.env`.
+
+The `ingest/` pipeline writes to the same warehouse using `WAREHOUSE_URL` +
+`WAREHOUSE_SERVICE_KEY` (the service_role-equivalent JWT, bypasses RLS) — see
+`ingest/.env.example`. Its scheduled jobs run as Coolify Scheduled Tasks on the same
+VPS, not GitHub Actions.
 
 > Optionally also set `TFL_APP_KEY` as a Pages variable to raise the live-feed rate
 > limit (the live endpoints work without it).

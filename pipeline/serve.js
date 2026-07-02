@@ -266,16 +266,16 @@ async function serveHistory(req, res, name) {
   const order = /^[a-z_]+\.(asc|desc)$/.test(q.get("order") || "") ? q.get("order") : ep.defaultOrder;
   const snapshot = HIST_SNAPSHOTS[name];
   const canSnapshot = !!snapshot;
-  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const base = process.env.WAREHOUSE_URL, key = process.env.WAREHOUSE_ANON_KEY || process.env.WAREHOUSE_SERVICE_KEY;
   if (!base || !key) {
     if (canSnapshot) { const fb = snapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }
-    return jsonCors(res, 503, { error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set locally)" });
+    return jsonCors(res, 503, { error: "historical store not configured (WAREHOUSE_URL / WAREHOUSE_ANON_KEY not set locally)" });
   }
   const parts = [];
   for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
   parts.push(`order=${order}`, `limit=${limit}`);
-  let supaOrigin; try { supaOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "SUPABASE_URL is not a valid URL" }); }
-  const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
+  let warehouseOrigin; try { warehouseOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "WAREHOUSE_URL is not a valid URL" }); }
+  const url = `${warehouseOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
   try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
     if (!r.ok) {
       if (canSnapshot) { const fb = snapshot(q, limit, order); if (fb) return jsonCors(res, 200, fb); }

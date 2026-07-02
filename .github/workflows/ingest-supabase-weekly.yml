@@ -61,12 +61,12 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
 
-      - name: Run full data refresh → Supabase
+      - name: Run full data refresh → warehouse
         env:
           # london-buses scripts read BUS_API_KEY; this repo's TfL secret is
           # TFL_APP_KEY — bridge it here (single subscription key, compatible).
-          BUS_API_KEY:               ${{ secrets.TFL_APP_KEY }}
-          DVLA_API_KEY:              ${{ secrets.DVLA_API_KEY }}
-          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BUS_API_KEY:           ${{ secrets.TFL_APP_KEY }}
+          DVLA_API_KEY:          ${{ secrets.DVLA_API_KEY }}
+          WAREHOUSE_URL:         ${{ secrets.WAREHOUSE_URL }}
+          WAREHOUSE_SERVICE_KEY: ${{ secrets.WAREHOUSE_SERVICE_KEY }}
         run: npm run refresh

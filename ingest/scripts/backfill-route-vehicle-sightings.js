@@ -44,16 +44,16 @@ const windowArg  = argv.find(a => a.startsWith('--window='));
 const WINDOW_DAYS = windowArg ? Math.max(1, parseInt(windowArg.split('=')[1], 10) || 56) : 56;
 
 loadEnv();
-const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const WAREHOUSE_URL         = process.env.WAREHOUSE_URL ?? '';
+const WAREHOUSE_SERVICE_KEY = process.env.WAREHOUSE_SERVICE_KEY ?? '';
 
 function dateOf(iso) { return typeof iso === 'string' ? iso.slice(0, 10) : null; }
 function minIso(a, b) { if (!a) return b; if (!b) return a; return a < b ? a : b; }
 function maxIso(a, b) { if (!a) return b; if (!b) return a; return a > b ? a : b; }
 
 async function main() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn('Supabase env not configured — leaving route-vehicles.json as-is (forward counts).');
+  if (!WAREHOUSE_URL || !WAREHOUSE_SERVICE_KEY) {
+    console.warn('Warehouse env not configured — leaving route-vehicles.json as-is (forward counts).');
     return;
   }
 
@@ -63,7 +63,7 @@ async function main() {
     return;
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const supabase = createClient(WAREHOUSE_URL, WAREHOUSE_SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

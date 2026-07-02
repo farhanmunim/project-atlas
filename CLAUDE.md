@@ -221,12 +221,12 @@ prod as follows — keep both in sync:
   - **live** — `/api/v1/live/*` proxies TfL (status · disruptions · arrivals ·
     road-disruptions) ([`functions/api/v1/live/[[path]].js`]), keyless, edge-cached.
     Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
-  - **history** — `/api/v1/history/*` serves the Supabase time-series (reliability-daily ·
+  - **history** — `/api/v1/history/*` serves the warehouse time-series (reliability-daily ·
     performance-history · schedule · tender-programme · vehicle-sightings · accidents)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
-    filters + capped page size); `SUPABASE_URL` + `SUPABASE_KEY` (anon key + RLS read
-    policies) are server-side Cloudflare secrets, never shipped. See README "Historical
-    API setup". Returns 503 (not 502) when unconfigured; live + current still work.
+    filters + capped page size); `WAREHOUSE_URL` + `WAREHOUSE_ANON_KEY` (anon-role JWT +
+    RLS read policies) are server-side Cloudflare secrets, never shipped. See README
+    "Historical API setup". Returns 503 (not 502) when unconfigured; live + current still work.
 - **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
   It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
   push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
@@ -325,18 +325,22 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
 > **"Sentinel"** is the **legacy internal name** for the accidents/risk layer — it must
 > NOT appear in any user-facing copy (only in code comments / function names).
 
-## Supabase warehouse pipeline (`ingest/`)
+## Warehouse ingest pipeline (`ingest/`)
 
 A **standalone, isolated** ingestion subtree (moved in from the old london-buses
-repo) that builds a historical/analytics warehouse in **Supabase** (free tier).
+repo) that builds a historical/analytics warehouse on **self-hosted Postgres +
+PostgREST** (a Coolify VPS — no external database vendor; previously Supabase cloud,
+migrated off after hitting its free-tier storage cap).
 It is **fully decoupled** from Atlas — its own `package.json`, `data/`, and
-workflows; it shares **no code path** with `pipeline/` or the site. It writes
-**only to Supabase**, never to `data/*.json` or the repo, so a slow/failed ingest
+schedules; it shares **no code path** with `pipeline/` or the site. It writes
+**only to the warehouse**, never to `data/*.json` or the repo, so a slow/failed ingest
 can never block the Cloudflare site.
 
 - **Scripts self-locate** via `__dirname/..` → always read/write `ingest/data`
   regardless of cwd. Orchestrator: `ingest/scripts/refresh.js`.
-  Supabase upsert: `ingest/scripts/push-to-supabase.js` → tables `vehicles`,
+  Warehouse upsert: `ingest/scripts/push-to-supabase.js` (name predates the migration;
+  still uses `@supabase/supabase-js`, which is just a PostgREST client — works
+  unchanged against the self-hosted backend) → tables `vehicles`,
   `route_snapshots`, `garage_snapshots`, `route_performance`, `tenders`,
   `tender_programme`, `route_vehicle_observations`, `route_vehicle_sightings`,
   **`accidents`** (STATS19 collisions), **`bus_crowding`** (TfL BUSTO per route per
@@ -344,37 +348,28 @@ can never block the Cloudflare site.
   is unchanged, `pushCrowding()` upserts per `(route_id, busto_year)`), and the
   live-reliability tables (`route_schedule`, `arrival_samples`,
   `route_reliability_daily` — our own EWT/OTD/lost-mileage, see below).
-- **Reuses the existing Supabase project from london-buses**, so tables
-  `0001`–`0013` were already live (no migration needed at the switch). **New
-  migrations to run once in Supabase SQL Editor:** `0014_accidents.sql`,
-  `0015_live_reliability.sql`, `0016_tender_awarded_deck.sql` (adds the awarded
-  `deck` to the per-award `tenders` table — `push-to-supabase.js` derives it from
-  the notes, mirroring the app's `tender-parse.js`), `0017_accidents_context.sql`
-  (adds decoded STATS19 collision-context columns `road_type`/`speed_limit`/`junction`/
-  `light`/`weather`/`road_surface` to `accidents` — decoded at the fetch boundary in
-  `fetch-accidents.js`, mirrored in `pipeline/sources/stats19.js`), `0018_accidents_temporal.sql`
-  (adds `day` + `time_band`), `0020_bus_crowding.sql` (the BUSTO crowding warehouse table, keyed
-  `(route_id, busto_year)` so crowding accrues year-over-year — the time-series behind
-  `/api/v1/history/crowding`, which self-heals to the `data/crowding.json` snapshot until the table
-  is populated), `0021_route_schedule_qsi.sql` (adds `scheduled_departures` + `qsi_point_stop_ids`
-  to `route_schedule` for higher-fidelity live reliability — per-trip OTD vs the real timetable, and
-  a multi-QSI-point AWT set with the terminus/within-1km excluded per TfL; both nullable + additive,
-  the builder falls back to the single timing point / synthetic-grid OTD until populated. See
-  `ingest/RELIABILITY-METHODOLOGY.md`). The accidents upsert is **self-healing** — it strips columns a
-  pending migration hasn't added yet and writes the base record, so a new field never blocks the
-  ingest. The rest pre-existed. Don't reshape existing tables; add a migration for anything new.
-- **Workflows** (all `permissions: contents: read` — Supabase-only, no
-  commit-back):
-  - `ingest-supabase-weekly.yml` — full refresh, Mon 09:23 UTC.
-  - `ingest-supabase-sampler.yml` — daily fleet sample, 08:37 UTC.
-  - `ingest-supabase-heartbeat.yml` — daily 12:37 UTC, INSERTs into `keep_alive`.
-    **Load-bearing:** the free tier auto-pauses after 7 days with no DB **write**
-    activity → eventual deletion. A SELECT does *not* count; only the INSERT does.
-    Never disable this, and keep at least one daily writer alive.
-  - `ingest-headway-sampler.yml` — every ~30 min in service hours; appends live
+- **Schema bootstrap.** `ingest/db/migrations/0001`–`0021` define every table + RLS
+  policy; `ingest/db/migrations-bundle.sql` (generated, served statically at
+  `/ingest/db/migrations-bundle.sql`) concatenates them for a one-shot `psql -f` against
+  a fresh Postgres. PostgREST needs four roles the migrations' `TO anon` policies
+  assume but don't create themselves: `authenticator` (its own login role),
+  `anon` (read-only), `service_role` (`BYPASSRLS`, full read-write — the ingest
+  pipeline's role), `authenticated` (unused today, kept for parity) — bootstrap these
+  once via SQL before loading the migrations. The accidents upsert is **self-healing**
+  — it strips columns a pending migration hasn't added yet and writes the base record,
+  so a new field never blocks the ingest. Don't reshape existing tables; add a
+  migration for anything new (`0022+`).
+- **Schedules — Coolify Scheduled Tasks** (an idle `ingest/Dockerfile` container,
+  `docker exec`'d into per cron; replaces the old GitHub Actions workflows of the
+  same cadence):
+  - `npm run refresh` — full refresh, Mon 09:23 UTC.
+  - `npm run sample-vehicles` — daily fleet sample, 08:37 UTC.
+  - `npm run sample-headways` — every ~30 min in service hours; appends live
     arrival/headway observations to `arrival_samples`.
-  - `ingest-reliability-build.yml` — daily; derives EWT/SWT/AWT, OTD and lost
+  - `npm run build-reliability` — daily; derives EWT/SWT/AWT, OTD and lost
     mileage into `route_reliability_daily` from the samples + `route_schedule`.
+  - No heartbeat job — that existed only because Supabase's free tier auto-paused
+    after 7 days with no DB write; self-hosted Postgres never does.
 - **Live reliability (our own, supplementing TfL's quarterly figures).** EWT =
   AWT − SWT where AWT/SWT = Σ(h²)/(2·Σh) over observed/scheduled headways; OTD =
   % departures 2 min early–5 min late (low-freq); lost mileage = scheduled − operated
@@ -382,35 +377,42 @@ can never block the Cloudflare site.
   sampling `/Line/{id}/Arrivals` (`sample-headways.js`). Accuracy improves as
   samples accrue and is bounded by sampling frequency — it's an estimate, labelled
   as such; TfL's published `route_performance` remains the authoritative quarterly.
-- **Secrets (GitHub Actions):** `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-  `DVLA_API_KEY`, and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in
-  the workflow env. Service-role key is server-only; never in code or the browser.
-- **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode)
-  persist between runs via `actions/cache` (rolling key), so the repo stays lean
-  (no committed cache churn) and runs don't cold-pull ~9000 DVLA lookups. A
-  one-time seed of these is committed for the first warm run; everything else the
-  pipeline regenerates is gitignored (`ingest/.gitignore`).
+- **Secrets:** `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY` (the service_role-equivalent
+  JWT, signed with the PostgREST instance's own `PGRST_JWT_SECRET`), `DVLA_API_KEY`,
+  and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in the task env. Live in
+  the Coolify `ingest` resource's environment (and, until the old GitHub Actions
+  workflows are fully retired, the equivalently-named repo secrets). The service key
+  is server-only; never in code or the browser.
+- **Known gap:** `backfill-route-vehicle-sightings.js` calls a Postgres function
+  (`route_vehicle_recurrence`) that was created directly in Supabase's SQL Editor,
+  outside the migrations — not yet ported. It's already coded to soft-fail (missing
+  RPC → leaves `route-vehicles.json` untouched), so nothing breaks; a future migration
+  should recreate it.
+- **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode) used to
+  persist between GitHub Actions runs via `actions/cache`; on Coolify this needs a
+  persistent volume on the `ingest` resource instead (TBD) so runs don't cold-pull
+  ~9000 DVLA lookups. Everything the pipeline regenerates is gitignored (`ingest/.gitignore`).
 
 ## Every datapoint flows through to the warehouse AND the API (no dead ends)
 
 When you add or change a datapoint, field, or dataset, wire it end-to-end so it's
 reflected **automatically** everywhere downstream — never just in one place. The
 **database is updated first**, then the read layer, then everything that reads it:
-**Supabase → `data/*.json` store → `/api/v1` API → app (dossier **and** table view) →
+**warehouse → `data/*.json` store → `/api/v1` API → app (dossier **and** table view) →
 CSV export → docs.** A change that lands in one of these but not the rest is an
 **incomplete change** — the standing expectation is that all of them move together.
 
-- **Supabase first.** A new field is added to the warehouse schema/ingest (the `ingest/`
-  subtree → its Supabase table, with a migration for anything new) so the historical
+- **Warehouse first.** A new field is added to the warehouse schema/ingest (the `ingest/`
+  subtree → its Postgres table, with a migration for anything new) so the historical
   store carries it before — or alongside — the read layer. The append-only/CDC tables
   are the system of record; never let the app diverge from what the DB can hold.
 - **Pipeline → store.** The same field is produced by a `build/<name>.js`, validated, and
   written to `data/*.json` (the prod read layer) and mirrored into the warehouse
-  (`db-mirror.js` / Supabase ingest). If it's time-series, it accrues via CDC.
+  (`db-mirror.js` / the warehouse ingest). If it's time-series, it accrues via CDC.
 - **Store → API.** It must be reachable through `/api/v1` — either it rides an existing
   dataset (current group) or it gets a new endpoint. Add it to the prod Pages Function
   **and** the `serve.js` dev mirror (keep them in sync), and list it in the `/api/v1`
-  discovery index. Live feeds → `/api/v1/live/*`; Supabase time-series → `/api/v1/history/*`.
+  discovery index. Live feeds → `/api/v1/live/*`; warehouse time-series → `/api/v1/history/*`.
 - **API → app.** The app reads it via the `dataSource` seam (never a raw inline fetch).
   Surface it in **every** view that should show it — the right-rail dossier **and** the
   canvas **table view** (a new field that belongs in the table is added as a column, not
@@ -423,10 +425,10 @@ CSV export → docs.** A change that lands in one of these but not the rest is a
   the API serves but the app/table/export don't show, or that nothing documents, is an
   incomplete change.
 
-Net: capture once, expose everywhere — Supabase, the public API, the app (dossier **and**
-table), the CSV export, and the docs stay in lockstep. The default expectation for any data
-change is "is it in the database, queryable through `/api/v1`, shown in the app + table,
-exported, and documented?"
+Net: capture once, expose everywhere — the warehouse, the public API, the app (dossier
+**and** table), the CSV export, and the docs stay in lockstep. The default expectation for
+any data change is "is it in the database, queryable through `/api/v1`, shown in the app +
+table, exported, and documented?"
 
 ## Golden rule
 
@@ -1088,7 +1090,7 @@ manual/agent-driven changes during development sessions, which commit **as Farha
 - [ ] Pre-commit: desktop (1280×800) + mobile (390×844) screenshots; zero JS console errors
 - [ ] Validated: rendered values cross-checked against the source via headless browser + Node/Python; reproducible script
 - [ ] CSV export of the current view (respects selection/filters/mode)
-- [ ] Data lockstep: any new/changed field lands in **Supabase first**, then `data/*.json`, `/api/v1`, the app **dossier + table view**, the **CSV export**, and the docs — all together, none skipped
+- [ ] Data lockstep: any new/changed field lands in **the warehouse first**, then `data/*.json`, `/api/v1`, the app **dossier + table view**, the **CSV export**, and the docs — all together, none skipped
 - [ ] Import &/or inline editing wired where it makes sense (imported/edited data is first-class; bad input reported)
 - [ ] New layer/section wired into Atlas's display toggles + context groups (modular helpers)
 - [ ] README current; analytics confirmed (added or explicitly skipped); pre-ship Network-tab check passed

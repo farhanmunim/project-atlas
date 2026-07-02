@@ -19,7 +19,7 @@ The API has **three groups**, all listed in the discovery index:
 |---|---|---|
 | **current** | `/api/v1/<dataset>` | Today's snapshot of the warehouse (refreshed by the data pipeline, most datasets daily/weekly) |
 | **live** | `/api/v1/live/<feed>` | Live bus + road feeds proxied from TfL / National Highways / BODS, edge-cached seconds-to-minutes |
-| **history** | `/api/v1/history/<series>` | Time-series from the Supabase warehouse (daily reliability, quarterly performance, sightings…) |
+| **history** | `/api/v1/history/<series>` | Time-series from our self-hosted warehouse (daily reliability, quarterly performance, sightings…) |
 
 ---
 
@@ -113,8 +113,8 @@ Live bus GPS is also available at the legacy path `GET /api/live/vehicles?line=<
 
 ## Historical / time-series — `/api/v1/history/<series>`
 
-Time-series accrued in our Supabase warehouse by the decoupled ingest pipeline.
-Read-only, CORS-open, strict per-endpoint whitelists (table + filters + capped page
+Time-series accrued in our self-hosted warehouse (Postgres + PostgREST) by the
+decoupled ingest pipeline. Read-only, CORS-open, strict per-endpoint whitelists (table + filters + capped page
 size). Common query params: `route`, `from`, `to`, `reg`, `year`,
 `limit` (default 200, max 1000), `order` (e.g. `day.desc`). Responses:
 `{ dataset, count, rows }`.
@@ -132,7 +132,7 @@ size). Common query params: `route`, `from`, `to`, `reg`, `year`,
 
 Notes:
 
-- The history group needs server-side Supabase credentials; when unconfigured it
+- The history group needs server-side warehouse credentials; when unconfigured it
   returns `503` while live + current keep working.
 - **`history/accidents` self-heals:** the full enriched multi-year STATS19 set also
   ships as the static snapshot, so this endpoint falls back to filtering

@@ -74,8 +74,8 @@ const MIN_OBSERVED_BUSES = 12;  // need enough passings before an EWT is trustwo
 const MIN_OTD_DEPARTURES = 5;   // low-freq: need a few observed departures before an OTD; else null
 
 loadEnv();
-const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const WAREHOUSE_URL         = process.env.WAREHOUSE_URL ?? '';
+const WAREHOUSE_SERVICE_KEY = process.env.WAREHOUSE_SERVICE_KEY ?? '';
 
 // ── Waiting-time formulas (shared definition with fetch-schedule.js) ────────
 // AWT = Σ(h²)/(2·Σh) over a list of headways. Identical formula to SWT; the
@@ -243,12 +243,12 @@ async function selectAll(supabase, table, build) {
 }
 
 async function main() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn('Supabase env not configured — cannot build reliability. Skipping.');
+  if (!WAREHOUSE_URL || !WAREHOUSE_SERVICE_KEY) {
+    console.warn('Warehouse env not configured — cannot build reliability. Skipping.');
     return;
   }
   const { createClient } = await import('@supabase/supabase-js');
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const supabase = createClient(WAREHOUSE_URL, WAREHOUSE_SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

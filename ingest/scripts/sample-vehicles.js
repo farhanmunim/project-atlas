@@ -34,8 +34,8 @@ const BATCH     = 500;       // Supabase upsert chunk size
 
 loadEnv();
 const API_KEY = process.env.BUS_API_KEY ?? '';
-const SUPABASE_URL              = process.env.SUPABASE_URL ?? '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const WAREHOUSE_URL         = process.env.WAREHOUSE_URL ?? '';
+const WAREHOUSE_SERVICE_KEY = process.env.WAREHOUSE_SERVICE_KEY ?? '';
 
 function apiUrl(ep) {
   return `${BASE_URL}${ep}${API_KEY ? `${ep.includes('?') ? '&' : '?'}app_key=${API_KEY}` : ''}`;
@@ -60,12 +60,12 @@ async function main() {
     console.warn('BUS_API_KEY missing — cannot sample arrivals. Skipping.');
     return;
   }
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn('Supabase env not configured — nowhere to write samples. Skipping.');
+  if (!WAREHOUSE_URL || !WAREHOUSE_SERVICE_KEY) {
+    console.warn('Warehouse env not configured — nowhere to write samples. Skipping.');
     return;
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const supabase = createClient(WAREHOUSE_URL, WAREHOUSE_SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

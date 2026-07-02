@@ -1,15 +1,16 @@
 /**
- * /api/v1/history/* — Atlas historical/time-series API (Supabase-backed).
+ * /api/v1/history/* — Atlas historical/time-series API (PostgREST-backed).
  *
  * The static /api/v1/* datasets are "today's values". This exposes the time-series
- * that accrues in our Supabase warehouse (the decoupled `ingest/` pipeline): our own
- * daily reliability, TfL's quarterly performance history, scheduled service, the
- * forward tender programme, and vehicle-on-route sightings over time.
+ * that accrues in our warehouse (the decoupled `ingest/` pipeline, self-hosted Postgres
+ * + PostgREST): our own daily reliability, TfL's quarterly performance history,
+ * scheduled service, the forward tender programme, and vehicle-on-route sightings
+ * over time.
  *
- * Read-only, CORS-open, no caller key. The Supabase key is a server-side Cloudflare
- * secret (SUPABASE_URL + SUPABASE_KEY) — it NEVER reaches the browser. Each endpoint
- * is a strict whitelist (table + allowed filters + capped page size), so the Function
- * can only ever SELECT the columns we intend.
+ * Read-only, CORS-open, no caller key. The warehouse key is a server-side Cloudflare
+ * secret (WAREHOUSE_URL + WAREHOUSE_ANON_KEY) — it NEVER reaches the browser. Each
+ * endpoint is a strict whitelist (table + allowed filters + capped page size), so the
+ * Function can only ever SELECT the columns we intend.
  *
  * Query params (all optional): route=<id>, from=<date>, to=<date>, reg=<plate>,
  * year=<programme year>, limit=<n, max 1000>, order=<col.asc|col.desc>.
@@ -194,10 +195,10 @@ export async function onRequest(context) {
   const snapshot = SNAPSHOTS[name];   // datasets whose set also lives in a static /api/v1 snapshot
   const canSnapshot = !!snapshot;
 
-  const base = env.SUPABASE_URL, key = env.SUPABASE_KEY || env.SUPABASE_ANON_KEY;
+  const base = env.WAREHOUSE_URL, key = env.WAREHOUSE_ANON_KEY;
   if (!base || !key) {
     if (canSnapshot) { const fb = await snapshot(origin, q, limit, order); if (fb) return fb; }
-    return json({ error: "historical store not configured (SUPABASE_URL / SUPABASE_KEY not set)" }, { status: 503 });
+    return json({ error: "historical store not configured (WAREHOUSE_URL / WAREHOUSE_ANON_KEY not set)" }, { status: 503 });
   }
 
   // Build a strict PostgREST query from whitelisted params only.
@@ -208,11 +209,11 @@ export async function onRequest(context) {
   }
   parts.push(`order=${order}`, `limit=${limit}`);
 
-  // Use only the origin of SUPABASE_URL, so a pasted trailing path/slash (e.g. ".../rest/v1")
+  // Use only the origin of WAREHOUSE_URL, so a pasted trailing path/slash (e.g. ".../rest/v1")
   // can't produce a malformed "/rest/v1/rest/v1/..." path (PostgREST PGRST125).
-  let supaOrigin;
-  try { supaOrigin = new URL(base).origin; } catch { return json({ error: "SUPABASE_URL is not a valid URL" }, { status: 503 }); }
-  const url = `${supaOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
+  let warehouseOrigin;
+  try { warehouseOrigin = new URL(base).origin; } catch { return json({ error: "WAREHOUSE_URL is not a valid URL" }, { status: 503 }); }
+  const url = `${warehouseOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
   // NB: no `cacheEverything` here — Cloudflare rejects force-caching a subrequest that
   // carries an Authorization header (throws), so cache via our own Cache-Control instead.
   try {
