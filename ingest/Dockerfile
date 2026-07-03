@@ -4,6 +4,9 @@
 FROM node:22-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# --include=dev: this pipeline's runtime deps (@supabase/supabase-js, pdfjs-dist, …)
+# are declared under devDependencies, and Coolify builds with NODE_ENV=production
+# (which would otherwise omit them). They're needed at runtime, so force them in.
+RUN npm ci --include=dev --no-audit --no-fund
 COPY . .
 CMD ["sleep", "infinity"]
