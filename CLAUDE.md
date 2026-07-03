@@ -228,11 +228,14 @@ prod as follows — keep both in sync:
     filters + capped page size); `WAREHOUSE_URL` + `WAREHOUSE_ANON_KEY` (anon-role JWT +
     RLS read policies) are server-side Cloudflare secrets, never shipped. See README
     "Historical API setup". Returns 503 (not 502) when unconfigured; live + current still work.
-- **Data refresh = the GitHub Action** [`.github/workflows/refresh-data.yml`].
-  It runs the pipeline on a schedule, commits refreshed `data/*.json`, and the
-  push auto-triggers a Cloudflare Pages rebuild. That commit is the bot's
+- **Data refresh = a Coolify Scheduled Task on the VPS** (`atlas-refresh` resource:
+  `pipeline/refresh.Dockerfile` + `pipeline/vps-refresh.sh`, daily 03:17 UTC — see
+  `ingest/SELF-HOSTING.md`). Each run clones main, runs the pipeline, hard-validates
+  (`validate-atlas.js` gates the commit), commits refreshed `data/*.json`, and the
+  push auto-triggers the Cloudflare Pages rebuild. That commit is the bot's
   (`transit-instruments-bot`) — the "commit as Farhan" rule above is for _our_
-  manual commits, not this automated data commit.
+  manual commits, not this automated data commit. **No GitHub Actions remain** —
+  all automation (this + the four warehouse ingest cadences) runs on the VPS.
 - **Live data** — volatile feeds go **browser → TfL directly** via the `tfl`
   seam (CORS-open): line status, arrivals/vehicles, disruptions. No server needed.
 - **Live bus GPS (BODS SIRI-VM)** — needs a server-side key, so it's a
@@ -1080,10 +1083,11 @@ TfL-sourced values are never overwritten by scraped ones.
 
 ### Automated data commits are exempt
 
-The weekly CI workflow (`refresh-data.yml`) commits and pushes refreshed `data/*.json`
-automatically as the bot (`transit-instruments-bot`) — this is expected and exempt
-from the "never commit/push unless explicitly told" rule. That rule applies only to
-manual/agent-driven changes during development sessions, which commit **as Farhan**.
+The daily VPS refresh task (`pipeline/vps-refresh.sh` on the Coolify `atlas-refresh`
+resource) commits and pushes refreshed `data/*.json` automatically as the bot
+(`transit-instruments-bot`) — this is expected and exempt from the "never commit/push
+unless explicitly told" rule. That rule applies only to manual/agent-driven changes
+during development sessions, which commit **as Farhan**.
 
 ## Checklist (each change/phase)
 

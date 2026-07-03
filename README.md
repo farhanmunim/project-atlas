@@ -42,9 +42,10 @@ never hardcoded, never shipped to the browser. See `.env.example` for the keys:
 ## Deployment (Cloudflare Pages)
 
 Static site, **no build command**, output directory = repo root (`/`); the `functions/`
-directory is auto-detected. The committed `data/*.json` are the production read layer. The
-GitHub Action `.github/workflows/refresh-data.yml` refreshes them on a schedule and the
-push auto-triggers a Pages rebuild. Live bus GPS is a Pages Function
+directory is auto-detected. The committed `data/*.json` are the production read layer.
+A daily VPS task (`pipeline/vps-refresh.sh`, Coolify Scheduled Task at 03:17 UTC — see
+`ingest/SELF-HOSTING.md`) refreshes them and the push auto-triggers a Pages rebuild;
+no GitHub Actions are used. Live bus GPS is a Pages Function
 (`functions/api/live/vehicles.js`) keeping `BODS_API_KEY` server-side.
 
 ---
