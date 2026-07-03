@@ -136,6 +136,25 @@ curl -s -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
   "don't exist" to PostgREST.
 - **anon count = 0 ≠ empty**: `vehicles` (and anything without an anon policy) reads
   as 0 rows through the anon key — check with the service key before assuming data loss.
-- **The static store is separate**: `data/*.json` + `refresh-data.yml` (GitHub) →
-  Cloudflare is untouched by all of this; the site renders from it regardless of
-  warehouse health.
+- **The static store is separate**: `data/*.json` → Cloudflare is untouched by all
+  of this; the site renders from it regardless of warehouse health.
+
+## atlas-refresh — the static-store refresh (replaces refresh-data.yml)
+
+The last GitHub Action, moved to the VPS. A fourth Coolify resource, same idle-container
+pattern as atlas-ingest:
+
+- **App from the GitHub repo**: Build Pack `Dockerfile`, Base Directory `/`,
+  Dockerfile Location `/pipeline/refresh.Dockerfile`. Auto Deploy OFF.
+- **Persistent Storage**: volume mounted at `/work` (keeps the clone + the HTTP
+  validator cache warm between runs).
+- **Env vars**: `GIT_PUSH_TOKEN` (GitHub fine-grained PAT, ONLY this repo,
+  Contents: Read and write), `TFL_APP_KEY`, `DVLA_API_KEY`.
+- **Scheduled Task**: `sh /usr/local/bin/vps-refresh.sh` @ `17 3 * * *` (daily
+  03:17 UTC — same as the old Action).
+
+Each run: fresh shallow clone of main → `npm ci --omit=dev` → `pipeline/run.js` →
+`validate-atlas.js` (hard gate — aborts before commit) → commits `data/` as
+`transit-instruments-bot` → push with rebase-retry → the push triggers the
+Cloudflare Pages rebuild. Manual one-off: open the resource Terminal and run
+`sh /usr/local/bin/vps-refresh.sh` (a lock dir under /work prevents overlap).
