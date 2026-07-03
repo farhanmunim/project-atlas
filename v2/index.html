@@ -334,6 +334,28 @@
     color:var(--muted);opacity:.92;text-shadow:0 0 3px var(--bg),0 0 5px var(--bg),0 1px 6px var(--bg)}
   .place-lbl.town span{font-size:12px;font-weight:600;color:var(--text)}
 
+  /* ---- TfL print style (Layers → "TfL print style") — after TfL's consultation maps:
+     light voyager base, spaced-caps area names, white-cased route lines with numbered
+     lozenges, and a paper Key card. data-mapstyle="print" on <html> gates the CSS. */
+  [data-mapstyle="print"] .place-lbl span{color:#78828E;opacity:1;letter-spacing:.2em;font-weight:500;
+    text-shadow:0 0 3px #fff,0 0 5px #fff,0 1px 6px #fff}
+  [data-mapstyle="print"] .place-lbl.town span{color:#646E7A;font-size:12.5px;font-weight:600}
+  .rlz-wrap{background:none;border:none}
+  .rlz{display:inline-block;transform:translate(-50%,-50%);padding:1px 6px;border-radius:5px;
+    font-family:var(--mono);font-weight:700;font-size:11px;line-height:1.5;white-space:nowrap;
+    border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+  /* the Key card keeps its paper look in both themes — it belongs to the print style, not the chrome */
+  #printKey{bottom:14px;left:314px;background:#fff;border:2px solid #232E83;border-radius:7px;
+    padding:9px 12px;box-shadow:0 2px 12px rgba(0,0,0,.28);display:none;flex-direction:column;gap:6px;max-width:360px}
+  #printKey.show{display:flex}
+  #printKey .pk-title{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:#232E83;font-weight:700}
+  #printKey #printKeyRows{display:flex;flex-direction:column;gap:5px}
+  #printKey .pk-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#1F2733;min-width:0}
+  #printKey .pk-line{width:26px;height:0;border-top:4px solid;flex:0 0 auto;border-radius:2px}
+  #printKey .pk-rlz{transform:none;font-size:10px;border-width:1px;box-shadow:none;flex:0 0 auto}
+  #printKey .pk-od{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width:720px){ #printKey{display:none!important} }
+
   /* status / toast */
   #status{
     bottom:14px; left:50%; transform:translateX(-50%);
@@ -481,6 +503,7 @@
       <div class="toggle-row"><span>Live buses · BODS GPS</span><label class="sw"><input type="checkbox" id="tgBuses"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Show stops</span><label class="sw"><input type="checkbox" id="tgStops"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Place names</span><label class="sw"><input type="checkbox" id="tgPlaces" checked=""><span class="track"></span></label></div>
+      <div class="toggle-row"><span>TfL print style</span><label class="sw"><input type="checkbox" id="tgPrint"><span class="track"></span></label></div>
       <div class="toggle-row"><span>Basemap</span><label class="sw"><input type="checkbox" id="tgBase" checked=""><span class="track"></span></label></div>
       <div class="meta" id="dataMeta" style="margin-top:2px">No data loaded</div>
       <details>
@@ -558,6 +581,12 @@
   <div class="ck-row"><span class="ck-sw" style="background:#F2A20C"></span><span>Busy</span><span class="ck-v">65–80%</span></div>
   <div class="ck-row"><span class="ck-sw" style="background:#FF463F"></span><span>Crowded</span><span class="ck-v">≥80%</span></div>
   <div class="ck-foot" id="crowdKeyFoot">peak load per route</div>
+</div>
+
+<!-- print-style Key card (TfL print style + route(s) drawn; hidden while Crowding colours the line) -->
+<div class="hud" id="printKey">
+  <div class="pk-title">Key</div>
+  <div id="printKeyRows"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -952,7 +981,8 @@ function reapplyScopedLayers(){
   if($('tgBuses') && $('tgBuses').checked) refreshBuses();
 }
 function showNetwork(){
-  state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routePath=[]; state._stops=[];
+  state.routeId=null; state.routeName=null; state.selected=[]; state.routeSegments=[]; state.routeSegDetail=[]; state.routePath=[]; state._stops=[];
+  renderPrintKey();   // no corridor → no Key card
   renderRouteChips();
   syncClearAll();
   syncCrowdKey();   // back to network → key footnote reverts to "peak load per route"
@@ -1215,10 +1245,13 @@ function fetchRoute(){
   status('Loading '+label+' ('+state.dir+')…');
   ensureRouteData().then(function(){
     if(tok !== (selectedLineParam()+'|'+state.dir)) return;   // selection changed mid-load — drop stale draw
-    var segs=[], stops=[];
-    sel.forEach(function(r){ var g=geometryFor(r); segs=segs.concat(g.segs); stops=stops.concat(g.stops); });
+    var segs=[], stops=[], detail=[];
+    sel.forEach(function(r){ var g=geometryFor(r); segs=segs.concat(g.segs); stops=stops.concat(g.stops);
+      if(g.segs.length) detail.push({name:r.name, segs:g.segs,
+        from:(g.stops[0]||{}).name, to:(g.stops[g.stops.length-1]||{}).name}); });
     if(!segs.length){ status('No '+state.dir+' geometry on record for '+label+'.', 'err'); return; }
     state.routeSegments=segs;
+    state.routeSegDetail=detail;   // per-route split of the same segments — print style colours/keys by route
     drawRoute();   // sets state.routePath + routeLenKm from the accumulated segments
     stopLayer.clearLayers(); state._stops=stops;
     renderStops();
@@ -1507,28 +1540,41 @@ function drawCorridorGradient(vcs){
   });
   return true;
 }
-function drawRoute(){
+function drawRoute(keepView){
   routeLayer.clearLayers();
-  var all=[];
+  var all=[], print=printOn();
+  // print style: solid white casing under every corridor line (the consultation-map look)
+  if(print) state.routeSegments.forEach(function(seg){
+    L.polyline(seg, {color:'#FFFFFF', weight:9, opacity:1, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
+  });
   var grad = corridorGradientVCs();
   if(grad && drawCorridorGradient(grad)){
     state.routeSegments.forEach(function(seg){ seg.forEach(function(p){all.push(p);}); });
   } else {
-    var rcol = (state.crowdMode && state.routeName) ? crowdColor(state.routeName) : '#DC241F';   // flat band until the profile loads
-    state.routeSegments.forEach(function(seg){
-      L.polyline(seg, {color:rcol, weight:3.5, opacity:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
-      L.polyline(seg, {color:rcol, weight:9, opacity:.10}).addTo(routeLayer); // glow
-      seg.forEach(function(p){all.push(p);});
+    var detail = (state.routeSegDetail && state.routeSegDetail.length)
+      ? state.routeSegDetail : [{name:state.routeName, segs:state.routeSegments}];
+    detail.forEach(function(rt, i){
+      // flat band until the crowding profile loads; print style colours each route from its palette
+      var rcol = print ? printColour(i) : ((state.crowdMode && rt.name) ? crowdColor(rt.name) : '#DC241F');
+      rt.segs.forEach(function(seg){
+        L.polyline(seg, {color:rcol, weight:print?4:3.5, opacity:print?1:.9, lineCap:'round', lineJoin:'round'}).addTo(routeLayer);
+        if(!print) L.polyline(seg, {color:rcol, weight:9, opacity:.10}).addTo(routeLayer); // glow
+        seg.forEach(function(p){all.push(p);});
+      });
+      if(print) drawLozenges(rt.name, rcol, rt.segs);
     });
   }
   state.routePath=all;
+  renderPrintKey();
   // length
   var km=0;
   for(var i=1;i<all.length;i++){ km+=map.distance(all[i-1],all[i]); }
   state.routeLenKm=km/1000;
   $('cLen').textContent=fmtKm(state.routeLenKm);
-  var b=L.latLngBounds(all);
-  map.fitBounds(b, {paddingTopLeft:[300,70], paddingBottomRight:[286,30]});
+  if(!keepView){
+    var b=L.latLngBounds(all);
+    map.fitBounds(b, {paddingTopLeft:[300,70], paddingBottomRight:[286,30]});
+  }
 }
 // every distinct stop across the whole network, deduped by position — the top-level (no route) set.
 function networkStops(){
@@ -1551,8 +1597,12 @@ function renderStops(){
   if(!$('tgStops').checked) return;
   // a route in view → its corridor stops; top-level → every stop in the network.
   var list = state.routePath.length ? (state._stops||[]) : networkStops();
+  // print style: white-filled dark-ringed stops (paper map); default: dark-filled light ring
+  var stopStyle = printOn()
+    ? {radius:3.5, color:'#3A4450', weight:1.5, opacity:.9, fillColor:'#FFFFFF', fillOpacity:1, renderer:ptRenderer}
+    : {radius:3, color:'#E7ECF1', weight:1, opacity:.55, fillColor:'#0A0C10', fillOpacity:1, renderer:ptRenderer};
   list.forEach(function(sp){
-    L.circleMarker([sp.lat,sp.lon], {radius:3, color:'#E7ECF1', weight:1, opacity:.55, fillColor:'#0A0C10', fillOpacity:1, renderer:ptRenderer})
+    L.circleMarker([sp.lat,sp.lon], stopStyle)
       .bindTooltip(esc(sp.name), {direction:'top', className:'stop-tip'}).addTo(stopLayer);
   });
 }
@@ -1596,6 +1646,61 @@ function togglePlaces(on){
 }
 $('tgPlaces').addEventListener('change', function(){ togglePlaces(this.checked); });
 map.on('zoomend', drawPlaces);
+
+/* ---- TfL print style — the consultation-map look (Layers → "TfL print style").
+   Light voyager base (no upstream labels — our place names carry the geography),
+   white-cased coloured corridor lines, route-number lozenges, and a paper Key card.
+   Palette after TfL's consultation maps (red / pink / navy / green …). ---- */
+var PRINT_COLS=['#DC241F','#E4649B','#232E83','#007A33','#7B4CB8','#00758F','#B75400','#4B5320'];
+function printOn(){ var t=$('tgPrint'); return !!(t && t.checked); }
+function printColour(i){ return PRINT_COLS[i % PRINT_COLS.length]; }
+// lozenge text: dark on light fills, white on dark — perceived luminance cut at ~170/255
+function lozTextCol(hex){ var r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return (0.299*r+0.587*g+0.114*b)>170 ? '#1F2733' : '#FFFFFF'; }
+function lozHTML(name, col){ return '<span class="rlz" style="background:'+col+';color:'+lozTextCol(col)+'">'+esc(name)+'</span>'; }
+// route-number lozenges spaced down the corridor — the numbered chips on TfL's maps
+function drawLozenges(name, col, segs){
+  var pts=[], dist=[];
+  segs.forEach(function(seg){ seg.forEach(function(p){
+    dist.push(pts.length ? dist[dist.length-1]+map.distance(pts[pts.length-1], p) : 0);
+    pts.push(p);
+  }); });
+  if(!pts.length) return;
+  var total=dist[dist.length-1]||0;
+  var n=Math.max(1, Math.min(6, Math.round(total/4000)));   // one chip ≈ every 4 km, capped
+  for(var k=1;k<=n;k++){
+    var target=total*k/(n+1), j=0;
+    while(j<dist.length-1 && dist[j]<target) j++;
+    L.marker(pts[j], {interactive:false, keyboard:false, zIndexOffset:1600,
+      icon:L.divIcon({className:'rlz-wrap', html:lozHTML(name,col), iconSize:[0,0]})}).addTo(routeLayer);
+  }
+}
+// the paper Key card — one row per drawn route; hidden while Crowding owns the line colours
+function renderPrintKey(){
+  var k=$('printKey'); if(!k) return;
+  var detail=state.routeSegDetail||[];
+  var show = printOn() && !state.crowdMode && detail.length && (state.routePath||[]).length;
+  k.classList.toggle('show', !!show);
+  if(!show) return;
+  $('printKeyRows').innerHTML = detail.map(function(rt, i){
+    var col=printColour(i);
+    var od = (rt.from && rt.to) ? esc(rt.from)+' ↔ '+esc(rt.to) : '';
+    return '<div class="pk-row"><span class="pk-line" style="border-color:'+col+'"></span>'+
+      '<span class="rlz pk-rlz" style="background:'+col+';color:'+lozTextCol(col)+'">'+esc(rt.name)+'</span>'+
+      (od ? '<span class="pk-od">'+od+'</span>' : '')+'</div>';
+  }).join('');
+}
+function togglePrint(on){
+  if(on) document.documentElement.setAttribute('data-mapstyle','print');
+  else document.documentElement.removeAttribute('data-mapstyle');
+  if(typeof baseLayer!=='undefined' && baseLayer) baseLayer.setUrl(baseTileUrl());
+  if(on && !$('tgPlaces').checked){ $('tgPlaces').checked=true; togglePlaces(true); }   // area names are the point of this style
+  if((state.routeSegments||[]).length) drawRoute(true); else renderPrintKey();   // restyle in place, keep the view
+  renderStops();
+  try{ var cur=JSON.parse(localStorage.getItem('transit-instruments:settings')||'{}')||{}; cur.printMap=!!on; localStorage.setItem('transit-instruments:settings', JSON.stringify(cur)); }catch(e){}
+}
+$('tgPrint').addEventListener('change', function(){ togglePrint(this.checked); });
+if(APP_SETTINGS.printMap){ $('tgPrint').checked=true; togglePrint(true); }   // restore the persisted style
 
 /* ============================ CSV PARSING ============================ */
 function detectDelimiter(line){
@@ -2273,12 +2378,17 @@ $('refreshBtn').addEventListener('click', refresh);
 // choice made in any Atlas tool carries across. Defaults to OS preference until the user picks. ----
 var prefersLight = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
 function effectiveTheme(){ var t=APP_SETTINGS.theme; return (t==='light'||t==='dark') ? t : ((prefersLight&&prefersLight.matches)?'light':'dark'); }
+// the basemap for the current chrome: print style pins a light label-free voyager base
+// (our own place names + lozenges carry the geography); otherwise Carto dark_all ↔ light_all.
+function baseTileUrl(){
+  if(printOn()) return 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png';
+  return 'https://{s}.basemaps.cartocdn.com/'+(effectiveTheme()==='light'?'light_all':'dark_all')+'/{z}/{x}/{y}{r}.png';
+}
 function applyTheme(){
   var t=effectiveTheme();
   document.documentElement.setAttribute('data-theme', t);
   var btn=$('themeBtn'); if(btn) btn.setAttribute('aria-pressed', String(t==='light'));
-  // swap the basemap to match the chrome (Carto dark_all ↔ light_all)
-  if(typeof baseLayer!=='undefined' && baseLayer) baseLayer.setUrl('https://{s}.basemaps.cartocdn.com/'+(t==='light'?'light_all':'dark_all')+'/{z}/{x}/{y}{r}.png');
+  if(typeof baseLayer!=='undefined' && baseLayer) baseLayer.setUrl(baseTileUrl());
 }
 function setTheme(t){
   APP_SETTINGS.theme=t;

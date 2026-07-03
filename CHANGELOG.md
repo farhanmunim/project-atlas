@@ -5,6 +5,26 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-03 — v2 "TfL print style" (consultation-map look)
+
+A new Layers toggle in `/v2` that restyles the map after TfL's printed
+consultation maps (the "Routes 19 and 38 — proposed" genre): a light,
+label-free CARTO voyager base; each selected route drawn as a solid colour
+line over a white casing, coloured per route from a consultation palette
+(red / pink / navy / green …); route-number lozenges spaced ~every 4 km down
+each corridor; place names re-styled to spaced-caps grey with a white halo;
+white-filled stop rings; and a paper "Key" card (bottom-left) listing each
+route's lozenge + termini. Implemented as `data-mapstyle="print"` on `<html>`
+plus a per-route split of the corridor segments (`state.routeSegDetail`) so
+multi-compare colours each route separately — the dark glass design stays the
+default and everything reverts cleanly on toggle-off. Persisted in the shared
+settings key (`printMap`); enabling it auto-enables Place names (the point of
+the style). Hidden while the Crowding colour layer owns the line (V/C bands
+are the signal there). Validated headless: lozenge count/colours, Key rows
+(termini), 530 place labels, clean revert, no page errors.
+
+---
+
 ## 2026-07-03 — Everything operational refreshes daily
 
 All operational datasets now re-pull daily instead of weekly, in both loops:

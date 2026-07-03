@@ -1051,7 +1051,11 @@ data** — not just "it renders". Don't trust a screenshot alone.
 - **`v2/index.html` (served at `/v2`) is a deliberate alternate design** — a "Route Lens"
   full-bleed-map shell with floating glass control/context cards (collision & incident
   density along a route corridor, with a draggable lens), reading the same `/api/v1`
-  (STATS19 collisions + low bridges) and TfL (routes/geometry). It is an **intentional
+  (STATS19 collisions + low bridges) and TfL (routes/geometry). Its Layers card includes a
+  **"TfL print style"** toggle — a consultation-map look (light label-free voyager base,
+  white-cased per-route colour lines with route-number lozenges, spaced-caps place names,
+  paper Key card listing each route's termini; `data-mapstyle="print"` on `<html>`, persisted
+  as `printMap` in the shared settings). It is an **intentional
   experiment that coexists with** the three-pane `/` app — do NOT "correct" it back to the
   three-pane shell; the "one layout" rule above governs `index.html`. `serve.js` mirrors the
   `/v2` route for dev; Cloudflare Pages serves `v2/index.html` at `/v2` automatically.
