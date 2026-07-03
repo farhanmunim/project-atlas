@@ -400,18 +400,20 @@ can never block the Cloudflare site.
 - **Secrets:** `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY` (the service_role-equivalent
   JWT, signed with the PostgREST instance's own `PGRST_JWT_SECRET`), `DVLA_API_KEY`,
   and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in the task env. Live in
-  the Coolify `ingest` resource's environment (and, until the old GitHub Actions
-  workflows are fully retired, the equivalently-named repo secrets). The service key
-  is server-only; never in code or the browser.
+  the Coolify `ingest` resource's environment (the old GitHub Actions workflows are
+  deleted; `.github/workflows/` is empty — any equivalently-named repo secrets are
+  dead and can be removed). The service key is server-only; never in code or the
+  browser. The `atlas-refresh` resource additionally holds `GIT_PUSH_TOKEN` (a
+  fine-grained PAT, contents:rw on this repo only) for the static-store data pushes.
 - **RLS parity note:** the anon read policies for the history tables live in the
   migrations (`0003`/`0004`/`0006`/`0014`/`0015`/`0020`), and `route_vehicle_recurrence`
   (the RPC `backfill-route-vehicle-sightings.js` calls) is in `0013` — all in the bundle.
   The one policy that was previously a manual Supabase SQL step, `route_vehicle_observations`
   anon read (serves `/api/v1/history/vehicle-sightings`), is now ported as `0022`.
-- **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode) used to
-  persist between GitHub Actions runs via `actions/cache`; on Coolify this needs a
-  persistent volume on the `ingest` resource instead (TBD) so runs don't cold-pull
-  ~9000 DVLA lookups. Everything the pipeline regenerates is gitignored (`ingest/.gitignore`).
+- **Warm caches** (`ingest/data/source/*` — DVLA fleet, tenders, MPS, geocode) persist
+  across runs and redeploys on the `atlas-ingest` resource's `/app/data` volume (they
+  used to ride `actions/cache` on GitHub), so runs don't cold-pull ~9000 DVLA lookups.
+  Everything the pipeline regenerates is gitignored (`ingest/.gitignore`).
 
 ## Every datapoint flows through to the warehouse AND the API (no dead ends)
 

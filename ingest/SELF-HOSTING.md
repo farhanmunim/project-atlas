@@ -129,6 +129,14 @@ curl -s -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
 
 ## Gotchas learned the hard way
 
+- **Upstream schema changes fail silently without gates**: TfL renamed the geometry
+  XML root (`TransXChange` → `rg:Network_Data`) and step 1 "succeeded" with 0 routes,
+  cascading into 0-route classifications and an empty `route_snapshots` push.
+  `fetch-data.js` now accepts all observed roots AND throws below 400 extracted
+  routes — when adding fetchers, always gate on a sane row floor.
+- **PAT expiry**: `GIT_PUSH_TOKEN` on `atlas-refresh` is a fine-grained PAT — when it
+  expires, the nightly static-store push starts failing. Rotate: GitHub → Settings →
+  Developer settings → Fine-grained tokens → regenerate → update the env var → redeploy.
 - **429s from TfL**: throttle windows last up to a minute; fetchers must back off
   properly (see the 429 handling in fetch-route-destinations/stops). Never run two
   refreshes concurrently.

@@ -40,11 +40,36 @@ caches, and auto-deploy off so pushes can't kill runs).
 - TfL 429 hardening in fetch-route-destinations/stops (honour Retry-After, back off
   up to 45s×6 — throttle windows outlived the old 4×≤2.4s retries), and
   `ingest/Dockerfile` installs devDependencies (they're the runtime deps).
+- **TfL geometry schema change caught + fixed:** TfL renamed the Route_Geometry XML
+  root from `TransXChange` to the namespaced `rg:Network_Data`, so every one of the
+  749 ZIP entries parsed to null — step 1 "succeeded" with 0 routes and cascaded into
+  0-route classifications and an empty route_snapshots push. `parseRouteXml` now
+  accepts all observed roots, and the extraction is a hard validation gate (<400
+  routes written → throw, keep last-good) instead of silently poisoning the index.
 
-**Verified populated** (~19 tables): vehicles 9,441 · accidents 7,118 · tenders 2,509 ·
-tender_programme 1,240 · route_performance 667 · bus_crowding 606 · observations 6,751+ ·
-route_stops/route_geometry 1,345 · bridges 877 · crowding_profile 606 · localities 530 ·
-garage_snapshots 65 — reliability tables fill as the samplers run.
+**Verified populated** (all 19 tables): vehicles 9,441 · accidents 7,118 · tenders 2,509 ·
+tender_programme 1,240 · route_snapshots 749 · route_schedule 676 · route_performance 667 ·
+bus_crowding 606 · observations 6,753+ · route_stops/route_geometry 1,345 · bridges 877 ·
+crowding_profile 606 · localities 530 · garage_snapshots 65 — the three sampler tables
+(arrival_samples, route_reliability_daily, route_vehicle_sightings) fill on their crons.
+
+## 2026-07-03 — All automation on the VPS: GitHub Actions fully retired
+
+The static-store refresh (the last GitHub Action) moved to the VPS, completing the
+"code on GitHub, site on Cloudflare, everything else ours" architecture. GitHub is now
+plain git hosting + the Pages deploy trigger; `.github/workflows/` is empty.
+
+- **New `atlas-refresh` Coolify resource** — `pipeline/refresh.Dockerfile` (idle
+  node:24-alpine + git) with `pipeline/vps-refresh.sh` on a Scheduled Task at
+  03:17 UTC daily, replicating `refresh-data.yml` exactly: fresh shallow clone →
+  `npm ci --omit=dev` → `pipeline/run.js` → `validate-atlas.js` as a hard gate
+  before any commit → commit `data/` as `transit-instruments-bot` → push with
+  rebase-retry → the push triggers the Cloudflare Pages rebuild. A `/work` volume
+  persists the HTTP validator cache; a lock dir prevents overlapping runs; auth is
+  a fine-grained PAT (`GIT_PUSH_TOKEN`, contents:rw on this repo only).
+- Verified end-to-end (43/43 validation checks, bot commit pushed from the VPS,
+  Pages rebuilt), then deleted `refresh-data.yml` and the four `ingest-*.yml`
+  workflows (their cadences run as the atlas-ingest Scheduled Tasks).
 
 ## 2026-07-01 — Data parity vs london-buses: night/school/prefix PVR restored (pipeline)
 
