@@ -39,11 +39,20 @@ function apiUrl(endpoint) {
   return `${BASE_URL}${endpoint}${API_KEY ? `${sep}app_key=${API_KEY}` : ''}`;
 }
 
-async function fetchJson(url, retries = 4) {
+async function fetchJson(url, retries = 6) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const res = await fetchWithTimeout(url, { headers: userAgentHeaders(SCRIPT) });
-      if (res.status === 429 || res.status >= 500) throw new Error(`HTTP ${res.status}`);
+      // 429: TfL throttle windows last up to a minute — honour Retry-After and back off
+      // long enough to outlive the window, instead of burning every retry in seconds.
+      if (res.status === 429) {
+        if (attempt === retries) throw new Error('HTTP 429');
+        const ra = Number(res.headers.get('retry-after'));
+        const waitMs = Number.isFinite(ra) && ra > 0 ? ra * 1000 : Math.min(attempt * attempt * 2500, 45_000);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      if (res.status >= 500) throw new Error(`HTTP ${res.status}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return await res.json();
     } catch (err) {
