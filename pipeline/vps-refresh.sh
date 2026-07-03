@@ -17,7 +17,9 @@ set -eu
 REPO_URL="https://x-access-token:${GIT_PUSH_TOKEN}@github.com/farhanmunim/project-atlas.git"
 WORK=/work/repo
 CACHE=/work/http-cache
-LOCK=/work/refresh.lock
+# Lock in /tmp (container-lifetime), NOT the /work volume — a hard kill mid-run must
+# never leave a stale lock that silently skips every future scheduled run.
+LOCK=/tmp/refresh.lock
 
 # No overlapping runs (mirrors the workflow's concurrency group).
 if ! mkdir "$LOCK" 2>/dev/null; then echo "Another refresh is running (lock held) — exiting."; exit 0; fi

@@ -101,16 +101,23 @@ devDependencies — then idles on `sleep infinity` for the tasks to exec into).
   (rebuilds wipe generated data + kill running jobs). Redeploy manually.
 - **Persistent Storage**: volume mounted at `/app/data` so warm caches (DVLA ~9k regs,
   tenders, MPS, geocode) survive redeploys.
-- **Scheduled Tasks** (replaces the retired GitHub Actions; all UTC):
+- **Scheduled Tasks** (replaces the retired GitHub Actions; all UTC). Coolify's
+  task job enforces a short hard timeout, but several runs are long by design
+  (headway sampler ~15–18 min multi-sweep, weekly refresh ~20 min) — so every
+  command goes through `scripts/run-task.sh`, which detaches the real work
+  (immune to the timeout, per-name /tmp lock against overlap, output in
+  `/tmp/task-<name>.log`):
 
 | Name | Command | Cron |
 |---|---|---|
-| weekly-refresh | `npm run refresh` | `23 9 * * 1` |
-| daily-fleet-sample | `npm run sample-vehicles` | `37 8 * * *` |
-| headway-sampler | `npm run sample-headways` | `*/30 6-22 * * *` |
-| reliability-build | `npm run build-reliability` | `37 0 * * *` |
+| weekly-refresh | `sh scripts/run-task.sh refresh npm run refresh` | `23 9 * * 1` |
+| daily-fleet-sample | `sh scripts/run-task.sh sample-vehicles npm run sample-vehicles` | `37 8 * * *` |
+| headway-sampler | `sh scripts/run-task.sh sample-headways npm run sample-headways` | `*/30 6-22 * * *` |
+| reliability-build | `sh scripts/run-task.sh build-reliability npm run build-reliability` | `37 0 * * *` |
 
 No heartbeat task — that existed only for Supabase free-tier auto-pause.
+Trade-off of detaching: Coolify always reports the task as succeeded — real
+failures live in the `/tmp/task-*.log` files (and show up as stale data).
 
 ## Verify
 
@@ -158,8 +165,10 @@ pattern as atlas-ingest:
   validator cache warm between runs).
 - **Env vars**: `GIT_PUSH_TOKEN` (GitHub fine-grained PAT, ONLY this repo,
   Contents: Read and write), `TFL_APP_KEY`, `DVLA_API_KEY`.
-- **Scheduled Task**: `sh /usr/local/bin/vps-refresh.sh` @ `17 3 * * *` (daily
-  03:17 UTC — same as the old Action).
+- **Scheduled Task**: `sh /usr/local/bin/vps-refresh-task.sh` @ `17 3 * * *` (daily
+  03:17 UTC — same as the old Action). The -task wrapper detaches vps-refresh.sh so
+  Coolify's task-job timeout can't kill the ~7–15 min run; log at
+  `/tmp/static-store-refresh.log`.
 
 Each run: fresh shallow clone of main → `npm ci --omit=dev` → `pipeline/run.js` →
 `validate-atlas.js` (hard gate — aborts before commit) → commits `data/` as

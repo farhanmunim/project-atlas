@@ -6,7 +6,7 @@
 # (→ Cloudflare Pages rebuild). Mount a persistent volume at /work.
 FROM node:24-alpine
 RUN apk add --no-cache git
-COPY pipeline/vps-refresh.sh /usr/local/bin/vps-refresh.sh
-RUN chmod +x /usr/local/bin/vps-refresh.sh
+COPY pipeline/vps-refresh.sh pipeline/vps-refresh-task.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/vps-refresh.sh /usr/local/bin/vps-refresh-task.sh
 WORKDIR /work
 CMD ["sleep", "infinity"]
