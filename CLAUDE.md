@@ -222,7 +222,8 @@ prod as follows — keep both in sync:
     road-disruptions) ([`functions/api/v1/live/[[path]].js`]), keyless, edge-cached.
     Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
   - **history** — `/api/v1/history/*` serves the warehouse time-series (reliability-daily ·
-    performance-history · schedule · tender-programme · vehicle-sightings · accidents)
+    performance-history · schedule · **route-snapshots** · **garage-snapshots** ·
+    tender-programme · vehicle-sightings · accidents · crowding)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
     filters + capped page size); `WAREHOUSE_URL` + `WAREHOUSE_ANON_KEY` (anon-role JWT +
     RLS read policies) are server-side Cloudflare secrets, never shipped. See README

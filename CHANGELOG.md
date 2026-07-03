@@ -5,6 +5,47 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-03 — Warehouse migrated off Supabase → self-hosted Postgres + PostgREST (Coolify VPS)
+
+Supabase free tier hit its 500MB cap and went read-only (blocking even the password
+reset + Data API, so no export was possible) — rebuilt the warehouse from scratch on
+our own VPS and repopulated it from sources. Full runbook: `ingest/SELF-HOSTING.md`.
+
+**Infrastructure (Coolify):** `atlas-db` (Postgres 18, not publicly exposed) ·
+`atlas-postgrest` (PostgREST at `https://atlas-db.farhan.app/rest/v1`, strip-prefix
+routing, self-minted anon/service_role JWTs) · `atlas-ingest` (the `ingest/` pipeline
+in an idle container — new `ingest/Dockerfile` — with 4 Coolify Scheduled Tasks
+replacing the GitHub Actions crons, a persistent `/app/data` volume for the warm
+caches, and auto-deploy off so pushes can't kill runs).
+
+**Code/schema changes:**
+- `SUPABASE_*` env vars renamed `WAREHOUSE_URL` / `WAREHOUSE_ANON_KEY` /
+  `WAREHOUSE_SERVICE_KEY` across the Function, serve.js, all ingest scripts,
+  workflows and docs. Heartbeat workflow deleted (only existed for Supabase
+  auto-pause).
+- `ingest/db/migrations-bundle.sql` — generated one-shot schema bootstrap, served
+  statically for wget-from-container setup.
+- Ported two hand-applied-only Supabase changes into migrations: `0022`
+  (route_vehicle_observations anon read — vehicle-sightings endpoint returned
+  empty without it) and `0028` (route_schedule.timing_point_stop_id — its absence
+  hard-failed the whole push; now also in the self-heal optionalCols list).
+- **Single source of truth:** new `mirror-reference-data.js` (refresh step 20) +
+  migrations `0023`–`0027` mirror route_stops, route_geometry, bridges,
+  crowding_profile (per BUSTO year) and localities from our own `/api/v1` into the
+  warehouse — the DB now holds everything the apps render except live feeds.
+- **New history endpoints** (lockstep fix — these tables were stored but unserved):
+  `/api/v1/history/route-snapshots` (PVR/propulsion/operator/garage/fleet/MPS per
+  route per date — the record behind fleet-move/PVR-change/propulsion-change
+  analysis) and `/api/v1/history/garage-snapshots`.
+- TfL 429 hardening in fetch-route-destinations/stops (honour Retry-After, back off
+  up to 45s×6 — throttle windows outlived the old 4×≤2.4s retries), and
+  `ingest/Dockerfile` installs devDependencies (they're the runtime deps).
+
+**Verified populated** (~19 tables): vehicles 9,441 · accidents 7,118 · tenders 2,509 ·
+tender_programme 1,240 · route_performance 667 · bus_crowding 606 · observations 6,751+ ·
+route_stops/route_geometry 1,345 · bridges 877 · crowding_profile 606 · localities 530 ·
+garage_snapshots 65 — reliability tables fill as the samplers run.
+
 ## 2026-07-01 — Data parity vs london-buses: night/school/prefix PVR restored (pipeline)
 
 Investigated the user-reported datapoint differences between london-buses.farhan.app

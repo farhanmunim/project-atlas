@@ -166,7 +166,10 @@ dev mirror in sync.
 
 The `/api/v1/history/*` endpoints read our own warehouse — a **self-hosted Postgres +
 PostgREST** (no external database vendor). The key is held **server-side** in the Pages
-Function (never sent to the browser). To enable them:
+Function (never sent to the browser). The summary below covers the essentials; the
+**full validated runbook** (Coolify resources, role bootstrap, PostgREST config,
+scheduled tasks, gotchas) is [`ingest/SELF-HOSTING.md`](ingest/SELF-HOSTING.md).
+To enable them:
 
 **1 — Stand up Postgres + PostgREST** (e.g. on a Coolify VPS)
 1. Deploy a plain Postgres instance and load `ingest/db/migrations-bundle.sql`
