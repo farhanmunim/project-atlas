@@ -381,7 +381,10 @@ can never block the Cloudflare site.
   `route_schedule.timing_point_stop_id` in `0028`.)
 - **Schedules — Coolify Scheduled Tasks** (an idle `ingest/Dockerfile` container,
   `docker exec`'d into per cron; replaces the old GitHub Actions workflows of the
-  same cadence):
+  same cadence). Every command goes through `scripts/run-task.sh <name> <cmd…>`,
+  which detaches the real work (Coolify's task job has a short hard timeout; the
+  sampler/refresh runs are 15–20 min by design), holds a per-name `/tmp` lock
+  against overlap, and logs to `/tmp/task-<name>.log`:
   - `npm run refresh` — full refresh, Mon 09:23 UTC.
   - `npm run sample-vehicles` — daily fleet sample, 08:37 UTC.
   - `npm run sample-headways` — every ~30 min in service hours; appends live

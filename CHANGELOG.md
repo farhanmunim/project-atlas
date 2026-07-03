@@ -70,6 +70,14 @@ plain git hosting + the Pages deploy trigger; `.github/workflows/` is empty.
 - Verified end-to-end (43/43 validation checks, bot commit pushed from the VPS,
   Pages rebuilt), then deleted `refresh-data.yml` and the four `ingest-*.yml`
   workflows (their cadences run as the atlas-ingest Scheduled Tasks).
+- **Task-timeout fix (same day):** Coolify's ScheduledTaskJob killed the headway
+  sampler ("has timed out") — it's a ~15–18 min multi-sweep by design, and the
+  weekly/nightly refreshes are just as long. All five tasks now run detached via
+  wrappers (`ingest/scripts/run-task.sh`, `pipeline/vps-refresh-task.sh`): the task
+  returns instantly, work continues in-container, per-name `/tmp` locks prevent
+  overlap (in /tmp so container restarts can't strand a stale lock), output in
+  `/tmp/task-<name>.log`. Trade-off: Coolify always reports success — failures live
+  in the logs and surface as stale data.
 
 ## 2026-07-01 — Data parity vs london-buses: night/school/prefix PVR restored (pipeline)
 
