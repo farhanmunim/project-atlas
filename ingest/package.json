@@ -30,6 +30,7 @@
     "build-garage-capacity": "node scripts/build-garage-capacity.js",
     "update-vehicle-lookup": "node scripts/update-vehicle-lookup.js",
     "push-to-supabase": "node scripts/push-to-supabase.js",
+    "mirror-reference-data": "node scripts/mirror-reference-data.js",
     "audit-data": "node scripts/audit-data.js",
     "audit-data-strict": "node scripts/audit-data.js --strict",
     "audit-vehicle-data": "node scripts/audit-vehicle-data.js",

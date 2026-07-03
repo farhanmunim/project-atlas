@@ -52,7 +52,8 @@ const STEPS = [
   { label: 'Step 16/19 — Build overview + snapshot',                script: 'build-overview.js' },
   { label: 'Step 17/19 — Garage locations (frontend JSON)',         script: 'build-garage-locations.js' },
   { label: 'Step 18/19 — Data-quality audit',                       script: 'audit-data.js' },
-  { label: 'Step 19/19 — Push history + fleet to Supabase',         script: 'push-to-supabase.js' },
+  { label: 'Step 19/20 — Push history + fleet to warehouse',        script: 'push-to-supabase.js' },
+  { label: 'Step 20/20 — Mirror reference datasets → warehouse',    script: 'mirror-reference-data.js' },
 ];
 
 // Fetch steps are allowed to fail without aborting the whole pipeline — the

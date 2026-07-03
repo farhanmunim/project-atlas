@@ -1260,3 +1260,228 @@ create policy "anon can read all rows"
   for select
   to anon
   using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0023_route_stops.sql
+-- ============================================================
+-- ============================================================================
+-- 0023_route_stops.sql
+--
+-- Mirror the route-stops reference dataset into the warehouse so the DB is a
+-- single source of truth. Ordered stop sequences per route and direction —
+-- the same data the app reads from /api/v1/route-stops (static store). Reference
+-- data (changes only on network revisions), refreshed by mirror-reference-data.js
+-- on the weekly ingest. One row per (route_id, direction); the stop sequence is
+-- kept as a JSONB array (id, name, lat, lng, lines) — lossless vs the API shape.
+-- ============================================================================
+
+create table if not exists public.route_stops (
+  route_id      text        not null,               -- route name, e.g. "25", "N15", "SL9"
+  direction     text        not null,               -- "outbound" | "inbound"
+  stops         jsonb       not null default '[]',   -- ordered [{id,name,lat,lng,lines}]
+  n_stops       integer,
+  fetched_at    timestamptz not null default now(),
+  primary key (route_id, direction)
+);
+
+-- ── Data API grants ──────────────────────────────────────────────────────
+grant select on public.route_stops to anon;
+grant select, insert, update, delete on public.route_stops to authenticated;
+grant all on public.route_stops to service_role;
+
+-- ── Row Level Security ──────────────────────────────────────────────────────
+alter table public.route_stops enable row level security;
+
+drop policy if exists "anon can read all rows" on public.route_stops;
+create policy "anon can read all rows"
+  on public.route_stops
+  for select
+  to anon
+  using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0024_route_geometry.sql
+-- ============================================================
+-- ============================================================================
+-- 0024_route_geometry.sql
+--
+-- Mirror the route line geometry into the warehouse (single source of truth) —
+-- the same data the app reads from /api/v1/routes-overview (routes-overview.geojson,
+-- static store). One row per (route_id, direction); the line coordinates are kept
+-- as a JSONB array (GeoJSON [lng,lat] pairs) with the geometry type, so both
+-- LineString and MultiLineString round-trip losslessly. Reference data, refreshed
+-- by mirror-reference-data.js on the weekly ingest.
+-- ============================================================================
+
+create table if not exists public.route_geometry (
+  route_id      text        not null,               -- route name, e.g. "25"
+  direction     text        not null,               -- "1" outbound | "2" inbound (as in the geojson)
+  geom_type     text,                                -- "LineString" | "MultiLineString"
+  coordinates   jsonb       not null default '[]',   -- GeoJSON coordinates ([lng,lat] pairs)
+  length_km     numeric,
+  n_stops       integer,
+  route_type    text,
+  fetched_at    timestamptz not null default now(),
+  primary key (route_id, direction)
+);
+
+-- ── Data API grants ──────────────────────────────────────────────────────
+grant select on public.route_geometry to anon;
+grant select, insert, update, delete on public.route_geometry to authenticated;
+grant all on public.route_geometry to service_role;
+
+-- ── Row Level Security ──────────────────────────────────────────────────────
+alter table public.route_geometry enable row level security;
+
+drop policy if exists "anon can read all rows" on public.route_geometry;
+create policy "anon can read all rows"
+  on public.route_geometry
+  for select
+  to anon
+  using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0025_bridges.sql
+-- ============================================================
+-- ============================================================================
+-- 0025_bridges.sql
+--
+-- Mirror the low-bridge / height-restriction reference dataset into the warehouse
+-- (single source of truth) — the same data the app reads from /api/v1/bridges
+-- (London Datastore EPOWR, static store). Flat one-row-per-structure so it's
+-- directly queryable (e.g. "bridges under 4.4 m in Newham"). Reference data,
+-- refreshed by mirror-reference-data.js on the weekly ingest.
+-- ============================================================================
+
+create table if not exists public.bridges (
+  bridge_id        text        primary key,          -- EPOWR structure id, e.g. "TQ4906283214"
+  lat              numeric,
+  lng              numeric,
+  height_m         numeric,                           -- conservative clearance (lower band bound), metres
+  height_imperial  text,                              -- e.g. "Between 15'0\" and 16'6\""
+  name             text,
+  road             text,
+  structure_type   text,                              -- bridge | tunnel | barrier
+  borough          text,
+  fetched_at       timestamptz not null default now()
+);
+
+-- Analytics access patterns: clearance thresholds + by borough.
+create index if not exists bridges_height_idx  on public.bridges (height_m);
+create index if not exists bridges_borough_idx on public.bridges (borough);
+
+-- ── Data API grants ──────────────────────────────────────────────────────
+grant select on public.bridges to anon;
+grant select, insert, update, delete on public.bridges to authenticated;
+grant all on public.bridges to service_role;
+
+-- ── Row Level Security ──────────────────────────────────────────────────────
+alter table public.bridges enable row level security;
+
+drop policy if exists "anon can read all rows" on public.bridges;
+create policy "anon can read all rows"
+  on public.bridges
+  for select
+  to anon
+  using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0026_crowding_profile.sql
+-- ============================================================
+-- ============================================================================
+-- 0026_crowding_profile.sql
+--
+-- Mirror the per-route crowding DETAIL into the warehouse (single source of
+-- truth) — the same data the app reads from /api/v1/crowding-profile (TfL BUSTO,
+-- static store). Complements bus_crowding (the per-route summary): this holds the
+-- load-along-route profile (V/C by stop in sequence) and the time-of-day curve
+-- (V/C per timeband, per day type). Kept as JSONB (nested arrays). Keyed
+-- (route_id, busto_year) — snapshotted per BUSTO year like bus_crowding — so the
+-- crowding profile accrues year-over-year for trend analysis. Refreshed by
+-- mirror-reference-data.js on the weekly ingest.
+-- ============================================================================
+
+create table if not exists public.crowding_profile (
+  route_id      text        not null,                -- route name, e.g. "25"
+  busto_year    text        not null,                -- BUSTO year, e.g. "2025-2026"
+  profile_dir   text,                                 -- busiest direction ("1"|"2")
+  load_profile  jsonb,                                -- [{seq,name,vc}] V/C by stop in sequence
+  time_of_day   jsonb,                                -- { Weekday:[{t,vc}], Saturday:[…], Sunday:[…] }
+  fetched_at    timestamptz not null default now(),
+  primary key (route_id, busto_year)
+);
+
+-- ── Data API grants ──────────────────────────────────────────────────────
+grant select on public.crowding_profile to anon;
+grant select, insert, update, delete on public.crowding_profile to authenticated;
+grant all on public.crowding_profile to service_role;
+
+-- ── Row Level Security ──────────────────────────────────────────────────────
+alter table public.crowding_profile enable row level security;
+
+drop policy if exists "anon can read all rows" on public.crowding_profile;
+create policy "anon can read all rows"
+  on public.crowding_profile
+  for select
+  to anon
+  using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0027_localities.sql
+-- ============================================================
+-- ============================================================================
+-- 0027_localities.sql
+--
+-- Mirror the locality-label reference dataset into the warehouse (single source
+-- of truth) — the same data the app reads from /api/v1/localities (OpenStreetMap
+-- place=town|suburb for Greater London, ODbL, static store). Powers the map's
+-- "Place names" layer. Flat one-row-per-place. Refreshed by
+-- mirror-reference-data.js on the weekly ingest.
+-- ============================================================================
+
+create table if not exists public.localities (
+  name          text        not null,
+  lat           numeric     not null,
+  lng           numeric     not null,
+  kind          text,                                 -- "town" | "suburb"
+  fetched_at    timestamptz not null default now(),
+  primary key (name, lat, lng)
+);
+
+create index if not exists localities_kind_idx on public.localities (kind);
+
+-- ── Data API grants ──────────────────────────────────────────────────────
+grant select on public.localities to anon;
+grant select, insert, update, delete on public.localities to authenticated;
+grant all on public.localities to service_role;
+
+-- ── Row Level Security ──────────────────────────────────────────────────────
+alter table public.localities enable row level security;
+
+drop policy if exists "anon can read all rows" on public.localities;
+create policy "anon can read all rows"
+  on public.localities
+  for select
+  to anon
+  using (true);
+
+-- ============================================================
+-- ingest/db/migrations/0028_route_schedule_timing_point.sql
+-- ============================================================
+-- ============================================================================
+-- 0028_route_schedule_timing_point.sql
+--
+-- Add route_schedule.timing_point_stop_id — the representative QSI/timing-point
+-- stop the SWT + single-point OTD are measured at. push-to-supabase.js writes it
+-- (pushSchedule), but it was only ever added by hand on the old Supabase DB and
+-- never committed as a migration, so a freshly-bootstrapped warehouse lacks it
+-- and the route_schedule upsert hard-fails. Porting it here (and it's now in the
+-- push's optional-columns self-heal list too, so a missing column degrades
+-- gracefully rather than failing the whole table). Nullable + additive.
+-- ============================================================================
+
+alter table public.route_schedule
+  add column if not exists timing_point_stop_id text;
+
+comment on column public.route_schedule.timing_point_stop_id is
+  'Representative QSI/timing-point stop id the SWT and single-point OTD are measured at.';

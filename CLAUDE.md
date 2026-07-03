@@ -348,17 +348,33 @@ can never block the Cloudflare site.
   is unchanged, `pushCrowding()` upserts per `(route_id, busto_year)`), and the
   live-reliability tables (`route_schedule`, `arrival_samples`,
   `route_reliability_daily` — our own EWT/OTD/lost-mileage, see below).
-- **Schema bootstrap.** `ingest/db/migrations/0001`–`0021` define every table + RLS
+- **Reference mirror (single source of truth).** `ingest/scripts/mirror-reference-data.js`
+  (step 20, also `npm run mirror-reference-data`) pulls the reference datasets from our
+  own public `/api/v1` (the static store — decoupled from this pipeline's TfL fetchers,
+  always the already-validated data) and upserts them into the warehouse so the DB holds
+  everything the app does (bar live feeds): `route_stops`, `route_geometry`, `bridges`,
+  `crowding_profile` (per BUSTO year), `localities` (migrations `0023`–`0027`). These
+  aren't given new `/api/v1/history` endpoints — the same data is already served by the
+  current group (`/api/v1/route-stops` etc.); the mirror is a storage sink for
+  completeness + future DB-backed reads. Reference data → latest-upsert (with `fetched_at`),
+  not dated snapshots; the mutable operational attributes (PVR, propulsion, operator,
+  garage, capacity, MPS) are the daily/weekly CDC snapshots in `route_snapshots` /
+  `garage_snapshots` / the observation tables, which is what powers fleet-move /
+  propulsion-change / PVR-change trend analysis.
+- **Schema bootstrap.** `ingest/db/migrations/0001`–`0028` define every table + RLS
   policy; `ingest/db/migrations-bundle.sql` (generated, served statically at
   `/ingest/db/migrations-bundle.sql`) concatenates them for a one-shot `psql -f` against
   a fresh Postgres. PostgREST needs four roles the migrations' `TO anon` policies
   assume but don't create themselves: `authenticator` (its own login role),
   `anon` (read-only), `service_role` (`BYPASSRLS`, full read-write — the ingest
   pipeline's role), `authenticated` (unused today, kept for parity) — bootstrap these
-  once via SQL before loading the migrations. The accidents upsert is **self-healing**
-  — it strips columns a pending migration hasn't added yet and writes the base record,
-  so a new field never blocks the ingest. Don't reshape existing tables; add a
-  migration for anything new (`0022+`).
+  once via SQL before loading the migrations. The accidents + route_schedule upserts are
+  **self-healing** — they strip columns a pending migration hasn't added yet (via each
+  push's `optionalCols`) and write the base record, so a new field never blocks the
+  ingest. Don't reshape existing tables; add a migration for anything new (`0029+`).
+  (Two columns were only ever added by hand on the old Supabase and are now ported as
+  migrations: `route_vehicle_observations` anon-read policy in `0022`,
+  `route_schedule.timing_point_stop_id` in `0028`.)
 - **Schedules — Coolify Scheduled Tasks** (an idle `ingest/Dockerfile` container,
   `docker exec`'d into per cron; replaces the old GitHub Actions workflows of the
   same cadence):
