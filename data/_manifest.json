@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-03T06:42:29.090Z",
+  "generatedAt": "2026-07-03T09:34:58.093Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-06-26T08:14:50.920Z",
+      "fetchedAt": "2026-07-03T09:34:43.763Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-03T06:42:28.581Z",
+      "fetchedAt": "2026-07-03T09:34:57.494Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,14 +37,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-03T06:42:29.089Z",
+      "fetchedAt": "2026-07-03T09:34:58.093Z",
       "status": "ok",
-      "rows": 13452,
+      "rows": 13442,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 676 (676△); route_stops 676 (676△); tender 2508 (2508△); garage 86 (86△); fleet 676 (676△); vehicle 6133 (6133△); line_status 676 (676△); route_geometry 1345 (1345△)"
+      "note": "route 676 (676△); route_meta 676 (676△); route_stops 676 (676△); tender 2509 (2509△); garage 86 (86△); fleet 676 (676△); vehicle 6133 (6133△); line_status 676 (676△); route_geometry 1334 (1334△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -80,21 +80,21 @@
       "note": "4 multi-route"
     },
     "tenders": {
-      "status": "failed",
+      "status": "ok",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-07-03T06:42:25.017Z",
       "source": "TfL tender award results (13923/13796.aspx)",
-      "fetchedAt": "2026-06-19T18:00:54.502Z",
-      "rows": 2508,
+      "fetchedAt": "2026-07-03T09:34:44.167Z",
+      "rows": 2509,
       "files": [
         "data/tenders.json"
       ],
       "cadence": "event-driven · TfL tender results (incremental)",
-      "note": "all cached"
+      "note": "+1 new"
     },
     "performance": {
       "source": "TfL Bus Performance (QSI) + per-route MPS PDFs",
-      "fetchedAt": "2026-06-26T08:17:38.564Z",
+      "fetchedAt": "2026-07-03T09:34:44.520Z",
       "status": "ok",
       "rows": 738,
       "files": [
