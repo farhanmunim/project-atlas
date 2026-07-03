@@ -131,7 +131,11 @@ function parseRouteXml(xmlContent, routeId, dateToken) {
     return null;
   }
 
-  const nodes = doc?.TransXChange?.Route_Geometry ?? doc?.Route_Geometry;
+  // TfL changed the XML root from TransXChange to the namespaced rg:Network_Data
+  // (observed 2026-07); accept every root shape seen so far, falling back to the
+  // bare document so a future rename degrades gracefully instead of parsing 0 routes.
+  const root = doc?.TransXChange ?? doc?.['rg:Network_Data'] ?? doc?.Network_Data ?? doc;
+  const nodes = root?.Route_Geometry;
   const rawNodes = Array.isArray(nodes) ? nodes : nodes ? [nodes] : [];
 
   if (!rawNodes.length) return null;
@@ -214,6 +218,14 @@ function processZip(zipBuffer, dateToken) {
   }
 
   console.log(`  Written: ${written} routes, skipped: ${skipped}`);
+
+  // Hard validation gate: ~650+ routes on a healthy ZIP. Writing a near-empty
+  // extraction (e.g. after a TfL schema change makes every file parse to null)
+  // would poison the index and cascade into 0-route classifications — fail loudly
+  // and keep last-good instead.
+  if (written < 400) {
+    throw new Error(`geometry extraction produced only ${written} routes (expected ~650+) — refusing to overwrite last-good; likely a TfL XML schema change`);
+  }
 
   // Write index
   const routeIds = fs.readdirSync(ROUTES_DIR)
