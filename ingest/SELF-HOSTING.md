@@ -103,14 +103,14 @@ devDependencies — then idles on `sleep infinity` for the tasks to exec into).
   tenders, MPS, geocode) survive redeploys.
 - **Scheduled Tasks** (replaces the retired GitHub Actions; all UTC). Coolify's
   task job enforces a short hard timeout, but several runs are long by design
-  (headway sampler ~15–18 min multi-sweep, weekly refresh ~20 min) — so every
+  (headway sampler ~15–18 min multi-sweep, daily refresh ~20 min) — so every
   command goes through `scripts/run-task.sh`, which detaches the real work
   (immune to the timeout, per-name /tmp lock against overlap, output in
   `/tmp/task-<name>.log`):
 
 | Name | Command | Cron |
 |---|---|---|
-| weekly-refresh | `sh scripts/run-task.sh refresh npm run refresh` | `23 9 * * 1` |
+| daily-refresh | `sh scripts/run-task.sh refresh npm run refresh` | `23 9 * * *` |
 | daily-fleet-sample | `sh scripts/run-task.sh sample-vehicles npm run sample-vehicles` | `37 8 * * *` |
 | headway-sampler | `sh scripts/run-task.sh sample-headways npm run sample-headways` | `*/30 6-22 * * *` |
 | reliability-build | `sh scripts/run-task.sh build-reliability npm run build-reliability` | `37 0 * * *` |

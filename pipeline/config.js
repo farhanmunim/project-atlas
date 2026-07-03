@@ -32,23 +32,23 @@ export const DATASETS = [
   {
     name: "routes",
     build: buildRoutes,
-    ttlMs: 7 * DAY,        // route geometry/list is reference data — changes on network revisions
+    ttlMs: 1 * DAY,        // network revisions land within a day; conditional requests keep the daily pull cheap
     soft: true,
-    cadence: "weekly",
+    cadence: "daily",
   },
   {
     name: "route-meta",
     build: buildRouteMeta,
-    ttlMs: 7 * DAY,        // operator/garage/fleet change slowly
+    ttlMs: 1 * DAY,        // PVR/operator/garage changes land next-day (details.htm updates daily)
     soft: true,
-    cadence: "weekly · londonbusroutes.net (garages.csv + details.htm)",
+    cadence: "daily · londonbusroutes.net (garages.csv + details.htm)",
   },
   {
     name: "garages",
     build: buildGarages,
-    ttlMs: 7 * DAY,        // garage estate changes slowly
+    ttlMs: 1 * DAY,        // estate changes are rare but cheap to check daily (one CSV + cached geocodes)
     soft: true,
-    cadence: "weekly · londonbusroutes.net + postcodes.io",
+    cadence: "daily · londonbusroutes.net + postcodes.io",
   },
   {
     name: "fleet",
@@ -67,14 +67,14 @@ export const DATASETS = [
   {
     name: "tenders",
     build: buildTenders,
-    ttlMs: 7 * DAY,        // award events are immutable; new ones appear occasionally (incremental cache)
+    ttlMs: 1 * DAY,        // awards are immutable + incremental — a daily check only fetches NEW tender ids
     soft: true,
     cadence: "event-driven · TfL tender results (incremental)",
   },
   {
     name: "performance",
     build: buildPerformance,
-    ttlMs: 7 * DAY,        // TfL republishes the QSI + MPS PDFs every ~4-week period; MPS is sticky-cached
+    ttlMs: 1 * DAY,        // Last-Modified skip makes a daily check ~free; new QSI period lands next-day
     soft: true,
     cadence: "~4-weekly · TfL QSI + MPS PDFs",
   },

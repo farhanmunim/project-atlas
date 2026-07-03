@@ -5,6 +5,20 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-03 — Everything operational refreshes daily
+
+All operational datasets now re-pull daily instead of weekly, in both loops:
+the static store's TTLs (routes, route-meta/PVR/operator/garage, garages,
+tenders, performance → 1 day; fleet/vehicles already daily) and the warehouse
+full refresh (Mon-only → every day at 09:23 UTC), so `route_snapshots` /
+`garage_snapshots` accrue one row per route per DAY — the granularity the
+fleet-move / PVR-change / propulsion-change analysis wants. Cheap by
+construction: conditional requests (ETag/Last-Modified), incremental tender
+fetches and the capped DVLA cache mean an unchanged upstream costs almost
+nothing. The four annual publications (STATS19, EPOWR bridges, BUSTO
+crowding, OSM localities) stay on monthly re-checks — daily would only
+hammer sources that change once a year.
+
 ## 2026-07-03 — Warehouse migrated off Supabase → self-hosted Postgres + PostgREST (Coolify VPS)
 
 Supabase free tier hit its 500MB cap and went read-only (blocking even the password

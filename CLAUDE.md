@@ -385,7 +385,7 @@ can never block the Cloudflare site.
   which detaches the real work (Coolify's task job has a short hard timeout; the
   sampler/refresh runs are 15–20 min by design), holds a per-name `/tmp` lock
   against overlap, and logs to `/tmp/task-<name>.log`:
-  - `npm run refresh` — full refresh, Mon 09:23 UTC.
+  - `npm run refresh` — full refresh, daily 09:23 UTC (daily CDC snapshots per route/garage).
   - `npm run sample-vehicles` — daily fleet sample, 08:37 UTC.
   - `npm run sample-headways` — every ~30 min in service hours; appends live
     arrival/headway observations to `arrival_samples`.
