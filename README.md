@@ -125,6 +125,8 @@ Time-series from our self-hosted warehouse (Postgres + PostgREST). Common params
 | `GET /api/v1/history/performance-history?route=25` | TfL quarterly performance, all periods |
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
 | `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |
+| `GET /api/v1/history/route-snapshots?route=25` *(also `operator=`, `propulsion=`, `garage=`, `from=`/`to=`)* | Per-route CDC snapshots over time — PVR, propulsion, deck, vehicle type, operator, garage, fleet size/age, MPS. The record behind fleet-move / propulsion-change / PVR-change analysis |
+| `GET /api/v1/history/garage-snapshots?garage=BW` *(also `operator=`, `from=`/`to=`)* | Per-garage snapshots over time — total PVR, route count, routes served |
 | `GET /api/v1/history/vehicle-sightings?route=25` | Vehicle-on-route sightings over time |
 | `GET /api/v1/history/crowding?route=25` | Bus crowding per route per year (TfL BUSTO) — filter by `route`, `band`, `year`, `day_type` |
 | `GET /api/v1/history/accidents?from=2024-01-01&to=2024-12-31` *(also `severity=`, `borough=`, `road_type=`, `speed_limit=`)* | STATS19 bus collisions over time — incl. decoded road_type/speed_limit/junction/light/weather/road_surface; the temporal source behind the `/api/v1/accidents` snapshot |

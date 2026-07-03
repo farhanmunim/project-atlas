@@ -42,6 +42,18 @@ const ENDPOINTS = {
     defaultOrder: "contract_start_date.asc",
     desc: "TfL's forward LBSL tendering programme — issue/return/award/start dates, vehicle type, extension flag, per route.",
   },
+  "route-snapshots": {
+    table: "route_snapshots",
+    filters: { route: ["route_id", "eq"], from: ["snapshot_date", "gte"], to: ["snapshot_date", "lte"], operator: ["operator", "eq"], propulsion: ["propulsion", "eq"], garage: ["garage_code", "eq"] },
+    defaultOrder: "snapshot_date.desc",
+    desc: "Per-route daily/weekly CDC snapshots — PVR, propulsion, deck, vehicle type, operator, garage, fleet size/age, MPS benchmarks. The change-over-time record behind fleet-move / propulsion-change / PVR-change analysis. Filter by route, from/to date, operator, propulsion, garage.",
+  },
+  "garage-snapshots": {
+    table: "garage_snapshots",
+    filters: { garage: ["garage_code", "eq"], operator: ["operator", "eq"], from: ["snapshot_date", "gte"], to: ["snapshot_date", "lte"] },
+    defaultOrder: "snapshot_date.desc",
+    desc: "Per-garage snapshots over time — total PVR, route count, routes served, operator. Capacity/allocation change analysis. Filter by garage (code), operator, from/to date.",
+  },
   "vehicle-sightings": {
     table: "route_vehicle_observations",
     filters: { route: ["route_id", "eq"], reg: ["registration", "eq"], from: ["observed_at", "gte"], to: ["observed_at", "lte"] },
