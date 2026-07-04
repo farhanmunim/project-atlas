@@ -5,6 +5,28 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-04 — Legacy Supabase history import script
+
+Farhan recovered the old Supabase project's direct-database password, which
+reopens the history we couldn't export during the migration (the Data API was
+dead but raw Postgres still answers). `ingest/db/import-legacy-supabase.sql`
+attaches the old DB to the new warehouse over `postgres_fdw` (session pooler,
+IPv4 — the direct host is IPv6-only and unreachable from Docker) and merges
+13 tables of history: route/garage CDC snapshots, vehicle observations +
+sightings, QSI periods, our reliability dailies, arrival samples, tenders the
+cache lost, tender programme, accidents, BUSTO years, schedule states.
+Conflict-safe by construction — natural-key tables use ON CONFLICT DO NOTHING
+(new rows always win), tender_programme dedupes with a null-safe NOT EXISTS
+(its unique key has nullable columns), arrival_samples imports without its
+surrogate id and only rows recorded before the new DB's earliest sample.
+Column lists are computed as the old∩new intersection so schema drift can't
+break it, and the foreign server (with the stored password) is dropped at the
+end. Dress-rehearsed on a local Postgres 16 pair seeded with edge cases:
+correct counts, drift tolerated, second run imports zero. Runbook section
+added to ingest/SELF-HOSTING.md.
+
+---
+
 ## 2026-07-03 — v2 "TfL print style" (consultation-map look)
 
 A new Layers toggle in `/v2` that restyles the map after TfL's printed

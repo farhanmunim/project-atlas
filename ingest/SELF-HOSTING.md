@@ -119,6 +119,31 @@ No heartbeat task — that existed only for Supabase free-tier auto-pause.
 Trade-off of detaching: Coolify always reports the task as succeeded — real
 failures live in the `/tmp/task-*.log` files (and show up as stale data).
 
+## Importing the old Supabase history (one-off)
+
+The warehouse was rebuilt from sources in July 2026, so it starts then; the old
+Supabase project (read-only, Data API dead — but direct Postgres still answers)
+holds the earlier history. `db/import-legacy-supabase.sql` merges it in via
+`postgres_fdw`: conflict-safe (rows the new DB already has always win),
+idempotent (a re-run imports 0), and it drops the foreign server — password
+included — when done. Run in the **atlas-db terminal**. The Supabase direct
+host is IPv6-only (unreachable from Docker), so use the **Session pooler**
+host/user from the Supabase dashboard → Connect (port 5432, not 6543):
+
+```sh
+wget -O /tmp/import-legacy.sql https://atlas.farhan.app/ingest/db/import-legacy-supabase.sql
+psql -U postgres \
+  -v sb_host='aws-0-<region>.pooler.supabase.com' \
+  -v sb_user='postgres.<project-ref>' \
+  -v sb_password='<database password>' \
+  -f /tmp/import-legacy.sql
+```
+
+It prints per-table imported counts and finishes with an after-state summary
+(row count + earliest date per table). Errors: `Tenant or user not found` =
+wrong pooler region/user; connection timeout = project paused (restore it in
+the dashboard first).
+
 ## Verify
 
 ```sh
