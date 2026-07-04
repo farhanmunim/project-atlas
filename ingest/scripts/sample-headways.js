@@ -86,17 +86,33 @@ async function fetchJson(url, retries = 4) {
 async function loadTimingPoints(supabase) {
   const map = {};   // route → Set(stop ids) of QSI points to observe
   try {
-    const { data, error } = await supabase
-      .from('route_schedule')
-      .select('route_id, timing_point_stop_id, qsi_point_stop_ids');
-    if (error) throw error;
-    for (const r of (data ?? [])) {
+    // route_schedule accrues per-date history (and legacy snapshots), so it is
+    // well past PostgREST's 1000-row response cap — page through it newest-first
+    // and keep only each route's LATEST snapshot.
+    const PAGE = 1000;
+    const rows = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('route_schedule')
+        .select('route_id, snapshot_date, timing_point_stop_id, qsi_point_stop_ids')
+        .order('snapshot_date', { ascending: false })
+        .order('route_id', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    const seen = new Set();
+    for (const r of rows) {
+      const key = String(r.route_id).toUpperCase();
+      if (seen.has(key)) continue;   // newest-first → first row per route is its latest snapshot
+      seen.add(key);
       const ids = new Set();
       // prefer the multi-point QSI set (migration 0021); fall back to the single timing point
       const qsi = Array.isArray(r.qsi_point_stop_ids) ? r.qsi_point_stop_ids : null;
       if (qsi) for (const s of qsi) { if (s) ids.add(String(s)); }
       if (r.timing_point_stop_id) ids.add(String(r.timing_point_stop_id));
-      if (ids.size) map[String(r.route_id).toUpperCase()] = ids;
+      if (ids.size) map[key] = ids;
     }
   } catch (err) {
     console.warn(`  route_schedule QSI points unavailable (${err.message}) — using feed stop ids`);

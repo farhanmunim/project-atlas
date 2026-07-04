@@ -25,6 +25,22 @@ end. Dress-rehearsed on a local Postgres 16 pair seeded with edge cases:
 correct counts, drift tolerated, second run imports zero. Runbook section
 added to ingest/SELF-HOSTING.md.
 
+Run against the real thing it recovered ~116k rows: 8,964 route snapshots,
+95,963 vehicle observations, 4,260 reliability dailies, 3,262 departed-fleet
+regs, 1,192 garage snapshots, 671 QSI periods, 2,028 schedule states, 111
+programme rows (tenders/accidents/crowding: 0 — already complete from the
+rebuild).
+
+**Follow-up fix: the PostgREST 1000-row cap.** The recovered volumes exposed
+three warehouse READS that never paginated (fine at post-rebuild sizes,
+truncated now): `backfill-route-vehicle-sightings.js` (the recurrence RPC —
+was silently capped at 1000 of ~15k rows) now pages with a stable order;
+`sample-headways.js` pages `route_schedule` newest-first and keeps each
+route's latest snapshot (it previously read the table unfiltered — with
+history imported it could have picked stale timing points); and
+`build-reliability.js`'s pager pins a deterministic ORDER so pages can't
+overlap/skip on multi-page scans.
+
 ---
 
 ## 2026-07-03 — v2 "TfL print style" (consultation-map look)

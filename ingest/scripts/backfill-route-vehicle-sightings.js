@@ -70,19 +70,32 @@ async function main() {
   const sinceIso = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString();
   console.log(`Reading recurrence since ${sinceIso} (window ${WINDOW_DAYS}d)...`);
 
-  const { data, error } = await supabase.rpc('route_vehicle_recurrence', { p_since: sinceIso });
-  if (error) {
-    console.warn(`  RPC route_vehicle_recurrence failed (${error.message}) — leaving file as-is.`);
-    return;
+  // The RPC returns ~one row per (route, reg) — with months of history that is
+  // several times PostgREST's max-rows cap (1000), so page through it with a
+  // stable order (PostgREST applies the order to the function result per page).
+  const PAGE = 1000;
+  const rows = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .rpc('route_vehicle_recurrence', { p_since: sinceIso })
+      .order('route_id', { ascending: true })
+      .order('registration', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.warn(`  RPC route_vehicle_recurrence failed (${error.message}) — leaving file as-is.`);
+      return;
+    }
+    rows.push(...(data ?? []));
+    if (!Array.isArray(data) || data.length < PAGE) break;
   }
-  if (!Array.isArray(data) || !data.length) {
+  if (!rows.length) {
     console.warn('  RPC returned no rows — leaving file as-is.');
     return;
   }
 
   // Index recurrence by route → reg.
   const rec = new Map();  // routeId(upper) → Map(reg(upper) → {sightings,days,first,last})
-  for (const row of data) {
+  for (const row of rows) {
     const routeId = String(row.route_id ?? '').toUpperCase();
     const reg     = String(row.registration ?? '').toUpperCase();
     if (!routeId || !reg) continue;
@@ -94,7 +107,7 @@ async function main() {
       last:      row.last_seen ?? null,
     });
   }
-  console.log(`  Recurrence rows: ${data.length} across ${rec.size} routes.`);
+  console.log(`  Recurrence rows: ${rows.length} across ${rec.size} routes.`);
 
   const cutoffMs = Date.now() - WINDOW_DAYS * 86_400_000;
   let enriched = 0, added = 0, dropped = 0, routesTouched = 0;

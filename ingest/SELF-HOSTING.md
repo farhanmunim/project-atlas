@@ -161,6 +161,12 @@ curl -s -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
 
 ## Gotchas learned the hard way
 
+- **PostgREST caps every response at `PGRST_DB_MAX_ROWS` (1000) — including
+  RPCs.** Any warehouse read that can exceed that must page with `.range()`
+  AND a stable `.order()` (unordered pages can overlap/skip rows). This bit
+  the sightings backfill and the headway sampler after the legacy history
+  import pushed tables past 1000 rows; both now paginate.
+
 - **Upstream schema changes fail silently without gates**: TfL renamed the geometry
   XML root (`TransXChange` → `rg:Network_Data`) and step 1 "succeeded" with 0 routes,
   cascading into 0-route classifications and an empty `route_snapshots` push.

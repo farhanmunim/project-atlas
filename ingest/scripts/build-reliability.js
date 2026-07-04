@@ -228,12 +228,16 @@ function estimateOtd(samples, schedHeadwayMin) {
   return +(100 * onTime / times.length).toFixed(1);
 }
 
-// Page through a Supabase table with a filter, returning all rows.
-async function selectAll(supabase, table, build) {
+// Page through a Supabase table with a filter, returning all rows. orderCols
+// pins a deterministic order — without one, pages of an unordered scan can
+// overlap or skip rows once tables grow past a single page (they now do).
+async function selectAll(supabase, table, build, orderCols = []) {
   const out = [];
   let from = 0;
   while (true) {
-    const { data, error } = await build(supabase.from(table).select('*')).range(from, from + PAGE - 1);
+    let q = build(supabase.from(table).select('*'));
+    for (const c of orderCols) q = q.order(c, { ascending: true });
+    const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) throw new Error(`${table} select failed: ${error.message}`);
     out.push(...(data ?? []));
     if (!data || data.length < PAGE) break;
@@ -256,11 +260,11 @@ async function main() {
   const day = new Date().toISOString().slice(0, 10);
 
   console.log(`Reading arrival_samples since ${since} ...`);
-  const samples = await selectAll(supabase, 'arrival_samples', (q) => q.gte('recorded_at', since));
+  const samples = await selectAll(supabase, 'arrival_samples', (q) => q.gte('recorded_at', since), ['id']);
   console.log(`  ${samples.length} samples`);
 
   console.log('Reading latest route_schedule ...');
-  const schedRows = await selectAll(supabase, 'route_schedule', (q) => q);
+  const schedRows = await selectAll(supabase, 'route_schedule', (q) => q, ['route_id', 'snapshot_date']);
   // Keep the newest snapshot per route (most recent snapshot_date wins).
   const schedule = {};
   for (const r of schedRows) {
