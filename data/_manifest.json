@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-07-06T03:17:09.773Z",
+  "generatedAt": "2026-07-07T03:21:16.958Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-07-05T03:19:36.170Z",
+      "fetchedAt": "2026-07-07T03:19:35.929Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-06T03:17:09.275Z",
+      "fetchedAt": "2026-07-07T03:21:16.464Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -26,7 +26,7 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-07-05T03:19:36.854Z",
+      "fetchedAt": "2026-07-07T03:19:36.816Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,18 +37,18 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-06T03:17:09.772Z",
+      "fetchedAt": "2026-07-07T03:21:16.958Z",
       "status": "ok",
-      "rows": 8059,
+      "rows": 7982,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 676 (676△); route_meta 676 (676△); route_stops 676 (676△); tender 2509 (2509△); garage 86 (86△); fleet 676 (676△); vehicle 739 (739△); line_status 676 (676△); route_geometry 1345 (1345△)"
+      "note": "route 676 (676△); route_meta 676 (676△); route_stops 676 (676△); tender 2509 (2509△); garage 86 (86△); fleet 676 (676△); vehicle 662 (662△); line_status 676 (676△); route_geometry 1345 (1345△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
-      "fetchedAt": "2026-07-05T03:19:37.041Z",
+      "fetchedAt": "2026-07-07T03:19:36.985Z",
       "status": "ok",
       "rows": 86,
       "files": [
@@ -59,32 +59,32 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-07-05T03:21:10.934Z",
+      "fetchedAt": "2026-07-07T03:21:13.142Z",
       "status": "ok",
       "rows": 676,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "157 routes with vehicles, DVLA-enriched"
+      "note": "170 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache",
-      "fetchedAt": "2026-07-05T03:21:10.951Z",
+      "fetchedAt": "2026-07-07T03:21:13.162Z",
       "status": "ok",
-      "rows": 739,
+      "rows": 662,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · derived from fleet (no API calls)",
-      "note": "1 multi-route"
+      "note": "2 multi-route"
     },
     "tenders": {
       "status": "ok",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-07-03T06:42:25.017Z",
       "source": "TfL tender award results (13923/13796.aspx)",
-      "fetchedAt": "2026-07-05T03:21:11.352Z",
+      "fetchedAt": "2026-07-07T03:21:13.492Z",
       "rows": 2509,
       "files": [
         "data/tenders.json"
@@ -94,7 +94,7 @@
     },
     "performance": {
       "source": "TfL Bus Performance (QSI) + per-route MPS PDFs",
-      "fetchedAt": "2026-07-05T03:21:11.686Z",
+      "fetchedAt": "2026-07-07T03:21:13.789Z",
       "status": "ok",
       "rows": 738,
       "files": [
