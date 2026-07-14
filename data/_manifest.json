@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-13T03:20:42.204Z",
+  "generatedAt": "2026-07-14T03:17:08.634Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-13T03:20:41.671Z",
+      "fetchedAt": "2026-07-14T03:17:08.157Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-13T03:20:42.204Z",
+      "fetchedAt": "2026-07-14T03:17:08.634Z",
       "status": "ok",
       "rows": 8010,
       "files": [
