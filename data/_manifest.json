@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-19T03:20:49.828Z",
+  "generatedAt": "2026-07-20T03:17:09.773Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-19T03:20:49.368Z",
+      "fetchedAt": "2026-07-20T03:17:09.300Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-19T03:20:49.828Z",
+      "fetchedAt": "2026-07-20T03:17:09.773Z",
       "status": "ok",
       "rows": 8036,
       "files": [
@@ -116,7 +116,7 @@
     },
     "bridges": {
       "source": "TfL / London Datastore — Bridges, Tunnels, Road Barriers & Height Restrictions (EPOWR)",
-      "fetchedAt": "2026-06-19T10:53:29.037Z",
+      "fetchedAt": "2026-07-20T03:17:06.685Z",
       "status": "ok",
       "rows": 877,
       "files": [
