@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-23T03:21:21.150Z",
+  "generatedAt": "2026-07-24T03:17:11.790Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-23T03:21:20.672Z",
+      "fetchedAt": "2026-07-24T03:17:08.684Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-23T03:21:21.150Z",
+      "fetchedAt": "2026-07-24T03:17:11.789Z",
       "status": "ok",
       "rows": 7984,
       "files": [
@@ -127,7 +127,7 @@
     },
     "crowding": {
       "source": "TfL BUSTO 2025-2026 (crowding.data.tfl.gov.uk)",
-      "fetchedAt": "2026-06-23T08:20:47.368Z",
+      "fetchedAt": "2026-07-24T03:17:11.360Z",
       "status": "ok",
       "rows": 606,
       "files": [
