@@ -105,7 +105,7 @@ collapses to a trickle of upstream pulls). No caller key.
 | `GET /api/v1/live/disruptions` | Active bus line disruptions |
 | `GET /api/v1/live/arrivals?stop=<naptan>` *(or `?route=<id>`)* | Live arrival predictions |
 | `GET /api/v1/live/road-disruptions` | Live London road incidents/closures (TfL control centre, ~5 min) |
-| `GET /api/v1/live/national-highways` | Live National Highways unplanned events (incidents/congestion/closures) on the strategic road network, filtered to Greater London — keyless RSS, 2 min cache |
+| `GET /api/v1/live/national-highways` | **Retired** — returns `410 Gone`. National Highways withdrew the keyless RSS this endpoint proxied (its replacement API needs a registered key). Use `road-disruptions` for London road incidents |
 | `GET /api/v1/live/vehicles` *(or `?line=25` / `?route=25`)* | Live bus GPS positions (BODS SIRI-VM) across Greater London — omit the filter for the whole network. One 10 s-cached upstream snapshot shared by all callers (also at the legacy `/api/live/vehicles`) |
 
 Real-time bus **GPS** stays on its own keyed endpoint, edge-cached ~10s:

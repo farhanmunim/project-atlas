@@ -5,6 +5,26 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-07-27 — API verification sweep + National Highways feed retired
+
+Full verification pass of the public API against the committed data: all 17
+`/api/v1` datasets byte-identical across the store, the dev mirror, and
+production; live group cross-checked against TfL direct (676 lines, ids
+aligned); all 9 history endpoints serving fresh warehouse rows with filters
+honoured; prod Functions ↔ serve.js endpoint tables in sync. One casualty
+found: National Highways withdrew the keyless UnplannedEvents RSS (every
+legacy URL — m.highwaysengland.co.uk, trafficengland.com, m.highways.gov.uk —
+now funnels to a 404 on nationalhighways.co.uk; the replacement API is keyed).
+`/api/v1/live/national-highways` now returns an honest `410 Gone` with a
+pointer to `road-disruptions` instead of a permanent 502, the dead fetch/parse
+code is gone from both Functions, and `/v2` no longer fires a doomed request
+per refresh (road incidents = TfL control centre only). Docs updated
+(README + API.md). If SRN events are ever wanted back, the keyed National
+Highways API (api.data.nationalhighways.co.uk) is the route — needs a
+registered key as a Cloudflare secret, like BODS.
+
+---
+
 ## 2026-07-04 — Legacy Supabase history import script
 
 Farhan recovered the old Supabase project's direct-database password, which
