@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-31T03:21:14.350Z",
+  "generatedAt": "2026-08-01T03:17:37.162Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -16,7 +16,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-07-31T03:21:13.887Z",
+      "fetchedAt": "2026-08-01T03:17:36.724Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -37,7 +37,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-07-31T03:21:14.350Z",
+      "fetchedAt": "2026-08-01T03:17:37.162Z",
       "status": "ok",
       "rows": 7554,
       "files": [
@@ -139,9 +139,9 @@
     },
     "localities": {
       "source": "OSM Overpass (place=town|suburb)",
-      "fetchedAt": "2026-07-01T21:27:10.056Z",
+      "fetchedAt": "2026-08-01T03:17:33.802Z",
       "status": "ok",
-      "rows": 530,
+      "rows": 528,
       "files": [
         "data/localities.json"
       ],
