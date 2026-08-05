@@ -13,8 +13,11 @@
  *   /api/v1/bridges           → public.bridges           (per structure)
  *   /api/v1/crowding-profile  → public.crowding_profile  (per route/BUSTO year)
  *   /api/v1/localities        → public.localities        (per place)
+ *   /api/v1/route-diversions  → public.route_diversions  (per route/episode — rows
+ *                               accrue per detected_at, never deleted, so the
+ *                               table doubles as the diversion history)
  *
- * Migrations 0023–0027. Soft by design: a source that won't fetch is skipped
+ * Migrations 0023–0027 + 0029. Soft by design: a source that won't fetch is skipped
  * (last-good stays); a warehouse that isn't configured no-ops. Run standalone
  * (`npm run mirror-reference-data`) or as a step in refresh.js.
  */
@@ -124,6 +127,21 @@ async function mirrorLocalities() {
   await upsert('localities', rows, 'name,lat,lng');
 }
 
+async function mirrorDiversions() {
+  const d = await getJson('route-diversions');
+  const routes = d.routes || {};
+  const rows = Object.entries(routes).filter(([, v]) => v && v.detectedAt).map(([name, v]) => ({
+    route_id: String(v.id ?? name).toLowerCase(), route_name: name,
+    detected_at: v.detectedAt, status: v.status ?? 'unknown', severity: num(v.severity),
+    reasons: v.disruptions ?? null, since: v.since ?? null, until_ts: v.until ?? null,
+    geometry_status: v.geometryStatus ?? null,
+    missed_stops: v.missedStops ?? null, added_stops: v.addedStops ?? null,
+    diversion_segments: v.diversionSegments ?? null, bypassed_segments: v.bypassedSegments ?? null,
+    fetched_at: new Date().toISOString(),
+  }));
+  await upsert('route_diversions', rows, 'route_id,detected_at');
+}
+
 async function main() {
   console.log(`Mirroring reference datasets from ${ATLAS_API} → warehouse`);
   await step('route_stops', mirrorStops);
@@ -131,6 +149,7 @@ async function main() {
   await step('bridges', mirrorBridges);
   await step('crowding_profile', mirrorCrowdingProfile);
   await step('localities', mirrorLocalities);
+  await step('route_diversions', mirrorDiversions);
   console.log('Reference mirror done.');
 }
 main().catch((e) => { console.error(`mirror-reference-data failed: ${e.message}`); process.exit(1); });

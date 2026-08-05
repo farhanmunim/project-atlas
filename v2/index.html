@@ -690,6 +690,7 @@ baseLayer.on('load', function(){ _tileErrs=0; var el=$('tileWarn'); if(el) el.st
 
 var ptRenderer = L.canvas({padding:0.5});
 var routeLayer = L.layerGroup().addTo(map);
+var divnLayer  = L.layerGroup().addTo(map);   // diversion overlay (dashed diverted path + affected stops) — route-scoped, always on
 var stopLayer  = L.layerGroup();
 var ptLayer    = L.layerGroup().addTo(map);
 var bridgeLayer= L.layerGroup();
@@ -986,7 +987,7 @@ function showNetwork(){
   renderRouteChips();
   syncClearAll();
   syncCrowdKey();   // back to network → key footnote reverts to "peak load per route"
-  routeLayer.clearLayers(); stopLayer.clearLayers();
+  routeLayer.clearLayers(); divnLayer.clearLayers(); stopLayer.clearLayers();
   $('cLen').textContent='—';
   $('dossierCards').innerHTML='';
   syncURL();
@@ -1058,12 +1059,12 @@ function loadHeaderCounts(){
       .then(function(all){ if($('tgBridges')&&$('tgBridges').checked) return;
         setKpiChip('chipBridges','cBridges', all.filter(function(b){return (+b.height_m||99)<4.4;}).length, true); }).catch(function(){});
   }
-  // Live road incidents — TfL control centre + National Highways.
+  // Live road incidents — TfL control centre. (The National Highways keyless RSS was
+  // withdrawn upstream — /api/v1/live/national-highways now returns 410 — so TfL is the source.)
   if(!$('tgRoad') || !$('tgRoad').checked){
-    Promise.all([
-      getJSON(atlasBase()+'/live/road-disruptions').then(function(j){ return (Array.isArray(j.data)?j.data:[]).filter(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); return m&&m.length>=2; }).length; }).catch(function(){return 0;}),
-      getJSON(atlasBase()+'/live/national-highways').then(function(j){ return (Array.isArray(j.data)?j.data:[]).filter(function(d){ return Number.isFinite(d.lat)&&Number.isFinite(d.lng); }).length; }).catch(function(){return 0;})
-    ]).then(function(c){ if($('tgRoad')&&$('tgRoad').checked) return; setKpiChip('chipRoad','cRoad', c[0]+c[1], true); }).catch(function(){});
+    getJSON(atlasBase()+'/live/road-disruptions')
+      .then(function(j){ return (Array.isArray(j.data)?j.data:[]).filter(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); return m&&m.length>=2; }).length; })
+      .then(function(n){ if($('tgRoad')&&$('tgRoad').checked) return; setKpiChip('chipRoad','cRoad', n, true); }).catch(function(){});
   }
   // Live buses (BODS SIRI-VM) — whole-network snapshot (10s edge-cached, so one pull is cheap).
   if(!$('tgBuses') || !$('tgBuses').checked){
@@ -1135,30 +1136,23 @@ function toggleGarages(on){
     .catch(function(e){ status('Garages failed: '+e.message,'err'); $('tgGarages').checked=false; });
 }
 // Live road incidents — TfL control-centre feed via /api/v1/live/road-disruptions.
-function nhIcon(){ return L.divIcon({className:'',iconSize:[12,12],iconAnchor:[6,6],html:'<div style="width:11px;height:11px;background:#B388FF;border:2px solid #0A0C10;box-shadow:0 1px 5px rgba(0,0,0,.5)"></div>'}); }
+// (National Highways SRN events were a second source until its keyless RSS was withdrawn
+// upstream — /api/v1/live/national-highways now returns 410 Gone.)
 function toggleRoad(on){
   if(!on){ map.removeLayer(roadLayer); loadHeaderCounts(); return; }   // revert chip to the network tally
   roadLayer.clearLayers();
   status('Loading live road incidents…');
-  // Two sources through our API: TfL control centre (London) + National Highways (SRN).
-  Promise.all([
-    getJSON(atlasBase()+'/live/road-disruptions').then(function(j){return Array.isArray(j.data)?j.data:[];}).catch(function(){return [];}),
-    getJSON(atlasBase()+'/live/national-highways').then(function(j){return Array.isArray(j.data)?j.data:[];}).catch(function(){return [];})
-  ]).then(function(res){
+  getJSON(atlasBase()+'/live/road-disruptions').then(function(j){
+    var rows=Array.isArray(j.data)?j.data:[];
     var n=0;
-    res[0].forEach(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); if(!m||m.length<2) return; var lng=+m[0],lat=+m[1];
+    rows.forEach(function(d){ var m=String(d.point||'').match(/-?\d+\.\d+/g); if(!m||m.length<2) return; var lng=+m[0],lat=+m[1];
       var st=incidentStyle(d.category);
       L.circleMarker([lat,lng],{radius:5,color:'#0A0C10',weight:1.5,fillColor:st.c,fillOpacity:.95,renderer:ptRenderer})
         .bindPopup('<div style="font-size:12px;max-width:230px"><b style="color:'+st.c+'">'+esc(st.t)+'</b>'+(d.severity?' · '+esc(d.severity):'')+'<br>'+esc(d.location||'')+((d.comments||d.currentUpdate)?'<br><span style="color:var(--muted)">'+esc(String(d.comments||d.currentUpdate).slice(0,180))+'</span>':'')+'</div>')
         .addTo(roadLayer); n++; });
-    res[1].forEach(function(d){ if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng)) return;
-      L.marker([d.lat,d.lng],{icon:nhIcon(),zIndexOffset:400})
-        .bindTooltip('National Highways · '+esc(d.road||''),{className:'stop-tip'})
-        .bindPopup('<div style="font-size:12px;max-width:240px"><b style="color:#B388FF">National Highways</b>'+(d.road?' · '+esc(d.road):'')+'<br>'+esc(d.category||'')+(d.severity?' · '+esc(d.severity):'')+(d.comments?'<br><span style="color:var(--muted)">'+esc(String(d.comments).slice(0,180))+'</span>':'')+'</div>')
-        .addTo(roadLayer); n++; });
     map.addLayer(roadLayer); if(typeof markFresh==='function') markFresh();
     setKpiChip('chipRoad','cRoad', n, true);   // header tally for live road incidents
-    status(n+' live road incidents · TfL + National Highways','ok');
+    status(n+' live road incidents · TfL','ok');
   }).catch(function(e){ status('Road incidents failed: '+e.message,'err'); $('tgRoad').checked=false; });
 }
 // Live buses — BODS SIRI-VM GPS through our API (/api/v1/live/vehicles). Route-scoped
@@ -1264,6 +1258,7 @@ function fetchRoute(){
     if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
     if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route(s)
+    drawDiversionOverlay();   // dashed diverted path + affected stops for the new selection
     renderRiskCard();   // corridor geometry is in — fill the dossier's Risk & accidents slot
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
   renderDossier();
@@ -1288,9 +1283,45 @@ function relEstimateOf(name, id){
   for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
   return null;
 }
+// ── Diversion overlay — the store's route-diversions dataset (daily diff of TfL's
+// diverted Route/Sequence vs the canonical baseline). Route-scoped, always on: the
+// REAL diverted path dashed amber, bypassed section dotted red, missed stops red,
+// temporary stops amber. Lazy-loads the dataset on first selection.
+function ensureDiversions(){
+  if(state.diversions) return Promise.resolve();
+  return getJSON(atlasBase()+'/route-diversions').then(function(d){ state.diversions=(d&&d.routes)||{}; })
+    .catch(function(){ state.diversions={}; });
+}
+function drawDiversionOverlay(){
+  divnLayer.clearLayers();
+  var sel=(state.selected&&state.selected.length)?state.selected:(state.routeId?[{id:state.routeId,name:state.routeName}]:[]);
+  if(!sel.length) return;
+  ensureDiversions().then(function(){
+    if(sel.map(function(r){return r.id;}).join(',')!==selectedLineParam()) return;   // stale
+    divnLayer.clearLayers();
+    var drew=false;
+    sel.forEach(function(r){
+      var dv=state.diversions[r.name]; if(!dv) return;
+      ['outbound','inbound'].forEach(function(dir){
+        ((dv.diversionSegments||{})[dir]||[]).forEach(function(seg){ if(seg.length>1){
+          divnLayer.addLayer(L.polyline(seg.map(function(c){return [c[1],c[0]];}),{color:'#F2A20C',weight:4.5,opacity:.95,dashArray:'10 8',lineCap:'round',interactive:false})); drew=true; } });
+        ((dv.bypassedSegments||{})[dir]||[]).forEach(function(seg){ if(seg.length>1){
+          divnLayer.addLayer(L.polyline(seg.map(function(c){return [c[1],c[0]];}),{color:'#ff5470',weight:5,opacity:.4,dashArray:'1 10',lineCap:'round',interactive:false})); drew=true; } });
+        ((dv.missedStops||{})[dir]||[]).forEach(function(s){
+          divnLayer.addLayer(L.circleMarker([s.lat,s.lng],{radius:6,color:'#ff5470',fillColor:'#190a10',fillOpacity:1,weight:2.5,renderer:ptRenderer})
+            .bindTooltip(esc(s.name)+' — not served (diversion)',{className:'stop-tip'})); drew=true; });
+        ((dv.addedStops||{})[dir]||[]).forEach(function(s){
+          divnLayer.addLayer(L.circleMarker([s.lat,s.lng],{radius:5,color:'#F2A20C',fillColor:'#1a1204',fillOpacity:1,weight:2,renderer:ptRenderer})
+            .bindTooltip(esc(s.name)+' — temporary stop (diversion)',{className:'stop-tip'})); drew=true; });
+      });
+      if(drew) status('Route '+r.name+' is on diversion — dashed path on map','ok');
+    });
+  });
+}
 // Lazy-load the per-route info datasets once (operator/reliability/tenders/fleet).
 function ensureDossierData(){
   var jobs=[];
+  if(!state.diversions) jobs.push(ensureDiversions());
   if(!state.meta)    jobs.push(getJSON(atlasBase()+'/route-meta').then(function(d){ state.meta=(d.routes||d); }));
   if(!state.perf)    jobs.push(getJSON(atlasBase()+'/route-performance').then(function(d){ state.perf=(d.routes||d); }));
   if(!state.tenders) jobs.push(getJSON(atlasBase()+'/tenders').then(function(d){ state.tenders=(d.byRoute||d); }));
@@ -1334,6 +1365,16 @@ function renderDossier(){
     // not as a half-built/broken card. Spec/Contract stay conditional (they're detail extras).
     var dash='var(--faint)';
     var rc='<div id="dossierStatusSlot"></div>';
+    // active diversion (route-diversions dataset) — surfaced first: it changes what the map shows
+    var dvn=(state.diversions||{})[name];
+    if(dvn){
+      var dvMissed=0, dvAdded=0; ['outbound','inbound'].forEach(function(d2){ dvMissed+=((dvn.missedStops||{})[d2]||[]).length; dvAdded+=((dvn.addedStops||{})[d2]||[]).length; });
+      rc+=dsec('Diversion', dvn.until?('until '+String(dvn.until).slice(0,10)):'active');
+      rc+=drow('Status', ((dvn.disruptions||[])[0]||{}).reason||dvn.status, '#F2A20C');
+      rc+=drow('Diverted path', dvn.geometryStatus==='published'?'mapped — dashed on map':'not yet published by TfL', dvn.geometryStatus==='published'?'#F2A20C':null);
+      if(dvMissed) rc+=drow('Stops not served', dvMissed, '#ff5470');
+      if(dvAdded) rc+=drow('Temporary stops', dvAdded, '#F2A20C');
+    }
     rc+=drow('Operator', m.operator||'—', m.operator?null:dash);
     rc+=drow('Type', m.type?(TYPE_FILTER_LBL[m.type]||m.type):'—', m.type?null:dash);
     rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:'—', m.propulsion?PROP_TXT[m.propulsion]:dash);
@@ -2365,7 +2406,7 @@ function paintFresh(){
 // one code path for manual + auto refresh: re-pull the live feeds that are currently on.
 function refresh(){
   var btn=$('refreshBtn'); if(btn){ btn.classList.add('spin'); btn.disabled=true; }
-  if($('tgRoad').checked) toggleRoad(true);          // live road incidents (TfL + National Highways)
+  if($('tgRoad').checked) toggleRoad(true);          // live road incidents (TfL control centre)
   if($('tgBuses').checked) refreshBuses();           // live bus GPS (BODS)
   if(state.routeId) renderDossier();                 // live status / reliability for the selected route
   loadHeaderCounts();                                // refresh the network KPI tallies for any off layers

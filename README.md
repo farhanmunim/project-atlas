@@ -87,6 +87,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load÷capacity at the max-demand hour), `band` (comfortable→crowded), busiest stop/time/day, per-day-type peak |
 | `GET /api/v1/crowding-profile` | Per-route crowding detail (TfL BUSTO) — load-along-route (`V/C` by stop in sequence) + time-of-day curve (`V/C` per timeband, per day type); powers the corridor gradient + dossier charts |
 | `GET /api/v1/localities` | London locality labels for maps — towns & suburbs (`name`, `lat`/`lng`, `kind`); source OpenStreetMap (ODbL). Powers the apps' "Place names" layer |
+| `GET /api/v1/route-diversions` | Active route diversions keyed by route name — `status`/`disruptions` (reason + validity window) from TfL live status, plus the diff of TfL's current Route/Sequence against our frozen canonical baseline: `missedStops`, temporary `addedStops`, and (when TfL has redrawn the line, `geometryStatus:"published"`) the diverted `diversionSegments` + `bypassedSegments` geometry, per direction. `baselineSource` says which baseline the diff used: `store` (our frozen canonical) or `ibus:<version>` (recovered from TfL's dated iBus static drops when the stored baseline had already absorbed an advance redraw). Refreshed daily; episodes carry `detectedAt` |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 The API has three groups, all listed in the `/api/v1` discovery index:
@@ -105,7 +106,7 @@ collapses to a trickle of upstream pulls). No caller key.
 | `GET /api/v1/live/disruptions` | Active bus line disruptions |
 | `GET /api/v1/live/arrivals?stop=<naptan>` *(or `?route=<id>`)* | Live arrival predictions |
 | `GET /api/v1/live/road-disruptions` | Live London road incidents/closures (TfL control centre, ~5 min) |
-| `GET /api/v1/live/national-highways` | Live National Highways unplanned events (incidents/congestion/closures) on the strategic road network, filtered to Greater London — keyless RSS, 2 min cache |
+| `GET /api/v1/live/national-highways` | **Retired** — returns `410 Gone`. National Highways withdrew the keyless RSS this endpoint proxied (its replacement API needs a registered key). Use `road-disruptions` for London road incidents |
 | `GET /api/v1/live/vehicles` *(or `?line=25` / `?route=25`)* | Live bus GPS positions (BODS SIRI-VM) across Greater London — omit the filter for the whole network. One 10 s-cached upstream snapshot shared by all callers (also at the legacy `/api/live/vehicles`) |
 
 Real-time bus **GPS** stays on its own keyed endpoint, edge-cached ~10s:

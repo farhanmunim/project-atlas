@@ -29,7 +29,7 @@ export function deriveType(name) {
   return "regular";
 }
 
-function parseLineStrings(raw) {
+export function parseLineStrings(raw) {
   try {
     const ls = raw.lineStrings && raw.lineStrings[0] ? JSON.parse(raw.lineStrings[0]) : [];
     return Array.isArray(ls[0]?.[0]) ? ls[0] : ls; // → [[lng,lat], …]
@@ -37,7 +37,7 @@ function parseLineStrings(raw) {
 }
 
 /** Ordered, de-duplicated stops for one sequence (same call as the geometry). */
-function extractStops(raw) {
+export function extractStops(raw) {
   const seen = new Set(), out = [];
   (raw.stopPointSequences || []).forEach((sps) =>
     (sps.stopPoint || []).forEach((p) => {
@@ -91,6 +91,38 @@ export async function build(ctx) {
     }
     if (++doneCount % 50 === 0 || doneCount === total) log.info(`  geometry ${doneCount}/${total} routes (ok ${geomOk}, failed ${geomFail})`);
   });
+  // ── diversion freeze ─────────────────────────────────────────────────────
+  // Routes on an active diversion keep their LAST-GOOD canonical stops + geometry:
+  // TfL temporarily rewrites Route/Sequence to the diverted state, and absorbing
+  // that here would silently replace the baseline that build/diversions.js diffs
+  // against (and that the map renders as "the route"). The diverted sequence is
+  // captured separately in route-diversions.json. Self-healing: when the episode
+  // ends the route leaves the flagged set and the next run writes TfL's fresh
+  // sequence — permanent changes land at most one run late.
+  // The flagged set comes from build/diversions.js (same run, runs first); if it
+  // didn't run (--only=routes) fall back to the last-good diversions file.
+  let frozen = ctx.divertedRoutes;
+  if (!frozen) {
+    const dv = await sink.readDataset("route-diversions");
+    frozen = new Set([...Object.values(dv?.routes || {}).map((e) => e.id), ...(dv?.upcomingFreeze || [])].filter(Boolean));
+  }
+  if (frozen.size) {
+    const prevStops = await sink.readDataset("route-stops");
+    const prevGeo = await sink.readDataset("routes-overview", { ext: "geojson" });
+    const prevFeats = {};
+    for (const f of prevGeo?.features || []) (prevFeats[f.properties.routeId] ||= []).push(f);
+    let keptStops = 0, keptGeom = 0;
+    for (const id of frozen) {
+      if (prevStops?.routes?.[id]) { routeStops[id] = prevStops.routes[id]; keptStops++; }
+      if (prevFeats[id]?.length) {
+        for (let i = features.length - 1; i >= 0; i--) if (features[i].properties.routeId === id) features.splice(i, 1);
+        features.push(...prevFeats[id]);
+        keptGeom++;
+      }
+    }
+    log.info(`  diversion freeze: ${frozen.size} routes flagged — kept last-good stops for ${keptStops}, geometry for ${keptGeom}`);
+  }
+
   notAllNull(features, "geometry", "overview features");
   // ~676 routes × 2 directions → ~1,350 features on a full run; floor well below
   // that catches a partial upstream outage that returned a near-empty FeatureCollection.

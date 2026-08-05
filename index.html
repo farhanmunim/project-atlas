@@ -1109,7 +1109,7 @@ function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)
    warehouse lands, only this loader changes. Falls back silently to live TfL +
    sample if the store can't be read (e.g. opened as a file:// page).
    =========================================================================== */
-const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null, reliabilityLatest:null };
+const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null, reliabilityLatest:null, diversions:null };
 async function loadStore(){
   if(!CONFIG.preferStore) return false;
   // Read our own public API first (/api/v1/* — the versioned, CORS-open surface served
@@ -1146,6 +1146,8 @@ async function loadStore(){
     if(localities && Array.isArray(localities.localities)) store.localities = localities.localities;   // [{name,lat,lng,kind:town|suburb}] — the place-name label layer
     const crowding = await fetchData("crowding","crowding.json");
     if(crowding && crowding.routes){ store.crowding = crowding.routes; store.crowdingMeta = { year:crowding.year, bands:crowding.bands, source:crowding.source }; }   // BUSTO: { [routeName]: { peakVC, band, load, capacity, stopname, time, dayType, byDay } }
+    const diversions = await fetchData("route-diversions","route-diversions.json");
+    if(diversions && diversions.routes) store.diversions = diversions.routes;   // { [routeName]: { status, disruptions, until, missedStops, addedStops, diversionSegments, bypassedSegments, geometryStatus } }
     // Our own estimated reliability — fire-and-forget (history API / Supabase, not a static file):
     // never block first paint on it, and repaint the dossier/table once it lands.
     loadReliabilityLatest().then(()=>{ if(selected.length) renderContext(); if(canvasView==="table") renderTable(); });
@@ -1401,33 +1403,141 @@ function matchStopName(parsed, stops){
     let c=0; pt.forEach(w=>st.has(w)&&c++); if(c>=2 && c>=Math.min(pt.size,2)) return s; }
   return null;
 }
-// overlay the affected on-route section (dashed alert) + not-served stop markers. TfL
-// gives no alternate-route geometry, so we honestly mark what we know: the stops being
-// skipped and the corridor they sit on — never a fabricated diversion path.
+// ── DIVERSION OVERLAY — three tiers, best available first ────────────────────
+// 1. Store (route-diversions.json, built daily): TfL's diverted Route/Sequence
+//    diffed against our frozen canonical baseline → the REAL diverted path
+//    (dashed amber), the bypassed normal-route section (dotted red), missed-stop
+//    and temporary-stop markers. Exact, no inference.
+// 2. Live text-parse fallback (r._disrupt): TfL prose names the skipped stops;
+//    we mark them and the corridor they sit on — never a fabricated path.
+// 3. Live-GPS estimate: when a flagged route's diverted geometry is not yet
+//    published by TfL, off-line pings from the live-buses layer accumulate into
+//    per-vehicle traces drawn as a dashed cyan ESTIMATED path.
+const divOf = name => (store.diversions && store.diversions[name]) || null;
+const divStopsAll = (dv,key) => { const m=new Map(); ["outbound","inbound"].forEach(d=>((dv&&dv[key]&&dv[key][d])||[]).forEach(s=>m.set(s.id,s))); return [...m.values()]; };
+let divDrawn={path:false,bypass:false,missed:false,added:false,est:false};   // what the overlay actually shows → drives the legend
 function drawDiversions(list){
+  divDrawn={path:false,bypass:false,missed:false,added:false,est:false};
+  if(!mapOK||!divLayer) return;
+  divLayer.clearLayers();
   if(!showRoutes) return;
+  const dirKey = direction==="outbound" ? "outbound" : "inbound";
   list.forEach(r=>{
-    const ds=(r._disrupt||[]).filter(d=>d.isDiversion||d.notServing||d.skippedStops.length);
-    if(!ds.length) return;
-    const stops=r._seq.stops||[], coords=r._seq.coords||[], matched=[];
-    ds.forEach(d=>d.skippedStops.forEach(nm=>{ const s=matchStopName(nm,stops); if(s&&!matched.includes(s)) matched.push(s); }));
-    if(matched.length && coords.length>1){
-      const idxOf=s=>{ let bi=0,bd=Infinity; for(let k=0;k<coords.length;k++){ const dd=(coords[k][0]-s.lat)**2+(coords[k][1]-s.lng)**2; if(dd<bd){bd=dd;bi=k;} } return bi; };
-      const idxs=matched.map(idxOf).sort((a,b)=>a-b), seg=coords.slice(idxs[0],idxs[idxs.length-1]+1);
-      if(seg.length>1) divLayer.addLayer(L.polyline(seg,{color:"#ff5470",weight:7,opacity:.45,dashArray:"1 10",lineCap:"round",interactive:false}));
+    const dv=divOf(r.name);
+    if(dv){
+      // real diverted path (current direction; fall back to the other so single-direction data still shows)
+      const segs=(dv.diversionSegments&&(dv.diversionSegments[dirKey]||dv.diversionSegments[dirKey==="outbound"?"inbound":"outbound"]))||[];
+      segs.forEach(seg=>{ if(seg.length>1){ divLayer.addLayer(L.polyline(seg.map(c=>[c[1],c[0]]),{color:"#f5a524",weight:5,opacity:.95,dashArray:"10 8",lineCap:"round",interactive:false})); divDrawn.path=true; } });
+      const byp=(dv.bypassedSegments&&dv.bypassedSegments[dirKey])||[];
+      byp.forEach(seg=>{ if(seg.length>1){ divLayer.addLayer(L.polyline(seg.map(c=>[c[1],c[0]]),{color:"#ff5470",weight:6,opacity:.4,dashArray:"1 10",lineCap:"round",interactive:false})); divDrawn.bypass=true; } });
+      divStopsAll(dv,"missedStops").forEach(s=>{ divLayer.addLayer(
+        L.circleMarker([s.lat,s.lng],{radius:6,color:"#ff5470",fillColor:"#190a10",fillOpacity:1,weight:2.5})
+          .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div><div class="rh-sub" style="color:var(--alert)">Not served — route on diversion</div></div>`)); divDrawn.missed=true; });
+      divStopsAll(dv,"addedStops").forEach(s=>{ divLayer.addLayer(
+        L.circleMarker([s.lat,s.lng],{radius:5,color:"#f5a524",fillColor:"#1a1204",fillOpacity:1,weight:2})
+          .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div><div class="rh-sub" style="color:var(--amber)">Temporary stop — served during diversion</div></div>`)); divDrawn.added=true; });
     }
-    matched.forEach(s=> divLayer.addLayer(
-      L.circleMarker([s.lat,s.lng],{radius:6,color:"#ff5470",fillColor:"#190a10",fillOpacity:1,weight:2.5})
-        .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div><div class="rh-sub" style="color:var(--alert)">Not served — route on diversion</div></div>`)));
+    // live text-parse fallback / supplement — corridor only when no real path is drawn,
+    // markers only for stops the store diff didn't already place.
+    const ds=(r._disrupt||[]).filter(d=>d.isDiversion||d.notServing||d.skippedStops.length);
+    if(ds.length){
+      const stops=r._seq.stops||[], coords=r._seq.coords||[], matched=[];
+      ds.forEach(d=>d.skippedStops.forEach(nm=>{ const s=matchStopName(nm,stops); if(s&&!matched.includes(s)) matched.push(s); }));
+      const placed=new Set(divStopsAll(dv,"missedStops").map(s=>s.id));
+      if(!divDrawn.path && matched.length && coords.length>1){
+        const idxOf=s=>{ let bi=0,bd=Infinity; for(let k=0;k<coords.length;k++){ const dd=(coords[k][0]-s.lat)**2+(coords[k][1]-s.lng)**2; if(dd<bd){bd=dd;bi=k;} } return bi; };
+        const idxs=matched.map(idxOf).sort((a,b)=>a-b), seg=coords.slice(idxs[0],idxs[idxs.length-1]+1);
+        if(seg.length>1){ divLayer.addLayer(L.polyline(seg,{color:"#ff5470",weight:7,opacity:.45,dashArray:"1 10",lineCap:"round",interactive:false})); divDrawn.bypass=true; }
+      }
+      matched.filter(s=>!placed.has(s.id)).forEach(s=>{ divLayer.addLayer(
+        L.circleMarker([s.lat,s.lng],{radius:6,color:"#ff5470",fillColor:"#190a10",fillOpacity:1,weight:2.5})
+          .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div><div class="rh-sub" style="color:var(--alert)">Not served — route on diversion</div></div>`)); divDrawn.missed=true; });
+    }
+    drawDivEstimates(r);
+  });
+}
+// tier-3 estimator: per-vehicle traces of live buses running >75 m off every known line
+// while their route is flagged diverted with geometry TfL hasn't published yet. Session-
+// scoped, clearly labelled an estimate, replaced automatically when the real path lands.
+//
+// Noise control — a trace is only ever DRAWN if it is a genuine detour, not a dead run:
+//   • pings within 300 m of any garage are never captured (pull-in/pull-out noise);
+//   • pings >2 km off the line are never captured (positioning journeys);
+//   • a trace must be ANCHORED — its first and last captured points sit within 200 m of
+//     the route line, i.e. the bus left the corridor and REJOINED it. A garage/depot run
+//     leaves and never comes back, so it can never anchor; a bus mid-diversion anchors
+//     only once it rejoins, so half-journeys aren't drawn either.
+const divTraces=new Map();   // reg → { route, pts:[[lat,lng],…], t }
+let divTraceKey="";
+function nearAnyGarage(lat,lng){
+  const gs=store.garages||[];
+  for(const g of gs){ if(Number.isFinite(g.lat)&&Number.isFinite(g.lng)&&haversine([lat,lng],[g.lat,g.lng])<0.3) return true; }
+  return false;
+}
+function captureDivTraces(){
+  const key=selected.map(r=>r.name).join(",");
+  if(key!==divTraceKey){ divTraces.clear(); divTraceKey=key; }
+  let grew=false;
+  selected.forEach(r=>{
+    const dv=divOf(r.name); if(!dv || dv.geometryStatus==="published") return;
+    liveVehicles.forEach(v=>{
+      if(String(v.publishedLine)!==String(r.name) || !Number.isFinite(v.lat) || !Number.isFinite(v.lng)) return;
+      if(!(v._off>0.075 && v._off<2)) return;      // off the known line (>75 m) but local (<2 km)
+      if(nearAnyGarage(v.lat,v.lng)) return;       // pull-in/pull-out noise, never diversion evidence
+      let tr=divTraces.get(v.reg); if(!tr){ tr={route:r.name,pts:[],t:0}; divTraces.set(v.reg,tr); }
+      const last=tr.pts[tr.pts.length-1];
+      if(!last || haversine(last,[v.lat,v.lng])>0.025){ tr.pts.push([v.lat,v.lng]); tr.t=Date.now(); if(tr.pts.length>120) tr.pts.shift(); grew=true; }
+    });
+  });
+  for(const [reg,tr] of divTraces) if(Date.now()-tr.t>15*60000) divTraces.delete(reg);   // stale traces age out
+  return grew;
+}
+function drawDivEstimates(r){
+  const line=(r._seq&&r._seq.coords)||[]; if(line.length<2) return;
+  const anchored=[...divTraces.values()].filter(tr=>{
+    if(tr.route!==r.name || tr.pts.length<3) return false;
+    const a=routeProximity(line,tr.pts[0][0],tr.pts[0][1]).offKm;
+    const b=routeProximity(line,tr.pts[tr.pts.length-1][0],tr.pts[tr.pts.length-1][1]).offKm;
+    return a!=null && b!=null && a<0.2 && b<0.2;   // departs from AND rejoins the route
+  }).sort((x,y)=>y.t-x.t).slice(0,6);              // newest few — overlapping traces reinforce, dozens clutter
+  anchored.forEach(tr=>{
+    divLayer.addLayer(L.polyline(tr.pts,{color:"#37c5c5",weight:3.5,opacity:.85,dashArray:"6 7",lineCap:"round",interactive:false}));
+    divDrawn.est=true;
   });
 }
 // "Diversion information" panel for the right rail — always visible (not collapsed) when
-// a selected route has an active diversion/disruption, mirroring the reference app.
+// a selected route has an active diversion/disruption. Two sources merged: the store's
+// route-diversions entry (daily diff of TfL's diverted sequence vs our baseline —
+// structural missed/temporary stops + whether the diverted path is mapped) and the live
+// TfL disruption prose (fresh detail, via/until text).
 function diversionPanelHtml(r){
+  const dv=divOf(r&&r.name);
   const ds=((r&&r._disrupt)||[]).filter(d=>d.isDiversion||d.notServing||d.skippedStops.length);
-  if(!ds.length) return "";
+  if(!dv && !ds.length) return "";
   const stops=(r._seq&&r._seq.stops)||[];
   const fmtD=fmtDate;   // DD/MM/YYYY app-wide
+  const stopLi=(nm,ok,col)=>`<li><span class="tdot" style="background:${col};flex:none"></span><span class="nm" title="${esc(nm)}">${esc(nm)}</span><span class="sdist" style="color:${ok?"var(--paper-3)":"var(--paper-4)"}">${ok?"on map":"—"}</span></li>`;
+  let storeBlock="";
+  const missedAll = dv?divStopsAll(dv,"missedStops"):[];
+  if(dv){
+    const added = divStopsAll(dv,"addedStops");
+    const mapped = dv.geometryStatus==="published";
+    const est = divDrawn.est;
+    storeBlock=`<div class="dvn">
+      <div class="dvn-meta">`+
+        kv("Diverted path", mapped?`<span style="color:var(--amber)">mapped — dashed on map</span>`
+          : est?`<span style="color:var(--cyan)">estimated from live GPS — dashed on map</span>`
+          : `<span style="color:var(--paper-3)">not yet published by TfL</span>`)+
+        (dv.since?kv("Since",fmtD(dv.since)):"")+
+        (dv.until?kv("Until",fmtD(dv.until)):"")+
+      `</div>`+
+      (missedAll.length?`<div style="margin-top:8px"><div class="metric-h" style="margin-bottom:4px">Stops not served <span class="mono">${missedAll.length}</span></div>
+        <ul class="stoplist">${missedAll.map(s=>stopLi(s.name,true,"#ff5470")).join("")}</ul></div>`:"")+
+      (added.length?`<div style="margin-top:8px"><div class="metric-h" style="margin-bottom:4px">Temporary stops <span class="mono">${added.length}</span></div>
+        <ul class="stoplist">${added.map(s=>stopLi(s.name,true,"#f5a524")).join("")}</ul></div>`:"")+
+    `</div>`;
+  }
+  // live prose — skip its parsed stop list when the store already lists the stops structurally
   const body=ds.map(d=>
     `<div class="dvn">
       <p class="dvn-desc">${esc(d.description)}</p>
@@ -1436,11 +1546,11 @@ function diversionPanelHtml(r){
         (d.until?kv("Until",esc(d.until)):"")+
         (d.lastUpdate?kv("Updated",fmtD(d.lastUpdate)):"")+
       `</div>`+
-      (d.skippedStops.length?`<div style="margin-top:8px"><div class="metric-h" style="margin-bottom:4px">Stops not served <span class="mono">${d.skippedStops.length}</span></div>
-        <ul class="stoplist">${d.skippedStops.map(nm=>{ const s=matchStopName(nm,stops);
-          return `<li><span class="tdot" style="background:#ff5470;flex:none"></span><span class="nm" title="${esc(nm)}">${esc(nm)}</span><span class="sdist" style="color:${s?"var(--paper-3)":"var(--paper-4)"}">${s?"on map":"—"}</span></li>`; }).join("")}</ul></div>`:"")+
+      (d.skippedStops.length && !missedAll.length?`<div style="margin-top:8px"><div class="metric-h" style="margin-bottom:4px">Stops not served <span class="mono">${d.skippedStops.length}</span></div>
+        <ul class="stoplist">${d.skippedStops.map(nm=>stopLi(nm,!!matchStopName(nm,stops),"#ff5470")).join("")}</ul></div>`:"")+
     `</div>`).join("");
-  return `<section class="dvn-panel"><div class="dvn-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>${ds.length===1?"Diversion in effect":`${ds.length} disruptions in effect`}</div>${body}</section>`;
+  const n=Math.max(ds.length, dv?1:0);
+  return `<section class="dvn-panel"><div class="dvn-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>${n===1?"Diversion in effect":`${n} disruptions in effect`}</div>${storeBlock}${body}</section>`;
 }
 function updateLegend(){
   const el=document.getElementById("mapLegend");
@@ -1484,6 +1594,15 @@ function updateLegend(){
     `<div class="lr">${lcI("#ff5470")}Road incident · collision</div>`,
     `<div class="lr">${lcI("#f5a524")}Road incident · delay / breakdown</div>`,
     `<div class="lr">${lcI("#37c5c5")}Road incident · works / event</div>`); }
+  // diversion overlay — only the elements actually drawn for the current selection
+  if(divDrawn.path||divDrawn.bypass||divDrawn.missed||divDrawn.added||divDrawn.est){
+    const dash=c=>`<span class="lc" style="background:repeating-linear-gradient(90deg,${c} 0 5px,transparent 5px 9px)"></span>`;
+    if(divDrawn.path)   sym.push(`<div class="lr">${dash("#f5a524")}Diversion — current path</div>`);
+    if(divDrawn.est)    sym.push(`<div class="lr">${dash("#37c5c5")}Diversion — estimated (live GPS)</div>`);
+    if(divDrawn.bypass) sym.push(`<div class="lr">${dash("#ff5470")}Normal route — not served</div>`);
+    if(divDrawn.missed) sym.push(`<div class="lr"><span class="lc lc-dot" style="background:#190a10;border:2px solid #ff5470"></span>Stop not served</div>`);
+    if(divDrawn.added)  sym.push(`<div class="lr"><span class="lc lc-dot" style="background:#1a1204;border:2px solid #f5a524"></span>Temporary stop</div>`);
+  }
   if(sym.length) parts.push("<div class='lh'>Map key</div>"+sym.join(""));
   if(!parts.length){ el.classList.remove("show"); el.innerHTML=""; return; }
   el.innerHTML=parts.join(""); el.classList.add("show");
@@ -2007,8 +2126,11 @@ function routesTableHTML(){
     const tr = lt&&lt.tranche!=null ? lt.tranche : null;
     const cw = crowdingOf(r.name);
     const cwCell = cw ? `<span class="tdot" style="background:${CROWD_COL[cw.band]}"></span>${Math.round(cw.peakVC*100)}<span class="u">%</span>` : "—";
+    const dvE=divOf(r.name);
+    const dvCell = dvE ? `<span class="tdot" style="background:var(--amber)"></span>${dvE.until?"until "+fmtMonth(dvE.until):"active"}` : "—";
     return `<tr data-id="${esc(r.id)}"><td class="rno">${esc(r.name)}</td>
       <td><span class="tdot" style="background:${d.color}"></span>${d.label}</td>
+      <td title="${dvE?esc((dvE.disruptions[0]||{}).reason||"").slice(0,180):"no active diversion"}">${dvCell}</td>
       <td>${esc(m.op?shortOp(m.op):"—")}</td><td>${esc(m.garage||"—")}</td>
       <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
@@ -2021,8 +2143,8 @@ function routesTableHTML(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="16" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="17" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2871,9 +2993,12 @@ function exportCurrent(){
     fname=`atlas_catchment_${pin.lat.toFixed(4)}_${pin.lng.toFixed(4)}_r${radius}m_${todayStamp()}.csv`;
   }else if(selected.length){
     // current SELECTION → each selected route's stops
-    rows=[["Route","Type","Operator","Propulsion","Garage","PVR","Seq","Stop ID","Stop name","Lat","Lng","Lines"]];
+    rows=[["Route","Type","Operator","Propulsion","Garage","PVR","Seq","Stop ID","Stop name","Lat","Lng","Lines","Diversion"]];
     selected.forEach(r=>{ const seq=r._seq||{stops:[]}; const m=metaOf(r); const ty=TYPE_DEFS[typeOf(r)].label;
-      seq.stops.forEach((s,i)=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",i+1,s.id,s.name,s.lat,s.lng,(s.lines||[]).join(" ")])); });
+      const dvE=divOf(r.name); const missedIds=new Set(divStopsAll(dvE,"missedStops").map(s=>s.id)); const addedIds=new Set(divStopsAll(dvE,"addedStops").map(s=>s.id));
+      seq.stops.forEach((s,i)=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",i+1,s.id,s.name,s.lat,s.lng,(s.lines||[]).join(" "),missedIds.has(s.id)?"not served":addedIds.has(s.id)?"temporary":""]));
+      // missed stops are absent from the current (diverted) sequence — append them so the export carries the full picture
+      divStopsAll(dvE,"missedStops").forEach(s=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"","",s.id,s.name,s.lat,s.lng,"","not served (diversion)"])); });
     fname= selected.length===1 ? `atlas_route-${selected[0].name}_${direction}_${todayStamp()}.csv` : `atlas_routes-${selected.length}_${direction}_${todayStamp()}.csv`;
     // also export the nearby bus collisions the dossier's Risk & accidents readout shows
     // (single route) — same geometry + alert-proximity, incl. the decoded STATS19 context.
@@ -2894,10 +3019,10 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r);
-        return [r.name, TYPE_DEFS[typeOf(r)].label, m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name);
+        return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
           (er&&er.ewt_minutes!=null)?(+er.ewt_minutes).toFixed(2):"", (er&&er.otd_percent!=null)?Math.round(+er.otd_percent):"", (er&&er.sample_count!=null)?er.sample_count:"", (er&&er.day)?er.day:"",
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
@@ -3184,6 +3309,9 @@ async function refreshLive(){
       else if(h) v._speed=h.speed;
       if(isNew) vehHistory[v.reg]={lat:v.lat,lng:v.lng,t:now,speed:v._speed!=null?v._speed:(h&&h.speed)}; });
     if(isNew){ lastCap=liveAt; const present=new Set(liveVehicles.map(v=>v.reg)); for(const k in vehHistory) if(!present.has(k)) delete vehHistory[k]; }
+    // diverted route without published geometry → accrue off-line pings into the
+    // estimated-path traces and redraw the diversion overlay when they grow
+    if(captureDivTraces()) drawDiversions(selected.filter(x=>x._seq&&x._seq.coords.length));
     drawLiveVehicles(); renderContext(); renderBadge();
     if(initial && !liveVehicles.length) showMapToast("No live buses reporting right now");
   }catch(e){ if(token===liveToken){ liveFailed=true; renderBadge(); if(initial) showMapToast("Live buses unavailable"); } console.warn("[atlas] live positions failed:",e.message); }

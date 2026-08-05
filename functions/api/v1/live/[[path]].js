@@ -11,37 +11,6 @@
  */
 
 const TFL = "https://api.tfl.gov.uk";
-// National Highways unplanned-events RSS (open, keyless) — major-road incidents.
-const NH_FEED = "https://m.highwaysengland.co.uk/feeds/rss/UnplannedEvents.xml";
-const LONDON_BBOX = [-0.55, 51.25, 0.30, 51.71]; // [minLng, minLat, maxLng, maxLat]
-
-// Lightweight RSS parse (no DOM in Workers) → London-scoped incident records.
-function parseNationalHighways(xml) {
-  const decode = (s) => String(s || "")
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ").trim();
-  const tag = (block, name) => { const m = block.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, "i")); return m ? decode(m[1]) : null; };
-  const out = [];
-  const items = xml.split(/<item>/i).slice(1);
-  for (const it of items) {
-    const lat = parseFloat(tag(it, "latitude")), lng = parseFloat(tag(it, "longitude"));
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    if (lng < LONDON_BBOX[0] || lng > LONDON_BBOX[2] || lat < LONDON_BBOX[1] || lat > LONDON_BBOX[3]) continue; // London only
-    const cats = [...it.matchAll(/<category[^>]*>([\s\S]*?)<\/category>/gi)].map((m) => decode(m[1]));
-    out.push({
-      id: tag(it, "reference") || tag(it, "guid"),
-      lat, lng,
-      category: cats[0] || "Incident",
-      severity: cats[1] || "",
-      road: tag(it, "road") || "", region: tag(it, "region") || "", county: tag(it, "county") || "",
-      title: tag(it, "title") || "", location: tag(it, "title") || "",
-      comments: tag(it, "description") || "",
-      since: tag(it, "pubDate") || null,
-    });
-  }
-  return out;
-}
 
 // BODS SIRI-VM live bus GPS (keyed). The same whole-London snapshot the
 // /api/live/vehicles Function serves — we reuse its exact edge-cache key so the
@@ -105,9 +74,9 @@ const ENDPOINTS = {
     desc: "Live London road incidents / closures from TfL's traffic control centre (updated ~5 min) — congestion + collisions affecting the road network.",
   },
   "national-highways": {
-    ttl: 120,
-    custom: true,
-    desc: "Live National Highways unplanned events (incidents / congestion / closures) on the strategic road network, filtered to Greater London. Source: National Highways open RSS, keyless.",
+    ttl: 86400,
+    retired: true,
+    desc: "RETIRED — National Highways withdrew the keyless RSS feed this endpoint proxied (every legacy URL now 404s; the replacement API requires a registered key). Returns 410 Gone. Use /api/v1/live/road-disruptions for London road incidents.",
   },
   "vehicles": {
     ttl: 10,
@@ -134,12 +103,18 @@ export async function onRequest(context) {
       group: "live", version: "v1",
       description: "Live bus + road feeds proxied from the TfL Unified API, edge-cached. Read-only, CORS-open.",
       livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — separate keyed endpoint." },
-      endpoints: Object.entries(ENDPOINTS).map(([k, v]) => ({ name: k, path: `/api/v1/live/${k}`, url: `${origin}/api/v1/live/${k}`, description: v.desc })),
+      endpoints: Object.entries(ENDPOINTS).map(([k, v]) => ({ name: k, path: `/api/v1/live/${k}`, url: `${origin}/api/v1/live/${k}`, description: v.desc, ...(v.retired ? { retired: true } : {}) })),
     }, { ttl: 300 });
   }
 
   const ep = ENDPOINTS[name];
   if (!ep) return json({ error: `unknown live feed: ${name}`, available: Object.keys(ENDPOINTS) }, { status: 404 });
+
+  if (ep.retired) return json({
+    error: `live feed retired: ${name}`,
+    note: "National Highways withdrew the keyless RSS this endpoint proxied; its replacement API requires a registered key.",
+    alternative: "/api/v1/live/road-disruptions",
+  }, { status: 410, ttl: ep.ttl });
 
   // Live bus GPS (BODS SIRI-VM) — shares the /api/live/vehicles cached snapshot.
   if (ep.custom && name === "vehicles") {
@@ -159,17 +134,6 @@ export async function onRequest(context) {
         return json({ feed: name, live: true, cached: true, capturedAt: new Date(rec.at).toISOString(), count: data.length, data }, { ttl: ep.ttl }); }
       return json({ error: "live vehicles unavailable" }, { status: 502, ttl: ep.ttl });
     }
-  }
-
-  // National Highways: fetch + parse the open RSS (not a TfL passthrough).
-  if (ep.custom && name === "national-highways") {
-    let r;
-    // NB: this upstream 500s if sent an Accept header — send only a User-Agent.
-    try { r = await fetch(NH_FEED, { headers: { "User-Agent": "Atlas/1.0" }, cf: { cacheTtl: ep.ttl, cacheEverything: true } }); }
-    catch (e) { return json({ error: "national highways feed unreachable" }, { status: 502, ttl: ep.ttl }); }
-    if (!r.ok) return json({ error: `national highways feed failed (${r.status})` }, { status: 502, ttl: ep.ttl });
-    const data = parseNationalHighways(await r.text());
-    return json({ feed: name, capturedAt: new Date().toISOString(), data }, { ttl: ep.ttl });
   }
 
   const sp = new URL(request.url).searchParams;

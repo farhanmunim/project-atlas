@@ -61,6 +61,7 @@ The API has **three groups**, all listed in the discovery index:
 | `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load ÷ capacity at the max-demand hour), `band` (comfortable → crowded), busiest stop/time/day + per-day-type peaks |
 | `GET /api/v1/crowding-profile` | Per-route crowding detail — `loadProfile` (V/C by stop in sequence along the busiest direction) + `timeOfDay` (V/C per timeband per day type) |
 | `GET /api/v1/localities` | London locality labels for maps — `{ localities: [{ name, lat, lng, kind: "town" \| "suburb" }] }` (source: OpenStreetMap, ODbL) |
+| `GET /api/v1/route-diversions` | Active route diversions — `{ count, upcomingFreeze:[ids], routes: { [name]: { id, status, severity, disruptions:[{reason,category,since,until}], since, until, detectedAt, geometryStatus:"published"\|"unpublished", baselineSource:"store"\|"ibus:<ver>", missedStops:{outbound,inbound}, addedStops:{…}, diversionSegments:{outbound:[[[lng,lat],…]],…}, bypassedSegments:{…} } } }`. Built daily by diffing TfL's current Route/Sequence against the frozen canonical baseline (or, when that was polluted by an advance redraw, a dated pre-diversion baseline recovered from TfL's iBus static drops) |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 ### Response shape examples
@@ -92,7 +93,7 @@ The API has **three groups**, all listed in the discovery index:
 
 ## Live feeds — `/api/v1/live/<feed>`
 
-TfL / National Highways / BODS feeds proxied through our API — CORS-open, keyless,
+TfL / BODS feeds proxied through our API — CORS-open, keyless,
 edge-cached so a flood of callers collapses to a trickle of upstream pulls. Every
 response wraps the payload as `{ feed, capturedAt, data }`.
 
@@ -103,7 +104,7 @@ response wraps the payload as `{ feed, capturedAt, data }`.
 | `GET /api/v1/live/disruptions` | 60 s | Active bus line disruptions (description + affected stops) |
 | `GET /api/v1/live/arrivals?stop=<naptanId>` *(or `?route=<id>`)* | 30 s | Live arrival predictions — one of `stop`/`route` is required |
 | `GET /api/v1/live/road-disruptions` | 60 s | Live London road incidents / closures from TfL's traffic control centre |
-| `GET /api/v1/live/national-highways` | 2 min | National Highways unplanned events on the strategic road network, filtered to Greater London |
+| `GET /api/v1/live/national-highways` | — | **Retired** — returns `410 Gone` (National Highways withdrew the keyless RSS it proxied). Use `road-disruptions` for London road incidents |
 | `GET /api/v1/live/vehicles` *(or `?line=25` / `?line=25,86`)* | 10 s | Live bus GPS (BODS SIRI-VM) across Greater London — `{ reg, line, publishedLine, direction, lat, lng, bearing, destination, origin, operatorRef, recordedAt }` per vehicle. All callers share one 10 s-cached upstream snapshot |
 
 Live bus GPS is also available at the legacy path `GET /api/live/vehicles?line=<route>`

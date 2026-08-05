@@ -11,6 +11,14 @@ network analysis · live operations · fleet · tenders · accidents). The old
 Goal: replace london-buses.farhan.app — **simple to navigate, rich on drill-down +
 analytics**, robust, with all data flowing through our own warehouse.
 
+> **Atlas is primarily the API** (`/api/v1` — README + API.md are the public
+> reference). The `/` and `/v2` pages are kept **deliberately** as the visual
+> verification layer: the headless validation scripts (`verify-diversions.mjs`,
+> `verify-render.mjs`, `route-check.mjs`) drive them to prove the API's data
+> renders correctly, and a human can eyeball any dataset on the map in seconds.
+> Do NOT remove the front-end pages — they are part of the validation story
+> (decision recorded 2026-08-05).
+
 > **Modular by construction.** Even though it's one tool, keep processes/functions
 > modular (per-concern render helpers, the `dataSource` seam, pipeline `build/<name>.js`
 > per dataset) so any layer/analysis can be lifted into a standalone tool later.
@@ -312,7 +320,23 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   + the dossier's **load-along-route** and **time-of-day** mini-charts in both apps), and
   **localities.json** (`pipeline/build/localities.js` + `sources/osm-places.js` — OSM
   place=town|suburb nodes for the London bbox via Overpass, ODbL; served at
-  `/api/v1/localities`; powers the **Place names** map layer in `/` and `/v2`).
+  `/api/v1/localities`; powers the **Place names** map layer in `/` and `/v2`), and
+  **route-diversions.json** (`pipeline/build/diversions.js` — active diversion episodes:
+  detection from TfL live status via `lib/tfl-status.js` (TfL's `validityPeriods.isNow` is
+  unreliable — date windows are checked directly), then TfL's current Route/Sequence diffed
+  against the store's canonical baseline → per-direction `missedStops`/`addedStops` and,
+  when TfL has redrawn the line (`geometryStatus:"published"`), the real `diversionSegments`
+  + `bypassedSegments` geometry. Runs BEFORE the routes builder and hands it
+  `ctx.divertedRoutes` — the **baseline freeze**: flagged routes keep last-good
+  stops/geometry so a temporary diversion never silently overwrites the canonical route
+  (self-heals when the episode ends). Served at `/api/v1/route-diversions`; renders in `/`
+  as the dashed-amber diverted path + dotted-red bypassed section + missed/temporary stop
+  markers (`drawDiversions`, three tiers: store diff → live text-parse fallback → live-GPS
+  estimated traces for unpublished geometry), the always-visible dossier diversion panel,
+  the table's **Diverted** column + CSV fields, and in `/v2` as the always-on `divnLayer`
+  overlay + a Route-card Diversion section; mirrored to warehouse `route_diversions`
+  (migration `0029`, one row per episode keyed `route_id, detected_at` — never deleted, so
+  the table accrues diversion history).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
@@ -357,7 +381,8 @@ can never block the Cloudflare site.
   own public `/api/v1` (the static store — decoupled from this pipeline's TfL fetchers,
   always the already-validated data) and upserts them into the warehouse so the DB holds
   everything the app does (bar live feeds): `route_stops`, `route_geometry`, `bridges`,
-  `crowding_profile` (per BUSTO year), `localities` (migrations `0023`–`0027`). These
+  `crowding_profile` (per BUSTO year), `localities`, `route_diversions` (per episode,
+  append-only — doubles as diversion history) (migrations `0023`–`0027`, `0029`). These
   aren't given new `/api/v1/history` endpoints — the same data is already served by the
   current group (`/api/v1/route-stops` etc.); the mirror is a storage sink for
   completeness + future DB-backed reads. Reference data → latest-upsert (with `fetched_at`),
@@ -905,7 +930,12 @@ PostGIS · Grafana · Prometheus. (See `data_sources.xlsx` for links.)
 - **londonbuses.co.uk** ⚫ — general reference.
 
 > **Atlas wiring today** (where these feed the live app): TfL Unified API (Line/
-> Route/StopPoint/Status/Disruption/Arrivals) · BODS SIRI-VM (live GPS, via the
+> Route/StopPoint/Status/Disruption/Arrivals) · **TfL iBus static drops**
+> (`ibus.data.tfl.gov.uk` — a public S3 bucket of dated fortnightly schedule
+> releases; `sources/ibus.js` reads `Route_Geometry_<ver>.zip` as the dated,
+> immutable pre-diversion baseline archive for build/diversions.js recovery;
+> `pipeline/check-sources.mjs` is the reproducible health sweep of every source
+> here) · BODS SIRI-VM (live GPS, via the
 > Pages Function) · postcodes.io + OSM tiles · DVLA VES (fleet enrichment) ·
 > londonbusroutes.net (garages) · TfL tender pages + LBSL programme (Mandate). The
 > rest of the catalogue is approved for future layers — add via the seam + a

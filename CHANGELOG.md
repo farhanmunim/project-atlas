@@ -5,6 +5,136 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-05 — iBus geometry source, degraded-feed gates, full source audit
+
+Farhan's hunch confirmed: ibus.data.tfl.gov.uk is a public S3 bucket of dated
+fortnightly schedule releases, each shipping Route_Geometry_<ver>.zip — one
+XML per route of ordered lat/lng per direction, TfL's own AVL path, keyless,
+back to mid-2025. Verified against the W12 story: the 20260703 drop passes
+Selborne Walk at 7 m (true baseline, 310 pts), 20260731 carries the diverted
+line 207 m away and passes every temporary stop at 3–11 m. New
+`sources/ibus.js` (S3 listing + dependency-free zip reader + parser, all
+unit-tested) and an automatic recovery tier in build/diversions.js: when a
+flagged route shows missed stops but no geometry diff (a polluted baseline),
+it walks the dated iBus versions and diffs against the first one whose line
+passes all the missed stops — proven end-to-end by deliberately re-polluting
+W12's baseline and watching it recover as `baselineSource: ibus:20260703`
+with the correct segments. Zero downloads unless recovery is needed.
+The audit also caught a live TfL failure mode: the bulk /Line/Mode/bus/Status
+intermittently returns an all-Good-Service snapshot while per-line calls still
+carry the disruptions — which would have emptied the diversions dataset AND
+the freeze set. Both build/diversions.js and build/status.js now gate on it
+(zero disruptions after a run that saw many = degraded snapshot → retry once,
+then keep last-good). New `pipeline/check-sources.mjs` sweeps every consumed
+source (TfL Unified, iBus incl. a deep geometry cross-check vs the store,
+BODS, DVLA key, londonbusroutes, postcodes.io, EPOWR, Datastore CKAN, STATS19,
+BUSTO, Overpass, QSI host, tender pages): 18/18 healthy. Probing also fixed
+two wrong assumptions (STATS19 is GET-only; Overpass requires a User-Agent).
+test-functions 43/43 · validate-atlas 50/50 · verify-diversions 12/12.
+
+---
+
+## 2026-08-05 — W12-class baseline recovery from git history + advance freeze
+
+Farhan was right: the W12 diverted geometry DID exist. Walking the daily data
+commits showed the stored line passed Selborne Walk at 3 m through 9 July,
+then read ~213 m away by the 19-July snapshot — TfL redraws Route/Sequence
+~10 days IN ADVANCE of a planned closure, so routes flagged only when their
+window opens had already had their baselines silently overwritten (the
+"polluted baseline" class: missedStops fire, diversionSegments empty). Two
+fixes. (1) `pipeline/backfill-diversion-baselines.mjs`: for every route with
+that signature, walk the data-commit history newest→oldest and restore the
+first snapshot whose line passes ALL the episode's missed stops within 60 m —
+self-validating recovery. All 18 polluted routes recovered (W12 from the
+17-July snapshot); published-geometry episodes went 8 → 18. W12's recovered
+diversion path passes its 17 temporary added stops at 3–11 m and the bypassed
+segment passes the Selborne stops at 2–3 m — independent confirmation.
+(2) Advance freeze: `windowStartsWithin` (lib/tfl-status.js) + a 14-day
+lookahead in build/diversions.js — routes whose diversion window opens soon
+join the freeze set (dataset field `upcomingFreeze`, honoured by the routes
+builder's fallback too), so an advance redraw can never overwrite a canonical
+baseline again. test-functions 39/39 · validate-atlas 50/50 ·
+verify-diversions 12/12 · zero JS errors.
+
+---
+
+## 2026-08-05 — Diversion noise control + unit-validation suite; front-end kept as verification layer
+
+Hardening pass on the diversions feature. The tier-3 live-GPS estimator now
+actively rejects dead runs: pings within 300 m of any garage are never
+captured, and a trace is only drawn if it's ANCHORED — first and last points
+within 200 m of the route line, i.e. the bus left the corridor and rejoined
+it. A garage/positioning journey leaves and never comes back so it can never
+anchor; a bus mid-diversion isn't drawn until it rejoins. Newest 6 traces max.
+New `pipeline/test-functions.mjs` (35 checks) validates the custom functions
+against independent reference implementations: tfl-status validity-window
+logic (incl. the W12 isNow regression case), distToLineM vs haversine (±0.5%),
+deviatingSegments thresholds, lengthKm/simplify, and the normalize.js
+DVLA/operator canonicalisation. It caught a real gap: the segment noise filter
+measured path length, which a single-vertex spike's legs alone can exceed —
+now filters on leave→rejoin separation (≥150 m of roadway actually bypassed)
+with a ≥400 m travelled-distance escape for loop diversions. Rebuilt against
+live TfL: same 8 published-geometry routes survive, spike-noise hole closed.
+Full re-verify: test-functions 35/35, validate-atlas 50/50,
+verify-diversions 12/12 (zero JS errors), dev /api/v1 byte-parity 18/18.
+Decision recorded in CLAUDE.md: Atlas is primarily the API, and `/` + `/v2`
+stay as the deliberate visual-verification layer the headless scripts drive —
+not to be removed.
+
+---
+
+## 2026-08-05 — Route diversions: automatic detection, real diverted geometry, baseline freeze
+
+Diversions are now a first-class, fully automatic dataset. TfL publishes no
+structured diversion data (the status feed's affectedRoutes/affectedStops are
+always empty) — but for planned diversions TfL *redraws* Route/Sequence
+(verified on W12/Selborne Road: the stop list drops the missed stops, the
+lineString follows the diversion roads, live buses track it within metres). So
+`pipeline/build/diversions.js` detects flagged routes from live bus status
+(new `lib/tfl-status.js` — TfL's validityPeriods.isNow is unreliable for
+in-progress works, date windows are checked directly; build/status.js fixed
+too) and diffs TfL's current sequence against our canonical baseline →
+per-direction missedStops / temporary addedStops, and the real diverted
+geometry (diversionSegments + bypassedSegments) when TfL has redrawn
+(geometryStatus "published" vs "unpublished"). Critically, the builder runs
+BEFORE build/routes.js and hands it the flagged set: the routes builder now
+FREEZES last-good stops+geometry for diverted routes, so a temporary diversion
+never silently overwrites the canonical route (the pre-existing bug: the store
+had absorbed W12's diverted state as if permanent). Self-heals when episodes
+end. Served at /api/v1/route-diversions (Function + serve.js mirror), mirrored
+to warehouse route_diversions (migration 0029, append-only per episode →
+automatic diversion history), validated in validate-atlas (7 new checks).
+App `/`: three-tier map overlay (store diff dashed amber + bypassed dotted red
++ missed/temporary stop markers → live text-parse fallback → live-GPS
+estimated dashed cyan traces for unpublished geometry), upgraded dossier
+diversion panel, Diverted table column, CSV columns (route list + per-stop
+flags), legend entries. App `/v2`: always-on divnLayer overlay + Route-card
+Diversion section. First live run: 161 active episodes, 8 with published
+geometry. Zero new crons or secrets — rides the existing daily refresh and
+ingest mirror.
+
+---
+
+## 2026-07-27 — API verification sweep + National Highways feed retired
+
+Full verification pass of the public API against the committed data: all 17
+`/api/v1` datasets byte-identical across the store, the dev mirror, and
+production; live group cross-checked against TfL direct (676 lines, ids
+aligned); all 9 history endpoints serving fresh warehouse rows with filters
+honoured; prod Functions ↔ serve.js endpoint tables in sync. One casualty
+found: National Highways withdrew the keyless UnplannedEvents RSS (every
+legacy URL — m.highwaysengland.co.uk, trafficengland.com, m.highways.gov.uk —
+now funnels to a 404 on nationalhighways.co.uk; the replacement API is keyed).
+`/api/v1/live/national-highways` now returns an honest `410 Gone` with a
+pointer to `road-disruptions` instead of a permanent 502, the dead fetch/parse
+code is gone from both Functions, and `/v2` no longer fires a doomed request
+per refresh (road incidents = TfL control centre only). Docs updated
+(README + API.md). If SRN events are ever wanted back, the keyed National
+Highways API (api.data.nationalhighways.co.uk) is the route — needs a
+registered key as a Cloudflare secret, like BODS.
+
+---
+
 ## 2026-07-04 — Legacy Supabase history import script
 
 Farhan recovered the old Supabase project's direct-database password, which

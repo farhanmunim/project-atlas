@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-05T03:17:08.708Z",
+  "generatedAt": "2026-08-05T13:28:09.159Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -146,6 +146,17 @@
         "data/localities.json"
       ],
       "cadence": "monthly · OSM Overpass (place=town|suburb)"
+    },
+    "diversions": {
+      "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
+      "fetchedAt": "2026-08-05T13:28:09.159Z",
+      "status": "ok",
+      "rows": 161,
+      "files": [
+        "data/route-diversions.json"
+      ],
+      "cadence": "live · TfL status + Route/Sequence diff vs baseline",
+      "note": "18 published geometry · 143 unpublished"
     }
   }
 }

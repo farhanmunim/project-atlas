@@ -164,6 +164,26 @@ try {
   const r25p = cwpRoutes["25"], r25s = cwRoutes["25"];
   if (r25p && r25s) ok("route 25 profile peak ≈ summary peak", Math.abs(Math.max(...r25p.loadProfile.map((s) => s.vc)) - r25s.peakVC) < 0.01, `profile ${Math.max(...r25p.loadProfile.map((s) => s.vc))} vs summary ${r25s.peakVC}`);
 
+  // ── route-diversions.json — active diversion episodes (status + sequence diff) ──
+  section("route-diversions.json (diversions)");
+  try {
+    const dv = load("route-diversions.json");
+    const dvRoutes = dv.routes || {};
+    const dvNames = Object.keys(dvRoutes);
+    ok("count reconciles with routes", dv.count === dvNames.length, `count=${dv.count} routes=${dvNames.length}`);
+    ok("plausible episode count (≤400)", dvNames.length <= 400, `${dvNames.length} active`);
+    ok("every entry has id/status/disruptions/detectedAt", dvNames.every((n) => { const e = dvRoutes[n];
+      return e.id && e.status && Array.isArray(e.disruptions) && e.disruptions.length && e.detectedAt; }), "");
+    ok("geometryStatus vocab", dvNames.every((n) => ["published", "unpublished"].includes(dvRoutes[n].geometryStatus)), "");
+    ok("published ⇒ non-empty diversionSegments", dvNames.every((n) => { const e = dvRoutes[n];
+      return e.geometryStatus !== "published" || Object.values(e.diversionSegments || {}).some((ss) => ss.length); }), "");
+    const badCoord = dvNames.some((n) => Object.values(dvRoutes[n].diversionSegments || {}).some((ss) =>
+      ss.some((seg) => seg.some(([lng, lat]) => !(lng > -1.2 && lng < 1.2 && lat > 50.8 && lat < 52.2)))));
+    ok("all segment coords within Greater London", !badCoord, "");
+    ok("missed/added stops carry id+name+coords", dvNames.every((n) => ["missedStops", "addedStops"].every((k) =>
+      Object.values(dvRoutes[n][k] || {}).every((list) => list.every((s) => s.id && s.name && Number.isFinite(s.lat) && Number.isFinite(s.lng))))), "");
+  } catch (e) { ok("route-diversions.json", false, "missing/unparseable — " + e.message); }
+
   // ── manifest freshness ─────────────────────────────────────────────────────
   section("manifest");
   const man = load("_manifest.json");

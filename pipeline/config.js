@@ -12,6 +12,7 @@
  * on it. Builders run top-to-bottom.
  */
 
+import { build as buildDiversions } from "./build/diversions.js";
 import { build as buildRoutes } from "./build/routes.js";
 import { build as buildRouteMeta } from "./build/route-meta.js";
 import { build as buildTenders } from "./build/tenders.js";
@@ -29,6 +30,14 @@ import { build as buildDbMirror } from "./build/db-mirror.js";
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR;
 
 export const DATASETS = [
+  {
+    name: "diversions",
+    build: buildDiversions,
+    ttlMs: 0,              // live snapshot — always re-pull; also feeds the routes builder's
+                           // baseline freeze (must run BEFORE routes)
+    soft: true,
+    cadence: "live · TfL status + Route/Sequence diff vs baseline",
+  },
   {
     name: "routes",
     build: buildRoutes,
