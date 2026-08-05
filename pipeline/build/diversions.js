@@ -37,7 +37,7 @@ import * as tfl from "../sources/tfl.js";
 import { mapLimit } from "../lib/http.js";
 import { round, lengthKm } from "../lib/geo.js";
 import { check } from "../lib/validate.js";
-import { windowActiveNow, windowBounds } from "../lib/tfl-status.js";
+import { windowActiveNow, windowBounds, windowStartsWithin } from "../lib/tfl-status.js";
 import { parseLineStrings, extractStops } from "./routes.js";
 
 // Text signal that a status is a service alteration (vs plain delays).
@@ -104,10 +104,16 @@ export async function build(ctx) {
   const lines = (res.data || []).filter((l) => !/^ZZ\d*$/i.test(String(l.name || l.id || "")));
   check(lines.length >= 400, `diversions: status feed returned only ${lines.length} lines`);
 
+  const FREEZE_LOOKAHEAD_DAYS = 14;
   const candidates = [];
+  const upcomingFreeze = new Set();   // not active yet, but the window opens soon — TfL redraws
+                                      // Route/Sequence in ADVANCE, so freeze these baselines NOW
   for (const l of lines) {
-    const active = (l.lineStatuses || []).filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now));
-    if (active.length) candidates.push({ id: l.id, name: l.name, statuses: active });
+    const sts = l.lineStatuses || [];
+    const active = sts.filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now));
+    if (active.length) { candidates.push({ id: l.id, name: l.name, statuses: active }); continue; }
+    if (sts.some((st) => st.statusSeverity !== 10 && windowStartsWithin(st.validityPeriods, FREEZE_LOOKAHEAD_DAYS, now)
+        && DIVERTY.test(st.reason || ""))) upcomingFreeze.add(l.id);
   }
 
   const prev = (await sink.readDataset("route-diversions")) || { routes: {} };
@@ -186,13 +192,17 @@ export async function build(ctx) {
   await sink.writeDataset("route-diversions", {
     generatedAt: new Date().toISOString(),
     count: names.length,
+    upcomingFreeze: [...upcomingFreeze].sort(),   // ids frozen ahead of their window opening
     routes: entries,
   });
 
-  // Hand the flagged set to build/routes.js (runs next) so it freezes the baseline.
-  ctx.divertedRoutes = new Set(Object.values(entries).map((e) => e.id));
+  // Hand the freeze set to build/routes.js (runs next): active episodes PLUS routes whose
+  // diversion window opens within the lookahead — their advance redraw must not overwrite
+  // the canonical baseline before the episode is ever flagged active.
+  ctx.divertedRoutes = new Set([...Object.values(entries).map((e) => e.id), ...upcomingFreeze]);
 
   log.info(`diversions: ${names.length} active (${published} with published geometry, ${names.length - published} unpublished)` +
+    ` · ${upcomingFreeze.size} upcoming frozen ahead` +
     (seqFail ? ` · ${seqFail} sequence fetches failed` : "") + (kept ? ` · ${kept} kept from last-good` : ""));
   return {
     source: "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",

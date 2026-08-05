@@ -12,7 +12,7 @@
  * haversine, simplify invariants), lib/normalize.js (make/propulsion/operator
  * canonicalisation against known DVLA strings).
  */
-import { windowActiveNow, windowBounds } from "./lib/tfl-status.js";
+import { windowActiveNow, windowBounds, windowStartsWithin } from "./lib/tfl-status.js";
 import { distToLineM, deviatingSegments } from "./build/diversions.js";
 import { lengthKm, simplify, round } from "./lib/geo.js";
 import { cleanMake, propulsionOf, canonicalOperator, reconcilePropulsion } from "./lib/normalize.js";
@@ -48,6 +48,13 @@ console.log("\nlib/tfl-status.js — validity windows");
     { isNow: false, fromDate: "2026-08-01T00:00:00Z", toDate: "2026-08-10T00:00:00Z" }], now));
   const b = windowBounds([{ fromDate: "2026-08-01T00:00:00Z", toDate: "2026-08-10T00:00:00Z" }, { fromDate: "2026-07-20T07:00:00Z", toDate: "2026-11-30T22:00:00Z" }]);
   ok("windowBounds = earliest from / latest to", b.from === "2026-07-20T07:00:00.000Z" && b.to === "2026-11-30T22:00:00.000Z", `${b.from} → ${b.to}`);
+  // advance-freeze lookahead (TfL redraws ~10 days before a planned closure)
+  ok("windowStartsWithin: opens in 10 days ⇒ true (14d lookahead)",
+    windowStartsWithin([{ fromDate: "2026-08-15T08:00:00Z" }], 14, now));
+  ok("windowStartsWithin: opens in 20 days ⇒ false", !windowStartsWithin([{ fromDate: "2026-08-25T08:00:00Z" }], 14, now));
+  ok("windowStartsWithin: already open ⇒ false (that is windowActiveNow's job)",
+    !windowStartsWithin([{ fromDate: "2026-08-01T00:00:00Z" }], 14, now));
+  ok("windowStartsWithin: no dates ⇒ false", !windowStartsWithin([{}], 14, now) && !windowStartsWithin([], 14, now));
 }
 
 console.log("\nbuild/diversions.js — distToLineM (vs independent haversine)");

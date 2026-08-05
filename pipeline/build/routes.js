@@ -104,7 +104,7 @@ export async function build(ctx) {
   let frozen = ctx.divertedRoutes;
   if (!frozen) {
     const dv = await sink.readDataset("route-diversions");
-    frozen = new Set(Object.values(dv?.routes || {}).map((e) => e.id).filter(Boolean));
+    frozen = new Set([...Object.values(dv?.routes || {}).map((e) => e.id), ...(dv?.upcomingFreeze || [])].filter(Boolean));
   }
   if (frozen.size) {
     const prevStops = await sink.readDataset("route-stops");

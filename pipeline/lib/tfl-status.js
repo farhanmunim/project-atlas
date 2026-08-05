@@ -20,6 +20,17 @@ export function windowActiveNow(validityPeriods, now = Date.now()) {
   });
 }
 
+/** Does any validity window START within the next `days` days (but not yet be active)?
+ *  TfL redraws Route/Sequence in ADVANCE of a planned closure (measured ~10 days on
+ *  W12/Selborne Rd), so the baseline freeze must engage before the window opens. */
+export function windowStartsWithin(validityPeriods, days, now = Date.now()) {
+  const horizon = now + days * 86400000;
+  return (validityPeriods || []).some((p) => {
+    const from = Date.parse(p.fromDate || "");
+    return !Number.isNaN(from) && from > now && from <= horizon;
+  });
+}
+
 /** Earliest fromDate / latest toDate across a status's windows (ISO or null). */
 export function windowBounds(validityPeriods) {
   let from = null, to = null;

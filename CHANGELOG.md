@@ -5,6 +5,30 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-05 — W12-class baseline recovery from git history + advance freeze
+
+Farhan was right: the W12 diverted geometry DID exist. Walking the daily data
+commits showed the stored line passed Selborne Walk at 3 m through 9 July,
+then read ~213 m away by the 19-July snapshot — TfL redraws Route/Sequence
+~10 days IN ADVANCE of a planned closure, so routes flagged only when their
+window opens had already had their baselines silently overwritten (the
+"polluted baseline" class: missedStops fire, diversionSegments empty). Two
+fixes. (1) `pipeline/backfill-diversion-baselines.mjs`: for every route with
+that signature, walk the data-commit history newest→oldest and restore the
+first snapshot whose line passes ALL the episode's missed stops within 60 m —
+self-validating recovery. All 18 polluted routes recovered (W12 from the
+17-July snapshot); published-geometry episodes went 8 → 18. W12's recovered
+diversion path passes its 17 temporary added stops at 3–11 m and the bypassed
+segment passes the Selborne stops at 2–3 m — independent confirmation.
+(2) Advance freeze: `windowStartsWithin` (lib/tfl-status.js) + a 14-day
+lookahead in build/diversions.js — routes whose diversion window opens soon
+join the freeze set (dataset field `upcomingFreeze`, honoured by the routes
+builder's fallback too), so an advance redraw can never overwrite a canonical
+baseline again. test-functions 39/39 · validate-atlas 50/50 ·
+verify-diversions 12/12 · zero JS errors.
+
+---
+
 ## 2026-08-05 — Diversion noise control + unit-validation suite; front-end kept as verification layer
 
 Hardening pass on the diversions feature. The tier-3 live-GPS estimator now
