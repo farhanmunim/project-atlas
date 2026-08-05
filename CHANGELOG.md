@@ -5,6 +5,35 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-05 — iBus geometry source, degraded-feed gates, full source audit
+
+Farhan's hunch confirmed: ibus.data.tfl.gov.uk is a public S3 bucket of dated
+fortnightly schedule releases, each shipping Route_Geometry_<ver>.zip — one
+XML per route of ordered lat/lng per direction, TfL's own AVL path, keyless,
+back to mid-2025. Verified against the W12 story: the 20260703 drop passes
+Selborne Walk at 7 m (true baseline, 310 pts), 20260731 carries the diverted
+line 207 m away and passes every temporary stop at 3–11 m. New
+`sources/ibus.js` (S3 listing + dependency-free zip reader + parser, all
+unit-tested) and an automatic recovery tier in build/diversions.js: when a
+flagged route shows missed stops but no geometry diff (a polluted baseline),
+it walks the dated iBus versions and diffs against the first one whose line
+passes all the missed stops — proven end-to-end by deliberately re-polluting
+W12's baseline and watching it recover as `baselineSource: ibus:20260703`
+with the correct segments. Zero downloads unless recovery is needed.
+The audit also caught a live TfL failure mode: the bulk /Line/Mode/bus/Status
+intermittently returns an all-Good-Service snapshot while per-line calls still
+carry the disruptions — which would have emptied the diversions dataset AND
+the freeze set. Both build/diversions.js and build/status.js now gate on it
+(zero disruptions after a run that saw many = degraded snapshot → retry once,
+then keep last-good). New `pipeline/check-sources.mjs` sweeps every consumed
+source (TfL Unified, iBus incl. a deep geometry cross-check vs the store,
+BODS, DVLA key, londonbusroutes, postcodes.io, EPOWR, Datastore CKAN, STATS19,
+BUSTO, Overpass, QSI host, tender pages): 18/18 healthy. Probing also fixed
+two wrong assumptions (STATS19 is GET-only; Overpass requires a User-Agent).
+test-functions 43/43 · validate-atlas 50/50 · verify-diversions 12/12.
+
+---
+
 ## 2026-08-05 — W12-class baseline recovery from git history + advance freeze
 
 Farhan was right: the W12 diverted geometry DID exist. Walking the daily data

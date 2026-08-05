@@ -34,6 +34,7 @@
  */
 
 import * as tfl from "../sources/tfl.js";
+import * as ibus from "../sources/ibus.js";
 import { mapLimit } from "../lib/http.js";
 import { round, lengthKm } from "../lib/geo.js";
 import { check } from "../lib/validate.js";
@@ -96,27 +97,68 @@ const stopLite = (s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng });
 const minIso = (list) => list.filter(Boolean).sort()[0] || null;
 const maxIso = (list) => list.filter(Boolean).sort().slice(-1)[0] || null;
 
+// ── iBus recovery baselines ──────────────────────────────────────────────────
+// When a flagged route shows missed stops but NO geometry diff, its stored baseline
+// was already polluted (TfL redraws Route/Sequence ~10 days ahead of a planned
+// closure). The iBus static drops are dated, immutable schedule releases with full
+// route geometry — walk them newest→oldest and use the first version whose line
+// passes ALL the missed stops (a served stop sits on the true pre-diversion line),
+// then diff the current ring against THAT. Self-validating, independent of our
+// store. Lazy + cached per run: zero downloads unless a recovery is needed.
+const IBUS_MAX_VERSIONS = 6;    // ~3 months of fortnightly drops
+const IBUS_STOP_TOL_M = 60;
+let _ibusVersions = null;       // promise — single-flight per run
+const _ibusGeo = new Map();     // version → promise of whole-network geometry
+const ibusVersions = () => (_ibusVersions ||= ibus.listVersions().catch(() => []));
+const ibusGeo = (v) => { if (!_ibusGeo.has(v)) _ibusGeo.set(v, ibus.fetchRouteGeometry(v).catch(() => ({}))); return _ibusGeo.get(v); };
+async function ibusRecoverBaseline(routeName, dirCode, missedStops) {
+  if (!missedStops.length) return null;
+  for (const v of (await ibusVersions()).slice(0, IBUS_MAX_VERSIONS)) {
+    const line = (await ibusGeo(v))[routeName]?.[dirCode];
+    if (!line) continue;
+    if (missedStops.every((s) => distToLineM([s.lng, s.lat], line) <= IBUS_STOP_TOL_M))
+      return { line, version: v };
+  }
+  return null;
+}
+
 export async function build(ctx) {
   const { sink, log } = ctx;
   const now = Date.now();
 
-  const res = await tfl.busStatus();
-  const lines = (res.data || []).filter((l) => !/^ZZ\d*$/i.test(String(l.name || l.id || "")));
-  check(lines.length >= 400, `diversions: status feed returned only ${lines.length} lines`);
-
   const FREEZE_LOOKAHEAD_DAYS = 14;
-  const candidates = [];
-  const upcomingFreeze = new Set();   // not active yet, but the window opens soon — TfL redraws
-                                      // Route/Sequence in ADVANCE, so freeze these baselines NOW
-  for (const l of lines) {
-    const sts = l.lineStatuses || [];
-    const active = sts.filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now));
-    if (active.length) { candidates.push({ id: l.id, name: l.name, statuses: active }); continue; }
-    if (sts.some((st) => st.statusSeverity !== 10 && windowStartsWithin(st.validityPeriods, FREEZE_LOOKAHEAD_DAYS, now)
-        && DIVERTY.test(st.reason || ""))) upcomingFreeze.add(l.id);
-  }
+  const buildCandidates = (raw) => {
+    const lines = (raw || []).filter((l) => !/^ZZ\d*$/i.test(String(l.name || l.id || "")));
+    check(lines.length >= 400, `diversions: status feed returned only ${lines.length} lines`);
+    const candidates = [];
+    const upcomingFreeze = new Set();   // not active yet, but the window opens soon — TfL redraws
+                                        // Route/Sequence in ADVANCE, so freeze these baselines NOW
+    for (const l of lines) {
+      const sts = l.lineStatuses || [];
+      const active = sts.filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now));
+      if (active.length) { candidates.push({ id: l.id, name: l.name, statuses: active }); continue; }
+      if (sts.some((st) => st.statusSeverity !== 10 && windowStartsWithin(st.validityPeriods, FREEZE_LOOKAHEAD_DAYS, now)
+          && DIVERTY.test(st.reason || ""))) upcomingFreeze.add(l.id);
+    }
+    return { candidates, upcomingFreeze };
+  };
 
   const prev = (await sink.readDataset("route-diversions")) || { routes: {} };
+  const prevCount = Object.keys(prev.routes || {}).length;
+
+  let { candidates, upcomingFreeze } = buildCandidates((await tfl.busStatus()).data);
+  // DEGRADED-FEED GATE: the bulk /Line/Mode/bus/Status intermittently returns an
+  // all-Good-Service snapshot while the per-line endpoints still report the real
+  // disruptions (observed live 2026-08-05). Dozens of months-long planned diversions
+  // are always active, so "zero disruptions" when the last run saw many is a broken
+  // snapshot, not a quiet day — retry once, then keep last-good rather than emptying
+  // the dataset (and with it the baseline-freeze set).
+  if (!candidates.length && prevCount >= 20) {
+    await new Promise((r) => setTimeout(r, 5000));
+    ({ candidates, upcomingFreeze } = buildCandidates((await tfl.busStatus()).data));
+    check(candidates.length > 0,
+      `diversions: status feed reports 0 active disruptions but last run had ${prevCount} — degraded snapshot, keeping last-good`);
+  }
   const baseStops = (await sink.readDataset("route-stops")) || { routes: {} };
   const baseGeoRaw = await sink.readDataset("routes-overview", { ext: "geojson" });
   const baseGeo = {};   // routeId → { "1": coords, "2": coords }
@@ -128,8 +170,8 @@ export async function build(ctx) {
   let seqFail = 0, kept = 0;
   await mapLimit(candidates, 6, async (c) => {
     try {
-      const missedStops = {}, addedStops = {}, divSegs = {}, bypSegs = {};
-      let anyDiff = false;
+      const missedStops = {}, addedStops = {}, divSegs = {}, bypSegs = {}, rings = {};
+      let anyDiff = false, baselineSource = "store";
       for (const [dir, code] of [["outbound", "1"], ["inbound", "2"]]) {
         let seq;
         try { seq = (await tfl.routeSequence(c.id, dir)).data; } catch { seqFail++; continue; }
@@ -144,11 +186,25 @@ export async function build(ctx) {
           if (added.length) { addedStops[dir] = added; anyDiff = true; }
         }
         const curRing = parseLineStrings(seq);
+        if (curRing.length >= 2) rings[dir] = { code, curRing };
         const baseline = baseGeo[c.id]?.[code] || [];
         if (curRing.length >= 2 && baseline.length >= 2) {
           const dv = deviatingSegments(curRing, baseline);
           if (dv.length) { divSegs[dir] = dv; anyDiff = true; }
           const by = deviatingSegments(baseline, curRing);
+          if (by.length) bypSegs[dir] = by;
+        }
+      }
+      // polluted-baseline recovery: missed stops fired but the geometry diff didn't —
+      // the stored baseline already absorbed TfL's advance redraw. Recover the true
+      // pre-diversion line from the dated iBus drops and diff against that instead.
+      if (Object.keys(missedStops).length && !Object.keys(divSegs).length) {
+        for (const [dir, { code, curRing }] of Object.entries(rings)) {
+          const rec = await ibusRecoverBaseline(c.name, code, missedStops[dir] || []);
+          if (!rec) continue;
+          const dv = deviatingSegments(curRing, rec.line);
+          if (dv.length) { divSegs[dir] = dv; anyDiff = true; baselineSource = `ibus:${rec.version}`; }
+          const by = deviatingSegments(rec.line, curRing);
           if (by.length) bypSegs[dir] = by;
         }
       }
@@ -169,6 +225,7 @@ export async function build(ctx) {
         until: maxIso(disruptions.map((d) => d.until)),
         detectedAt: prev.routes?.[c.name]?.detectedAt || new Date().toISOString(),
         geometryStatus: Object.keys(divSegs).length ? "published" : "unpublished",
+        baselineSource,
         missedStops, addedStops,
         diversionSegments: divSegs, bypassedSegments: bypSegs,
       };

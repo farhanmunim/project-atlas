@@ -8,7 +8,7 @@
  */
 
 import * as tfl from "../sources/tfl.js";
-import { rowsWithin, everyHas } from "../lib/validate.js";
+import { rowsWithin, everyHas, check } from "../lib/validate.js";
 import { windowActiveNow } from "../lib/tfl-status.js";
 
 export async function build(ctx) {
@@ -46,6 +46,14 @@ export async function build(ctx) {
   everyHas(rows, ["route", "status", "severity"], "status");
 
   const good = rows.filter((r) => r.severity >= 10).length;
+  // DEGRADED-FEED GATE (same failure mode build/diversions.js guards): the bulk status
+  // feed intermittently returns all-Good-Service while per-line endpoints still report
+  // disruptions. Months-long planned diversions are always active, so a zero-disrupted
+  // snapshot after a run that saw many is a broken feed — keep the last-good snapshot.
+  const prevSnap = await sink.readDataset("line-status");
+  const prevDisrupted = prevSnap?.summary?.disrupted ?? 0;
+  check(!(rows.length - good === 0 && prevDisrupted >= 10),
+    `line-status: feed reports 0 disrupted but last snapshot had ${prevDisrupted} — degraded snapshot, keeping last-good`);
   await sink.writeDataset("line-status", {
     capturedAt: new Date().toISOString(),
     summary: { total: rows.length, good, disrupted: rows.length - good },

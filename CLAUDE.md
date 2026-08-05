@@ -930,7 +930,12 @@ PostGIS · Grafana · Prometheus. (See `data_sources.xlsx` for links.)
 - **londonbuses.co.uk** ⚫ — general reference.
 
 > **Atlas wiring today** (where these feed the live app): TfL Unified API (Line/
-> Route/StopPoint/Status/Disruption/Arrivals) · BODS SIRI-VM (live GPS, via the
+> Route/StopPoint/Status/Disruption/Arrivals) · **TfL iBus static drops**
+> (`ibus.data.tfl.gov.uk` — a public S3 bucket of dated fortnightly schedule
+> releases; `sources/ibus.js` reads `Route_Geometry_<ver>.zip` as the dated,
+> immutable pre-diversion baseline archive for build/diversions.js recovery;
+> `pipeline/check-sources.mjs` is the reproducible health sweep of every source
+> here) · BODS SIRI-VM (live GPS, via the
 > Pages Function) · postcodes.io + OSM tiles · DVLA VES (fleet enrichment) ·
 > londonbusroutes.net (garages) · TfL tender pages + LBSL programme (Mandate). The
 > rest of the catalogue is approved for future layers — add via the seam + a

@@ -16,6 +16,8 @@ import { windowActiveNow, windowBounds, windowStartsWithin } from "./lib/tfl-sta
 import { distToLineM, deviatingSegments } from "./build/diversions.js";
 import { lengthKm, simplify, round } from "./lib/geo.js";
 import { cleanMake, propulsionOf, canonicalOperator, reconcilePropulsion } from "./lib/normalize.js";
+import { zipEntries, parseRouteGeometry } from "./sources/ibus.js";
+import { deflateRawSync, crc32 } from "node:zlib";
 
 let pass = 0, fail = 0;
 const ok = (label, cond, detail = "") => {
@@ -121,6 +123,37 @@ console.log("\nlib/normalize.js — DVLA/operator canonicalisation");
   ok("reconcilePropulsion: bare majority does NOT upgrade", reconcilePropulsion("diesel", { electric: 5, diesel: 4 }) === "diesel");
   ok("reconcilePropulsion: tiny sample (<4) does NOT upgrade", reconcilePropulsion("diesel", { electric: 3 }) === "diesel");
   ok("reconcilePropulsion: explicit hydrogen claim kept", reconcilePropulsion("hydrogen", { electric: 10 }) === "hydrogen");
+}
+
+console.log("\nsources/ibus.js — zip reader & Route_Geometry parser");
+{
+  // build a real single-entry zip in memory (deflate method) and read it back
+  const makeZip = (name, content) => {
+    const body = Buffer.from(content), data = deflateRawSync(body), nameB = Buffer.from(name);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(8, 8);
+    lh.writeUInt32LE(crc32(body), 14); lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(body.length, 22);
+    lh.writeUInt16LE(nameB.length, 26);
+    const cd = Buffer.alloc(46);
+    cd.writeUInt32LE(0x02014b50, 0); cd.writeUInt16LE(20, 4); cd.writeUInt16LE(20, 6); cd.writeUInt16LE(8, 10);
+    cd.writeUInt32LE(crc32(body), 16); cd.writeUInt32LE(data.length, 20); cd.writeUInt32LE(body.length, 24);
+    cd.writeUInt16LE(nameB.length, 28); cd.writeUInt32LE(0, 42);
+    const cdStart = 30 + nameB.length + data.length;
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(1, 8); eocd.writeUInt16LE(1, 10);
+    eocd.writeUInt32LE(46 + nameB.length, 12); eocd.writeUInt32LE(cdStart, 16);
+    return Buffer.concat([lh, nameB, data, cd, nameB, eocd]);
+  };
+  const entries = [...zipEntries(makeZip("hello.xml", "<a>route data</a>"))];
+  ok("zip reader: entry name + inflated content round-trip", entries.length === 1 && entries[0].name === "hello.xml" && entries[0].data().toString() === "<a>route data</a>");
+
+  const RG = (run, seq, dir, lng, lat) => `<Route_Geometry aContract_Line_No="X" aLBSL_Run_No="${run}" aSequence_No="${seq}"><Direction>${dir}</Direction><Location_Easting>1</Location_Easting><Location_Northing>1</Location_Northing><Location_Longitude>${lng}</Location_Longitude><Location_Latitude>${lat}</Location_Latitude></Route_Geometry>`;
+  // out-of-order sequences, a run-3 variant that must lose to run-1, both directions
+  const xml = RG(1, 2, 1, -0.2, 51.6) + RG(1, 1, 1, -0.1, 51.5) + RG(3, 1, 1, -9, 9) + RG(2, 1, 2, -0.3, 51.7) + RG(2, 2, 2, -0.4, 51.8);
+  const g = parseRouteGeometry(xml);
+  ok("parser: sequences sorted", g["1"][0][0] === -0.1 && g["1"][1][0] === -0.2, JSON.stringify(g["1"]));
+  ok("parser: lowest run wins per direction (variant run 3 ignored)", !g["1"].some((p) => p[0] === -9));
+  ok("parser: both directions extracted", g["2"]?.length === 2, JSON.stringify(g["2"]));
 }
 
 console.log(`\n${"=".repeat(48)}\ntest-functions: ${pass} passed, ${fail} failed`);
