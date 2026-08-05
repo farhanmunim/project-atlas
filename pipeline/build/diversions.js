@@ -44,12 +44,13 @@ import { parseLineStrings, extractStops } from "./routes.js";
 const DIVERTY = /divert|diversion|miss(?:es|ing)?[^.]{0,60}stop|not\s+(?:be\s+)?serv|will\s+not\s+stop|closed|closure/i;
 
 const DEVIATION_M = 75;    // > simplification noise (measured ≤53 m), < any real diversion (≥150 m)
-const MIN_SPAN_M = 150;    // a genuine diversion leg; filters corner-cutting artefacts
+const MIN_SEP_M = 150;     // leave→rejoin separation: a real diversion bypasses ≥150 m of roadway
+const MIN_LOOP_M = 400;    // …or is a loop that rejoins near where it left but covers real distance
 const MAX_SEGMENTS = 12;   // cap per direction — beyond this something is wrong upstream
 
 const R_EARTH = 6371000, RAD = Math.PI / 180;
 /** Metres from [lng,lat] point p to the nearest point on polyline (equirectangular — fine at city scale). */
-function distToLineM(p, line) {
+export function distToLineM(p, line) {
   let best = Infinity;
   for (let i = 0; i < line.length - 1; i++) {
     const A = line[i], B = line[i + 1];
@@ -65,7 +66,7 @@ function distToLineM(p, line) {
 }
 
 /** Contiguous runs of `line` further than DEVIATION_M from `ref`, as coordinate segments. */
-function deviatingSegments(line, ref) {
+export function deviatingSegments(line, ref) {
   if (line.length < 2 || ref.length < 2) return [];
   const runs = [];
   let run = null;
@@ -79,7 +80,14 @@ function deviatingSegments(line, ref) {
     // extend one point each side so the segment visually rejoins the served line
     const seg = line.slice(Math.max(0, a - 1), Math.min(line.length, b + 2))
       .map(([lng, lat]) => [round(lng, 5), round(lat, 5)]);
-    if (seg.length >= 2 && lengthKm(seg) * 1000 >= MIN_SPAN_M) segs.push(seg);
+    if (seg.length < 2) continue;
+    // Noise filter on the segment's SHAPE, not just its path length: a single-vertex
+    // spike's legs alone can exceed any length threshold (2 × offset), so require the
+    // leave→rejoin endpoints to be genuinely apart (real roadway bypassed) — or, for a
+    // loop diversion that rejoins near where it left, a substantial travelled distance.
+    const A = seg[0], B = seg[seg.length - 1], cosA = Math.cos(A[1] * RAD);
+    const sepM = Math.hypot((B[0] - A[0]) * cosA * RAD * R_EARTH, (B[1] - A[1]) * RAD * R_EARTH);
+    if (sepM >= MIN_SEP_M || lengthKm(seg) * 1000 >= MIN_LOOP_M) segs.push(seg);
   }
   return segs.slice(0, MAX_SEGMENTS);
 }

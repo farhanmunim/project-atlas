@@ -11,6 +11,14 @@ network analysis · live operations · fleet · tenders · accidents). The old
 Goal: replace london-buses.farhan.app — **simple to navigate, rich on drill-down +
 analytics**, robust, with all data flowing through our own warehouse.
 
+> **Atlas is primarily the API** (`/api/v1` — README + API.md are the public
+> reference). The `/` and `/v2` pages are kept **deliberately** as the visual
+> verification layer: the headless validation scripts (`verify-diversions.mjs`,
+> `verify-render.mjs`, `route-check.mjs`) drive them to prove the API's data
+> renders correctly, and a human can eyeball any dataset on the map in seconds.
+> Do NOT remove the front-end pages — they are part of the validation story
+> (decision recorded 2026-08-05).
+
 > **Modular by construction.** Even though it's one tool, keep processes/functions
 > modular (per-concern render helpers, the `dataSource` seam, pipeline `build/<name>.js`
 > per dataset) so any layer/analysis can be lifted into a standalone tool later.

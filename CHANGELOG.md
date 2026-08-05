@@ -5,6 +5,31 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-05 — Diversion noise control + unit-validation suite; front-end kept as verification layer
+
+Hardening pass on the diversions feature. The tier-3 live-GPS estimator now
+actively rejects dead runs: pings within 300 m of any garage are never
+captured, and a trace is only drawn if it's ANCHORED — first and last points
+within 200 m of the route line, i.e. the bus left the corridor and rejoined
+it. A garage/positioning journey leaves and never comes back so it can never
+anchor; a bus mid-diversion isn't drawn until it rejoins. Newest 6 traces max.
+New `pipeline/test-functions.mjs` (35 checks) validates the custom functions
+against independent reference implementations: tfl-status validity-window
+logic (incl. the W12 isNow regression case), distToLineM vs haversine (±0.5%),
+deviatingSegments thresholds, lengthKm/simplify, and the normalize.js
+DVLA/operator canonicalisation. It caught a real gap: the segment noise filter
+measured path length, which a single-vertex spike's legs alone can exceed —
+now filters on leave→rejoin separation (≥150 m of roadway actually bypassed)
+with a ≥400 m travelled-distance escape for loop diversions. Rebuilt against
+live TfL: same 8 published-geometry routes survive, spike-noise hole closed.
+Full re-verify: test-functions 35/35, validate-atlas 50/50,
+verify-diversions 12/12 (zero JS errors), dev /api/v1 byte-parity 18/18.
+Decision recorded in CLAUDE.md: Atlas is primarily the API, and `/` + `/v2`
+stay as the deliberate visual-verification layer the headless scripts drive —
+not to be removed.
+
+---
+
 ## 2026-08-05 — Route diversions: automatic detection, real diverted geometry, baseline freeze
 
 Diversions are now a first-class, fully automatic dataset. TfL publishes no

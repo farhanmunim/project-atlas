@@ -1459,8 +1459,21 @@ function drawDiversions(list){
 // tier-3 estimator: per-vehicle traces of live buses running >75 m off every known line
 // while their route is flagged diverted with geometry TfL hasn't published yet. Session-
 // scoped, clearly labelled an estimate, replaced automatically when the real path lands.
+//
+// Noise control — a trace is only ever DRAWN if it is a genuine detour, not a dead run:
+//   • pings within 300 m of any garage are never captured (pull-in/pull-out noise);
+//   • pings >2 km off the line are never captured (positioning journeys);
+//   • a trace must be ANCHORED — its first and last captured points sit within 200 m of
+//     the route line, i.e. the bus left the corridor and REJOINED it. A garage/depot run
+//     leaves and never comes back, so it can never anchor; a bus mid-diversion anchors
+//     only once it rejoins, so half-journeys aren't drawn either.
 const divTraces=new Map();   // reg → { route, pts:[[lat,lng],…], t }
 let divTraceKey="";
+function nearAnyGarage(lat,lng){
+  const gs=store.garages||[];
+  for(const g of gs){ if(Number.isFinite(g.lat)&&Number.isFinite(g.lng)&&haversine([lat,lng],[g.lat,g.lng])<0.3) return true; }
+  return false;
+}
 function captureDivTraces(){
   const key=selected.map(r=>r.name).join(",");
   if(key!==divTraceKey){ divTraces.clear(); divTraceKey=key; }
@@ -1469,7 +1482,8 @@ function captureDivTraces(){
     const dv=divOf(r.name); if(!dv || dv.geometryStatus==="published") return;
     liveVehicles.forEach(v=>{
       if(String(v.publishedLine)!==String(r.name) || !Number.isFinite(v.lat) || !Number.isFinite(v.lng)) return;
-      if(!(v._off>0.075 && v._off<2)) return;   // off the known line (>75 m) but local (<2 km) → on the diversion, not a garage run
+      if(!(v._off>0.075 && v._off<2)) return;      // off the known line (>75 m) but local (<2 km)
+      if(nearAnyGarage(v.lat,v.lng)) return;       // pull-in/pull-out noise, never diversion evidence
       let tr=divTraces.get(v.reg); if(!tr){ tr={route:r.name,pts:[],t:0}; divTraces.set(v.reg,tr); }
       const last=tr.pts[tr.pts.length-1];
       if(!last || haversine(last,[v.lat,v.lng])>0.025){ tr.pts.push([v.lat,v.lng]); tr.t=Date.now(); if(tr.pts.length>120) tr.pts.shift(); grew=true; }
@@ -1479,11 +1493,17 @@ function captureDivTraces(){
   return grew;
 }
 function drawDivEstimates(r){
-  for(const tr of divTraces.values()){
-    if(tr.route!==r.name || tr.pts.length<3) continue;
+  const line=(r._seq&&r._seq.coords)||[]; if(line.length<2) return;
+  const anchored=[...divTraces.values()].filter(tr=>{
+    if(tr.route!==r.name || tr.pts.length<3) return false;
+    const a=routeProximity(line,tr.pts[0][0],tr.pts[0][1]).offKm;
+    const b=routeProximity(line,tr.pts[tr.pts.length-1][0],tr.pts[tr.pts.length-1][1]).offKm;
+    return a!=null && b!=null && a<0.2 && b<0.2;   // departs from AND rejoins the route
+  }).sort((x,y)=>y.t-x.t).slice(0,6);              // newest few — overlapping traces reinforce, dozens clutter
+  anchored.forEach(tr=>{
     divLayer.addLayer(L.polyline(tr.pts,{color:"#37c5c5",weight:3.5,opacity:.85,dashArray:"6 7",lineCap:"round",interactive:false}));
     divDrawn.est=true;
-  }
+  });
 }
 // "Diversion information" panel for the right rail — always visible (not collapsed) when
 // a selected route has an active diversion/disruption. Two sources merged: the store's
