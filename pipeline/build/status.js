@@ -9,6 +9,7 @@
 
 import * as tfl from "../sources/tfl.js";
 import { rowsWithin, everyHas } from "../lib/validate.js";
+import { windowActiveNow } from "../lib/tfl-status.js";
 
 export async function build(ctx) {
   const { sink, log, cmpRoute } = ctx;
@@ -22,14 +23,14 @@ export async function build(ctx) {
     .map((l) => {
       const all = (l.lineStatuses) || [];
       // Show the status active NOW. TfL flags planned works (e.g. a future diversion) as
-      // severity-0 "Special Service" with validityPeriods where isNow=false — those aren't a
-      // current problem (it's why ~1/3 of routes wrongly read "Special Service"). Count a
-      // disruption only if it has no validity window or one active now; else it's Good Service.
+      // severity-0 "Special Service" with future validityPeriods — those aren't a current
+      // problem. But isNow alone can't be trusted: in-progress diversions are routinely
+      // published with isNow=false (verified: W12/Selborne Rd), so lib/tfl-status.js also
+      // checks the window's own dates against now.
       let cur = null;
       for (const st of all) {
         if (st.statusSeverity === 10) continue;
-        const vp = st.validityPeriods || [];
-        if (!vp.length || vp.some((p) => p.isNow)) { cur = st; break; }
+        if (windowActiveNow(st.validityPeriods)) { cur = st; break; }
       }
       const s = cur || { statusSeverityDescription: "Good Service", statusSeverity: 10, reason: "" };
       return {

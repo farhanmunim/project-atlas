@@ -116,6 +116,7 @@ const V1_SETS = {
   "crowding":          { file: "crowding.json",           desc: "Bus crowding per route (TfL BUSTO) — peak V/C (load÷capacity at the max-demand hour), band (comfortable→crowded), busiest stop/time/day, and the per-day-type peak." },
   "crowding-profile":  { file: "crowding-profile.json",   desc: "Per-route crowding detail (TfL BUSTO) — load-along-route (V/C by stop in sequence) and the time-of-day curve (V/C per timeband, per day type). Powers the corridor gradient + dossier charts." },
   "localities":        { file: "localities.json",         desc: "London locality labels for the map — towns & suburbs (name, lat/lng, kind). Source: OpenStreetMap (ODbL)." },
+  "route-diversions":  { file: "route-diversions.json",   desc: "Active route diversions keyed by route — status/reason/validity from TfL live status, plus the diff of TfL's current Route/Sequence against our canonical baseline: missed stops, temporary added stops, and (when TfL has redrawn the line) the diverted geometry segments + bypassed baseline segments. Refreshed daily." },
   "manifest":          { file: "_manifest.json",          desc: "Pipeline run manifest — per-dataset fetchedAt timestamps and row counts." },
 };
 // Read a v1 dataset straight from its committed file (mirrors the prod function).

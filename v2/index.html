@@ -690,6 +690,7 @@ baseLayer.on('load', function(){ _tileErrs=0; var el=$('tileWarn'); if(el) el.st
 
 var ptRenderer = L.canvas({padding:0.5});
 var routeLayer = L.layerGroup().addTo(map);
+var divnLayer  = L.layerGroup().addTo(map);   // diversion overlay (dashed diverted path + affected stops) — route-scoped, always on
 var stopLayer  = L.layerGroup();
 var ptLayer    = L.layerGroup().addTo(map);
 var bridgeLayer= L.layerGroup();
@@ -986,7 +987,7 @@ function showNetwork(){
   renderRouteChips();
   syncClearAll();
   syncCrowdKey();   // back to network → key footnote reverts to "peak load per route"
-  routeLayer.clearLayers(); stopLayer.clearLayers();
+  routeLayer.clearLayers(); divnLayer.clearLayers(); stopLayer.clearLayers();
   $('cLen').textContent='—';
   $('dossierCards').innerHTML='';
   syncURL();
@@ -1257,6 +1258,7 @@ function fetchRoute(){
     if($('tgCollisions') && $('tgCollisions').checked) loadAtlasAccidents();
     if($('tgBridges').checked) renderBridges(true);
     if($('tgBuses').checked) toggleBuses(true);   // re-home live buses to the new route(s)
+    drawDiversionOverlay();   // dashed diverted path + affected stops for the new selection
     renderRiskCard();   // corridor geometry is in — fill the dossier's Risk & accidents slot
   }).catch(function(e){ status('Route load failed: '+e.message,'err'); });
   renderDossier();
@@ -1281,9 +1283,45 @@ function relEstimateOf(name, id){
   for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
   return null;
 }
+// ── Diversion overlay — the store's route-diversions dataset (daily diff of TfL's
+// diverted Route/Sequence vs the canonical baseline). Route-scoped, always on: the
+// REAL diverted path dashed amber, bypassed section dotted red, missed stops red,
+// temporary stops amber. Lazy-loads the dataset on first selection.
+function ensureDiversions(){
+  if(state.diversions) return Promise.resolve();
+  return getJSON(atlasBase()+'/route-diversions').then(function(d){ state.diversions=(d&&d.routes)||{}; })
+    .catch(function(){ state.diversions={}; });
+}
+function drawDiversionOverlay(){
+  divnLayer.clearLayers();
+  var sel=(state.selected&&state.selected.length)?state.selected:(state.routeId?[{id:state.routeId,name:state.routeName}]:[]);
+  if(!sel.length) return;
+  ensureDiversions().then(function(){
+    if(sel.map(function(r){return r.id;}).join(',')!==selectedLineParam()) return;   // stale
+    divnLayer.clearLayers();
+    var drew=false;
+    sel.forEach(function(r){
+      var dv=state.diversions[r.name]; if(!dv) return;
+      ['outbound','inbound'].forEach(function(dir){
+        ((dv.diversionSegments||{})[dir]||[]).forEach(function(seg){ if(seg.length>1){
+          divnLayer.addLayer(L.polyline(seg.map(function(c){return [c[1],c[0]];}),{color:'#F2A20C',weight:4.5,opacity:.95,dashArray:'10 8',lineCap:'round',interactive:false})); drew=true; } });
+        ((dv.bypassedSegments||{})[dir]||[]).forEach(function(seg){ if(seg.length>1){
+          divnLayer.addLayer(L.polyline(seg.map(function(c){return [c[1],c[0]];}),{color:'#ff5470',weight:5,opacity:.4,dashArray:'1 10',lineCap:'round',interactive:false})); drew=true; } });
+        ((dv.missedStops||{})[dir]||[]).forEach(function(s){
+          divnLayer.addLayer(L.circleMarker([s.lat,s.lng],{radius:6,color:'#ff5470',fillColor:'#190a10',fillOpacity:1,weight:2.5,renderer:ptRenderer})
+            .bindTooltip(esc(s.name)+' — not served (diversion)',{className:'stop-tip'})); drew=true; });
+        ((dv.addedStops||{})[dir]||[]).forEach(function(s){
+          divnLayer.addLayer(L.circleMarker([s.lat,s.lng],{radius:5,color:'#F2A20C',fillColor:'#1a1204',fillOpacity:1,weight:2,renderer:ptRenderer})
+            .bindTooltip(esc(s.name)+' — temporary stop (diversion)',{className:'stop-tip'})); drew=true; });
+      });
+      if(drew) status('Route '+r.name+' is on diversion — dashed path on map','ok');
+    });
+  });
+}
 // Lazy-load the per-route info datasets once (operator/reliability/tenders/fleet).
 function ensureDossierData(){
   var jobs=[];
+  if(!state.diversions) jobs.push(ensureDiversions());
   if(!state.meta)    jobs.push(getJSON(atlasBase()+'/route-meta').then(function(d){ state.meta=(d.routes||d); }));
   if(!state.perf)    jobs.push(getJSON(atlasBase()+'/route-performance').then(function(d){ state.perf=(d.routes||d); }));
   if(!state.tenders) jobs.push(getJSON(atlasBase()+'/tenders').then(function(d){ state.tenders=(d.byRoute||d); }));
@@ -1327,6 +1365,16 @@ function renderDossier(){
     // not as a half-built/broken card. Spec/Contract stay conditional (they're detail extras).
     var dash='var(--faint)';
     var rc='<div id="dossierStatusSlot"></div>';
+    // active diversion (route-diversions dataset) — surfaced first: it changes what the map shows
+    var dvn=(state.diversions||{})[name];
+    if(dvn){
+      var dvMissed=0, dvAdded=0; ['outbound','inbound'].forEach(function(d2){ dvMissed+=((dvn.missedStops||{})[d2]||[]).length; dvAdded+=((dvn.addedStops||{})[d2]||[]).length; });
+      rc+=dsec('Diversion', dvn.until?('until '+String(dvn.until).slice(0,10)):'active');
+      rc+=drow('Status', ((dvn.disruptions||[])[0]||{}).reason||dvn.status, '#F2A20C');
+      rc+=drow('Diverted path', dvn.geometryStatus==='published'?'mapped — dashed on map':'not yet published by TfL', dvn.geometryStatus==='published'?'#F2A20C':null);
+      if(dvMissed) rc+=drow('Stops not served', dvMissed, '#ff5470');
+      if(dvAdded) rc+=drow('Temporary stops', dvAdded, '#F2A20C');
+    }
     rc+=drow('Operator', m.operator||'—', m.operator?null:dash);
     rc+=drow('Type', m.type?(TYPE_FILTER_LBL[m.type]||m.type):'—', m.type?null:dash);
     rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:'—', m.propulsion?PROP_TXT[m.propulsion]:dash);

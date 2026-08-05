@@ -312,7 +312,23 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   + the dossier's **load-along-route** and **time-of-day** mini-charts in both apps), and
   **localities.json** (`pipeline/build/localities.js` + `sources/osm-places.js` — OSM
   place=town|suburb nodes for the London bbox via Overpass, ODbL; served at
-  `/api/v1/localities`; powers the **Place names** map layer in `/` and `/v2`).
+  `/api/v1/localities`; powers the **Place names** map layer in `/` and `/v2`), and
+  **route-diversions.json** (`pipeline/build/diversions.js` — active diversion episodes:
+  detection from TfL live status via `lib/tfl-status.js` (TfL's `validityPeriods.isNow` is
+  unreliable — date windows are checked directly), then TfL's current Route/Sequence diffed
+  against the store's canonical baseline → per-direction `missedStops`/`addedStops` and,
+  when TfL has redrawn the line (`geometryStatus:"published"`), the real `diversionSegments`
+  + `bypassedSegments` geometry. Runs BEFORE the routes builder and hands it
+  `ctx.divertedRoutes` — the **baseline freeze**: flagged routes keep last-good
+  stops/geometry so a temporary diversion never silently overwrites the canonical route
+  (self-heals when the episode ends). Served at `/api/v1/route-diversions`; renders in `/`
+  as the dashed-amber diverted path + dotted-red bypassed section + missed/temporary stop
+  markers (`drawDiversions`, three tiers: store diff → live text-parse fallback → live-GPS
+  estimated traces for unpublished geometry), the always-visible dossier diversion panel,
+  the table's **Diverted** column + CSV fields, and in `/v2` as the always-on `divnLayer`
+  overlay + a Route-card Diversion section; mirrored to warehouse `route_diversions`
+  (migration `0029`, one row per episode keyed `route_id, detected_at` — never deleted, so
+  the table accrues diversion history).
   Both warehouse builders — and fleet/route-meta/garages/tenders/vehicles/routes —
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
@@ -357,7 +373,8 @@ can never block the Cloudflare site.
   own public `/api/v1` (the static store — decoupled from this pipeline's TfL fetchers,
   always the already-validated data) and upserts them into the warehouse so the DB holds
   everything the app does (bar live feeds): `route_stops`, `route_geometry`, `bridges`,
-  `crowding_profile` (per BUSTO year), `localities` (migrations `0023`–`0027`). These
+  `crowding_profile` (per BUSTO year), `localities`, `route_diversions` (per episode,
+  append-only — doubles as diversion history) (migrations `0023`–`0027`, `0029`). These
   aren't given new `/api/v1/history` endpoints — the same data is already served by the
   current group (`/api/v1/route-stops` etc.); the mirror is a storage sink for
   completeness + future DB-backed reads. Reference data → latest-upsert (with `fetched_at`),

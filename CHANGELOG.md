@@ -5,6 +5,38 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-05 — Route diversions: automatic detection, real diverted geometry, baseline freeze
+
+Diversions are now a first-class, fully automatic dataset. TfL publishes no
+structured diversion data (the status feed's affectedRoutes/affectedStops are
+always empty) — but for planned diversions TfL *redraws* Route/Sequence
+(verified on W12/Selborne Road: the stop list drops the missed stops, the
+lineString follows the diversion roads, live buses track it within metres). So
+`pipeline/build/diversions.js` detects flagged routes from live bus status
+(new `lib/tfl-status.js` — TfL's validityPeriods.isNow is unreliable for
+in-progress works, date windows are checked directly; build/status.js fixed
+too) and diffs TfL's current sequence against our canonical baseline →
+per-direction missedStops / temporary addedStops, and the real diverted
+geometry (diversionSegments + bypassedSegments) when TfL has redrawn
+(geometryStatus "published" vs "unpublished"). Critically, the builder runs
+BEFORE build/routes.js and hands it the flagged set: the routes builder now
+FREEZES last-good stops+geometry for diverted routes, so a temporary diversion
+never silently overwrites the canonical route (the pre-existing bug: the store
+had absorbed W12's diverted state as if permanent). Self-heals when episodes
+end. Served at /api/v1/route-diversions (Function + serve.js mirror), mirrored
+to warehouse route_diversions (migration 0029, append-only per episode →
+automatic diversion history), validated in validate-atlas (7 new checks).
+App `/`: three-tier map overlay (store diff dashed amber + bypassed dotted red
++ missed/temporary stop markers → live text-parse fallback → live-GPS
+estimated dashed cyan traces for unpublished geometry), upgraded dossier
+diversion panel, Diverted table column, CSV columns (route list + per-stop
+flags), legend entries. App `/v2`: always-on divnLayer overlay + Route-card
+Diversion section. First live run: 161 active episodes, 8 with published
+geometry. Zero new crons or secrets — rides the existing daily refresh and
+ingest mirror.
+
+---
+
 ## 2026-07-27 — API verification sweep + National Highways feed retired
 
 Full verification pass of the public API against the committed data: all 17

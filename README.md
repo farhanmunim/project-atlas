@@ -87,6 +87,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/crowding` | Bus crowding per route (TfL BUSTO) — peak `V/C` (load÷capacity at the max-demand hour), `band` (comfortable→crowded), busiest stop/time/day, per-day-type peak |
 | `GET /api/v1/crowding-profile` | Per-route crowding detail (TfL BUSTO) — load-along-route (`V/C` by stop in sequence) + time-of-day curve (`V/C` per timeband, per day type); powers the corridor gradient + dossier charts |
 | `GET /api/v1/localities` | London locality labels for maps — towns & suburbs (`name`, `lat`/`lng`, `kind`); source OpenStreetMap (ODbL). Powers the apps' "Place names" layer |
+| `GET /api/v1/route-diversions` | Active route diversions keyed by route name — `status`/`disruptions` (reason + validity window) from TfL live status, plus the diff of TfL's current Route/Sequence against our frozen canonical baseline: `missedStops`, temporary `addedStops`, and (when TfL has redrawn the line, `geometryStatus:"published"`) the diverted `diversionSegments` + `bypassedSegments` geometry, per direction. Refreshed daily; episodes carry `detectedAt` |
 | `GET /api/v1/manifest` | Pipeline run manifest — per-dataset `fetchedAt` + row counts |
 
 The API has three groups, all listed in the `/api/v1` discovery index:
