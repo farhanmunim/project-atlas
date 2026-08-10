@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-08-10 — Drop TfL's misattributed statuses (the 376/379 class)
+
+Farhan spotted route 376 carrying a Special Service note about route 379.
+Verified against TfL directly: the record ("YARDLEY LANE, E4: Route 379 will
+be on diversion due to a parked vehicle…", validity April→November) is
+attached to line 376's status while route 379 itself reports Good Service —
+a genuine TfL data fault, wrong line AND missing from the right one. New
+routesNamedIn() in lib/tfl-status.js parses route names cited in a reason
+("Route 379 will…", "ROUTES 238 and 376", "Routes 304 & 376:", lettered
+forms); build/diversions.js drops any status whose reason names routes that
+do not include the flagged line (road-only prose is untouched; precision
+over recall — genuinely affected lines carry text naming them). Applied to
+both the active-candidate and upcoming-freeze paths, with an observability
+count in the run log. First run: 18 misattributed statuses dropped
+network-wide (the fault is a class, not a one-off); 376 keeps its two
+genuine works (Plashet Grove, Boundary Lane), 379 stays absent; dataset
+161→159. 8 new unit cases (test-functions 56/56) · validate-atlas 55/55 ·
+docs updated (live-status caveats + route-diversions detection).
+
+---
+
 ## 2026-08-10 — Vehicle body/type enrichment: DVLA → bustimes.org → LBR chain
 
 Farhan set the vehicle-data source priority: DVLA first, then an LVF-class

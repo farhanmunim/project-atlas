@@ -12,7 +12,7 @@
  * haversine, simplify invariants), lib/normalize.js (make/propulsion/operator
  * canonicalisation against known DVLA strings).
  */
-import { windowActiveNow, windowBounds, windowStartsWithin } from "./lib/tfl-status.js";
+import { windowActiveNow, windowBounds, windowStartsWithin, routesNamedIn } from "./lib/tfl-status.js";
 import { distToLineM, deviatingSegments } from "./build/diversions.js";
 import { lengthKm, simplify, round } from "./lib/geo.js";
 import { cleanMake, propulsionOf, canonicalOperator, reconcilePropulsion } from "./lib/normalize.js";
@@ -155,6 +155,23 @@ console.log("\nsources/ibus.js — zip reader & Route_Geometry parser");
   ok("parser: sequences sorted", g["1"][0][0] === -0.1 && g["1"][1][0] === -0.2, JSON.stringify(g["1"]));
   ok("parser: lowest run wins per direction (variant run 3 ignored)", !g["1"].some((p) => p[0] === -9));
   ok("parser: both directions extracted", g["2"]?.length === 2, JSON.stringify(g["2"]));
+}
+
+console.log("\nlib/tfl-status.js — routesNamedIn (misattribution filter)");
+{
+  const eq = (a, b) => JSON.stringify(a.sort()) === JSON.stringify(b.sort());
+  ok('"Route 379 will be on diversion…" → [379] (the live 376/379 case)',
+    eq(routesNamedIn("YARDLEY LANE, E4: Route 379 will be on on diversion due to a parked vehicle"), ["379"]));
+  ok('"ROUTES 238 and 376 will be diverted" → [238, 376]',
+    eq(routesNamedIn("Road closure… ROUTES 238 and 376 will be diverted in both directions"), ["238", "376"]));
+  ok('"Routes 304 & 376:" → [304, 376]',
+    eq(routesNamedIn("Boundary Lane E13 - Routes 304 & 376: Road will be closed"), ["304", "376"]));
+  ok('"ROUTES 212 W12 W19 and 675 will…" → all four incl. lettered',
+    eq(routesNamedIn("ROUTES 212 W12 W19 and 675 will be diverted and will miss stop"), ["212", "W12", "W19", "675"]));
+  ok("road-only prose (no routes named) → []", routesNamedIn("Selborne Road will be closed from 08:00 due to water works").length === 0);
+  ok('"to line of route" (bare word) → []', routesNamedIn("diverted via Sewardstone Road to line of route, missing stops").length === 0);
+  ok("years never parsed as routes", routesNamedIn("Routes 2026 subject to change").length === 0);
+  ok("null/empty safe", routesNamedIn(null).length === 0 && routesNamedIn("").length === 0);
 }
 
 console.log("\nsources/bustimes.js — vehicle record normalisation");

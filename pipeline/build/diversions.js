@@ -38,7 +38,7 @@ import * as ibus from "../sources/ibus.js";
 import { mapLimit } from "../lib/http.js";
 import { round, lengthKm } from "../lib/geo.js";
 import { check } from "../lib/validate.js";
-import { windowActiveNow, windowBounds, windowStartsWithin } from "../lib/tfl-status.js";
+import { windowActiveNow, windowBounds, windowStartsWithin, routesNamedIn } from "../lib/tfl-status.js";
 import { parseLineStrings, extractStops } from "./routes.js";
 
 // Text signal that a status is a service alteration (vs plain delays).
@@ -133,20 +133,32 @@ export async function build(ctx) {
     const candidates = [];
     const upcomingFreeze = new Set();   // not active yet, but the window opens soon — TfL redraws
                                         // Route/Sequence in ADVANCE, so freeze these baselines NOW
+    let misattributed = 0;
+    // TfL occasionally attaches a status to the WRONG line (verified: a route-379
+    // diversion on line 376's status while 379 read Good Service). When the reason
+    // text explicitly names routes and this line is not among them, that record is
+    // not this route's diversion — drop it (precision over recall; genuinely
+    // affected lines carry text naming them).
+    const forThisLine = (l) => (st) => {
+      const named = routesNamedIn(st.reason);
+      const mine = !named.length || named.includes(String(l.name).toUpperCase());
+      if (!mine) misattributed++;
+      return mine;
+    };
     for (const l of lines) {
       const sts = l.lineStatuses || [];
-      const active = sts.filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now));
+      const active = sts.filter((st) => st.statusSeverity !== 10 && windowActiveNow(st.validityPeriods, now)).filter(forThisLine(l));
       if (active.length) { candidates.push({ id: l.id, name: l.name, statuses: active }); continue; }
       if (sts.some((st) => st.statusSeverity !== 10 && windowStartsWithin(st.validityPeriods, FREEZE_LOOKAHEAD_DAYS, now)
-          && DIVERTY.test(st.reason || ""))) upcomingFreeze.add(l.id);
+          && DIVERTY.test(st.reason || "") && forThisLine(l)(st))) upcomingFreeze.add(l.id);
     }
-    return { candidates, upcomingFreeze };
+    return { candidates, upcomingFreeze, misattributed };
   };
 
   const prev = (await sink.readDataset("route-diversions")) || { routes: {} };
   const prevCount = Object.keys(prev.routes || {}).length;
 
-  let { candidates, upcomingFreeze } = buildCandidates((await tfl.busStatus()).data);
+  let { candidates, upcomingFreeze, misattributed } = buildCandidates((await tfl.busStatus()).data);
   // DEGRADED-FEED GATE: the bulk /Line/Mode/bus/Status intermittently returns an
   // all-Good-Service snapshot while the per-line endpoints still report the real
   // disruptions (observed live 2026-08-05). Dozens of months-long planned diversions
@@ -155,7 +167,7 @@ export async function build(ctx) {
   // the dataset (and with it the baseline-freeze set).
   if (!candidates.length && prevCount >= 20) {
     await new Promise((r) => setTimeout(r, 5000));
-    ({ candidates, upcomingFreeze } = buildCandidates((await tfl.busStatus()).data));
+    ({ candidates, upcomingFreeze, misattributed } = buildCandidates((await tfl.busStatus()).data));
     check(candidates.length > 0,
       `diversions: status feed reports 0 active disruptions but last run had ${prevCount} — degraded snapshot, keeping last-good`);
   }
@@ -260,6 +272,7 @@ export async function build(ctx) {
 
   log.info(`diversions: ${names.length} active (${published} with published geometry, ${names.length - published} unpublished)` +
     ` · ${upcomingFreeze.size} upcoming frozen ahead` +
+    (misattributed ? ` · ${misattributed} misattributed statuses dropped (named other routes)` : "") +
     (seqFail ? ` · ${seqFail} sequence fetches failed` : "") + (kept ? ` · ${kept} kept from last-good` : ""));
   return {
     source: "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
