@@ -1,0 +1,70 @@
+# Atlas — London Bus Network API
+
+> Open, read-only API for the London bus network: routes, stops, geometry, live status,
+> diversions (with real diverted geometry), garages, fleet, vehicles, tenders, reliability,
+> collisions, low bridges, crowding, plus a warehouse-backed history group.
+> No key, CORS-open, GET only. Full human/agent documentation: https://atlas.farhan.app/docs
+
+## Entry points (enumerate, don't guess)
+- https://atlas.farhan.app/api/v1            — discovery: all current datasets
+- https://atlas.farhan.app/api/v1/live       — live feeds (retired feeds carry retired:true)
+- https://atlas.farhan.app/api/v1/history    — warehouse time-series + filter params
+- https://atlas.farhan.app/api/v1/manifest   — freshness ledger: per-dataset fetchedAt/status/rows
+- Unknown names return JSON 404 with an `available` list. Retired feeds return 410 with an `alternative`.
+
+## Auth & limits
+- No caller key ever. Server-side keys (BODS/TfL/DVLA/warehouse) never appear in responses.
+- No enforced per-caller rate limit today; edge caches make fast polling pointless:
+  current group 5–10 min; live feeds 10–120 s (matches upstream cadence); history limit<=1000 (default 200).
+- Pagination: order=col.asc|col.desc + from/to date filters; no offset param.
+
+## Route keys — the #1 integration rule
+Three conventions, carried verbatim from upstreams. From GET /api/v1/routes take BOTH:
+- id (lowercase, e.g. "w12"): keys route-stops, route-classifications, routes-overview
+  properties.routeId, route-diversions routes[*].id, TfL live URLs.
+- name (as published, e.g. "W12"): keys route-meta, fleet.byRoute, tenders.byRoute,
+  crowding, crowding-profile, route-diversions.routes, live publishedLine, and the
+  history group's route_id columns.
+- route-performance.routes keys are UPPERCASED names — match case-insensitively.
+Numeric routes ("25") coincide across all three.
+
+## Other join keys
+- NaPTAN stop id: route-stops <-> live arrivals naptanId <-> diversion missed/added stops <-> history schedule stops.
+- Vehicle registration: fleet.regs <-> vehicles.byReg <-> live GPS reg <-> arrivals vehicleId <-> history vehicle-sightings.
+- Garage code: route-meta.garage <-> garages.code <-> history garage_code.
+- Direction: "1"=outbound, "2"=inbound; route-stops and diversion maps use the words outbound/inbound.
+- Borough: accidents use ONS codes (E09...), bridges/garage-snapshots use names.
+
+## Formats
+- Current group camelCase; history group snake_case; GeoJSON for routes-overview.
+- Timestamps ISO 8601 UTC, except preserved upstream strings: route-meta.contractDate (DD/MM/YY),
+  tenders awardDate ("16 January 2024"), crowding time (HH:MM:SS) / timeOfDay t (HH:MM).
+- Coordinates WGS84. GeoJSON + diversion segments are [lng,lat]; objects use lat/lng
+  (history garage-snapshots uses lon). live road-disruptions `point` is a JSON-encoded STRING "[lng,lat]".
+- null always means unknown/unpublished — never zero. Fields are added, never repurposed, under /api/v1.
+
+## Vocabularies (closed sets)
+- route type: regular | night | twentyfour | school
+- accident severity: fatal | serious | slight
+- crowding band: comfortable(<0.5) | moderate(<0.65) | busy(<0.8) | crowded(>=0.8) — thresholds also in payload
+- diversion geometryStatus: published | unpublished; baselineSource: store | ibus:YYYYMMDD
+- serviceClass: high-frequency (EWT-measured) | low-frequency (on-time-%-measured)
+- propulsion: electric | hybrid | hydrogen | diesel (vehicles may also yield gas/null)
+- live statusSeverity: 10=Good Service, 0=Special Service (diversions), lower=worse; read the description field
+
+## Notable semantics
+- route-diversions: TfL publishes no structured diversion data; we diff TfL's current
+  Route/Sequence against a frozen canonical baseline. missedStops = not served now;
+  addedStops = temporary; diversionSegments = the real diverted path (per direction).
+  route-stops/routes-overview always keep the CANONICAL (pre-diversion) route.
+- fleet is a point-in-time 03:17 UTC sample (night/school routes often empty); the
+  history group accrues the full roster over time.
+- history/reliability-daily is Atlas's OWN estimate — EXPERIMENTAL, biased high; TfL's
+  official figures are route-performance (QSI). Cite accordingly.
+- accidents/crowding history fall back to filtering the static snapshot if the warehouse
+  is unreachable (the response's `source` says so).
+
+## Provenance & licences
+TfL Open Data (Unified API, iBus, BUSTO, EPOWR, QSI) · DfT OGL (BODS SIRI-VM, STATS19) ·
+DVLA OGL · OpenStreetMap ODbL (localities) · postcodes.io · londonbusroutes.net (community,
+credited). Attribute upstreams when republishing.

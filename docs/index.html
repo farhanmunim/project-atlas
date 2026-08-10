@@ -116,6 +116,12 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
   <h2>Start here</h2>
   <ul>
     <li><a href="#overview">Overview &amp; conventions</a></li>
+    <li><a href="#keys">Keys &amp; limits</a></li>
+    <li><a href="#endpoints-inventory">Every endpoint</a></li>
+    <li><a href="#joins">How everything joins</a></li>
+    <li><a href="#vocab">Vocabularies &amp; formats</a></li>
+    <li><a href="#examples">Worked examples</a></li>
+    <li><a href="#agents">For AI agents</a></li>
     <li><a href="#lifecycle">How data flows</a></li>
     <li><a href="#cadence">Refresh cadences</a></li>
     <li><a href="#integrity">Integrity &amp; validation</a></li>
@@ -186,6 +192,128 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
   <li><strong>Errors are JSON</strong>: <code>404</code> unknown dataset (body lists <code>available</code> names), <code>405</code> non-GET, <code>410</code> permanently retired feeds (e.g. <code>live/national-highways</code>), <code>502</code> upstream failure, <code>503</code> history store unconfigured. Live-feed parameter errors return <code>400</code>.</li>
   <li><strong>Caching</strong>: current group <code>max-age=300, s-maxage=600</code>; live feeds 10–120&nbsp;s matched to each upstream's real cadence; error responses inherit these TTLs, so a transient upstream 404/502 self-heals within minutes.</li>
   <li><strong>Freshness is explicit</strong>: every dataset carries <code>generatedAt</code> (or equivalent), and <a href="#manifest"><code>manifest</code></a> is the ledger of when each dataset last refreshed, from which source, with how many rows.</li>
+</ul>
+
+<h3 id="keys">Keys &amp; limits</h3>
+<p><strong>Callers never need a key.</strong> Every endpoint on this page is open. Keys exist only <em>behind</em> the API, server-side, and never reach the browser or the responses:</p>
+<div class="tw"><table>
+<thead><tr><th>Key (name only)</th><th>Lives</th><th>Powers</th></tr></thead>
+<tbody>
+<tr><td class="f">BODS_API_KEY</td><td>Cloudflare Pages secret</td><td>The BODS SIRI-VM pull behind <code>live/vehicles</code> — all callers share its one 10&nbsp;s-cached snapshot</td></tr>
+<tr><td class="f">TFL_APP_KEY</td><td>Cloudflare secret + pipeline env</td><td>Optional — TfL works keyless; the key only raises our upstream rate allowance</td></tr>
+<tr><td class="f">WAREHOUSE_URL / WAREHOUSE_ANON_KEY</td><td>Cloudflare secrets</td><td>The history group's PostgREST connection (anon = read-only role behind row-level security)</td></tr>
+<tr><td class="f">DVLA_API_KEY</td><td>pipeline env only</td><td>Vehicle enrichment at build time — never used at request time</td></tr>
+</tbody></table></div>
+<div class="tw"><table>
+<thead><tr><th>Limit</th><th>Value</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Per-caller rate limit</td><td class="num">none enforced today</td><td>Edge caching absorbs load (a whole-network flood collapses to one upstream pull per TTL). A Cloudflare rate-limit rule (~100&nbsp;req/min/IP baseline) is planned; poll politely — respect the cache TTLs, there is nothing fresher behind them</td></tr>
+<tr><td>History page size</td><td class="num">limit ≤ 1000 · default 200</td><td>Server-capped twice (the API clamps, and PostgREST enforces max&nbsp;1000 rows); paginate with <code>order</code> + range filters (<code>from</code>/<code>to</code>), there is no offset param</td></tr>
+<tr><td>Live feed freshness floor</td><td class="num">10–120 s per feed</td><td>Matches each upstream's real cadence (BODS asks ≥10&nbsp;s; TfL caches arrivals 30&nbsp;s upstream) — faster polling returns the same cached bytes</td></tr>
+<tr><td>Current-group freshness</td><td class="num">5–10 min edge cache</td><td>Data itself changes at most daily (03:17&nbsp;UTC build) — one fetch per session is usually right; check <code>manifest</code> for staleness</td></tr>
+<tr><td>Payload sizes</td><td class="num">≤ ~8 MB</td><td>Largest: <code>routes-overview</code> (~3&nbsp;MB), <code>accidents</code> (~2&nbsp;MB), <code>route-stops</code> (~2.5&nbsp;MB), <code>crowding-profile</code> (~1.5&nbsp;MB) — all gzip-compressed on the wire; fetch once and cache client-side</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="endpoints-inventory">Every endpoint — the complete inventory</h2>
+<p>Every URL the API answers. No other paths exist; anything else returns a JSON 404 listing what's available.</p>
+<div class="tw"><table>
+<thead><tr><th>Pattern</th><th>Group</th><th>Params</th></tr></thead>
+<tbody>
+<tr><td class="f">GET /api/v1</td><td>index</td><td>—  (discovery: all groups + datasets)</td></tr>
+<tr><td class="f">GET /api/v1/{dataset}</td><td>current</td><td>— · dataset ∈ the 18 names in the sidebar</td></tr>
+<tr><td class="f">GET /api/v1/live</td><td>index</td><td>— (live-feed discovery, incl. <code>retired</code> flags)</td></tr>
+<tr><td class="f">GET /api/v1/live/status</td><td>live</td><td><code>route</code> (optional, comma-separable)</td></tr>
+<tr><td class="f">GET /api/v1/live/disruptions</td><td>live</td><td>—</td></tr>
+<tr><td class="f">GET /api/v1/live/arrivals</td><td>live</td><td><code>stop</code> (NaPTAN) <em>or</em> <code>route</code> — one required</td></tr>
+<tr><td class="f">GET /api/v1/live/road-disruptions</td><td>live</td><td>—</td></tr>
+<tr><td class="f">GET /api/v1/live/vehicles</td><td>live</td><td><code>line</code> or <code>route</code> (optional, comma-separable) — filters by <code>publishedLine</code></td></tr>
+<tr><td class="f">GET /api/v1/live/national-highways</td><td>live</td><td>— (always 410 Gone — retired)</td></tr>
+<tr><td class="f">GET /api/live/vehicles</td><td>legacy</td><td><code>line</code> — same data as <code>live/vehicles</code>, envelope <code>{live, cached, capturedAt, vehicles[]}</code>; kept for compatibility</td></tr>
+<tr><td class="f">GET /api/v1/history</td><td>index</td><td>— (history discovery)</td></tr>
+<tr><td class="f">GET /api/v1/history/{dataset}</td><td>history</td><td><code>limit</code> (≤1000) · <code>order=col.asc|col.desc</code> · plus per-dataset filters (exact whitelist in the <a href="#history">history table</a>; filter grammar: <code>route</code>/<code>severity</code>/<code>borough</code>/… are equality, <code>from</code>/<code>to</code> are ≥/≤ on the dataset's date column). Unknown params are ignored, never errors</td></tr>
+<tr><td class="f">GET /docs</td><td>—</td><td>this page · <code>GET /llms.txt</code> — the machine-readable summary for AI agents</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="joins">How everything joins — the key map</h2>
+<p>The single most important thing to know: <strong>three route-key conventions exist</strong>, verbatim from the upstreams. Getting these wrong is the #1 integration bug.</p>
+<div class="tw"><table>
+<thead><tr><th>Key</th><th>Example</th><th>Used by</th></tr></thead>
+<tbody>
+<tr><td class="f">route id <span class="pill">lowercase</span></td><td class="f">w12</td><td><code>routes[].id</code> · <code>route-stops.routes</code> keys · <code>routes-overview properties.routeId</code> · <code>route-classifications</code> keys · <code>route-diversions routes[*].id</code> + <code>upcomingFreeze[]</code> · TfL live URLs (<code>/Line/w12/…</code>)</td></tr>
+<tr><td class="f">route name <span class="pill">as published</span></td><td class="f">W12</td><td><code>routes[].name</code> · keys of <code>route-meta.routes</code>, <code>fleet.byRoute</code>, <code>tenders.byRoute</code>, <code>crowding.routes</code>, <code>crowding-profile.routes</code>, <code>route-diversions.routes</code> · live <code>publishedLine</code> · history <code>route_id</code> columns (yes — the warehouse's <code>route_id</code> holds the <em>name</em>)</td></tr>
+<tr><td class="f">route name <span class="pill">UPPERCASED</span></td><td class="f">W12 / N136</td><td><code>route-performance.routes</code> keys only. For numeric routes all three conventions coincide (<code>"25"</code>); for lettered routes always normalise — safest: match case-insensitively</td></tr>
+<tr><td class="f">NaPTAN stop id</td><td class="f">490011979N</td><td><code>route-stops</code> stop <code>id</code> ↔ live <code>arrivals naptanId</code> ↔ diversion <code>missedStops/addedStops id</code> ↔ history <code>schedule qsi_point_stop_ids / timing_point_stop_id</code>. Nationally unique — also joins to any NaPTAN/BODS dataset</td></tr>
+<tr><td class="f">registration</td><td class="f">LK67ENF</td><td><code>fleet regs[]</code> ↔ <code>vehicles.byReg</code> keys ↔ live GPS <code>reg</code> ↔ live <code>arrivals vehicleId</code> ↔ history <code>vehicle-sightings registration</code></td></tr>
+<tr><td class="f">garage code</td><td class="f">AW</td><td><code>route-meta garage</code> ↔ <code>garages code</code> ↔ history <code>garage_code</code></td></tr>
+<tr><td class="f">direction</td><td class="f">"1" / "2"</td><td><code>"1"</code>&nbsp;=&nbsp;outbound, <code>"2"</code>&nbsp;=&nbsp;inbound — in <code>routes-overview properties.direction</code>, live vehicle <code>direction</code>, <code>crowding direction</code>. The <em>word</em> forms <code>outbound</code>/<code>inbound</code> key <code>route-stops</code> and the diversion stop/segment maps</td></tr>
+<tr><td class="f">borough</td><td class="f">E09000001 vs "Barking &amp; Dagenham"</td><td>Inconsistent upstreams, preserved honestly: <code>accidents.borough</code> is the ONS district <em>code</em>; <code>bridges.borough</code> and <code>garage-snapshots</code> carry <em>names</em>. Map codes↔names with any ONS lookup if you need to join them</td></tr>
+<tr><td class="f">tender id</td><td class="f">btID "2179"</td><td><code>tenders.byId</code> keys ↔ every award object's <code>btID</code></td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="vocab">Vocabularies &amp; formats — every closed value set</h2>
+<div class="tw"><table>
+<thead><tr><th>Field(s)</th><th>Complete value set</th></tr></thead>
+<tbody>
+<tr><td class="f">type / routeType</td><td><code>regular</code> · <code>night</code> · <code>twentyfour</code> · <code>school</code>. (The apps additionally display a "prefix" class for lettered routes — that's derived client-side from the name, not a value in this field)</td></tr>
+<tr><td class="f">severity (accidents)</td><td><code>fatal</code> · <code>serious</code> · <code>slight</code></td></tr>
+<tr><td class="f">statusSeverity (live/status)</td><td>0–20 TfL scale; bus values in practice: <code>10</code> Good Service · <code>0</code> Special Service (diversions) · <code>3</code> Part Suspended · <code>4</code> Suspended · <code>5</code> Part Closure · <code>6</code> Severe Delays · <code>9</code> Minor Delays. Treat <code>≠10</code> as "not normal", read <code>statusSeverityDescription</code> for the label</td></tr>
+<tr><td class="f">band / crowding bands</td><td><code>comfortable</code> (&lt;0.5) · <code>moderate</code> (&lt;0.65) · <code>busy</code> (&lt;0.8) · <code>crowded</code> (≥0.8) — thresholds also shipped in the payload's <code>bands</code></td></tr>
+<tr><td class="f">geometryStatus</td><td><code>published</code> · <code>unpublished</code></td></tr>
+<tr><td class="f">baselineSource</td><td><code>store</code> · <code>ibus:YYYYMMDD</code></td></tr>
+<tr><td class="f">serviceClass / service_class</td><td><code>high-frequency</code> · <code>low-frequency</code> (occasionally <code>null</code> when TfL's PDF omits it)</td></tr>
+<tr><td class="f">propulsion</td><td><code>electric</code> · <code>hybrid</code> · <code>hydrogen</code> · <code>diesel</code> (route-meta/fleet buckets); <code>vehicles[].propulsion</code> may additionally yield <code>gas</code> or <code>null</code> from raw DVLA fuel strings</td></tr>
+<tr><td class="f">structure_type</td><td><code>bridge</code> · <code>tunnel</code> · <code>barrier</code></td></tr>
+<tr><td class="f">postcodeSource</td><td><code>garage</code> · <code>override</code> · <code>company</code> · <code>null</code></td></tr>
+<tr><td class="f">day / timeBand (accidents)</td><td><code>Mon…Sun</code> · <code>AM peak</code>/<code>Inter-peak</code>/<code>PM peak</code>/<code>Evening</code>/<code>Night</code></td></tr>
+<tr><td class="f">dayType (crowding)</td><td><code>Weekday</code> · <code>Saturday</code> · <code>Sunday</code></td></tr>
+<tr><td class="f">manifest status</td><td><code>ok</code> · <code>failed</code></td></tr>
+<tr><td class="f">jb.isJoint / was_joint_bid basis</td><td><code>vehicle.basis</code>: <code>new</code> · <code>existing</code> · <code>null</code>; <code>vehicle.deck</code>: <code>double</code> · <code>single</code> · <code>null</code></td></tr>
+</tbody></table></div>
+<div class="tw"><table>
+<thead><tr><th>Format rule</th><th>Detail</th></tr></thead>
+<tbody>
+<tr><td>Timestamps</td><td>ISO&nbsp;8601 UTC everywhere — <em>except</em> the verbatim-preserved upstream strings: <code>route-meta.contractDate</code> (<code>DD/MM/YY</code>), <code>tenders awardDate</code> (<code>16 January 2024</code>), crowding <code>time</code> (<code>HH:MM:SS</code>) and <code>timeOfDay t</code> (<code>HH:MM</code>)</td></tr>
+<tr><td>Coordinates</td><td>WGS84. GeoJSON and diversion segments are <code>[lng,lat]</code> (GeoJSON order); stop/vehicle/bridge/accident objects use named <code>lat</code>/<code>lng</code> fields (except history <code>garage-snapshots</code>: <code>lon</code>). Live <code>road-disruptions point</code> is a JSON-encoded <em>string</em> <code>"[lng,lat]"</code></td></tr>
+<tr><td>Units</td><td>distance km (bridges: metres, 2&nbsp;dp) · wait times minutes · reliability % · crowding V/C ratio (0–2) · money £ (bids annual, <code>costPerMile</code> per live mile) · <code>speedLimit</code> is a display string (<code>"30 mph"</code>)</td></tr>
+<tr><td>Casing</td><td>current group = camelCase · history group = snake_case · GeoJSON = GeoJSON</td></tr>
+<tr><td>Null semantics</td><td><code>null</code> always means "not known / not published / not parseable" — never zero. Numeric zero is a real measurement</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="examples">Worked examples</h2>
+<pre><span class="c"># discover everything</span>
+curl -s https://atlas.farhan.app/api/v1 | jq ".endpoints[].name"
+
+<span class="c"># everything about one route (note the key conventions: name for meta/perf/crowding, id for stops/geometry)</span>
+curl -s https://atlas.farhan.app/api/v1/route-meta        | jq ".routes.W12"
+curl -s https://atlas.farhan.app/api/v1/route-performance | jq ".routes.W12"
+curl -s https://atlas.farhan.app/api/v1/route-stops       | jq ".routes.w12.outbound[:3]"
+curl -s https://atlas.farhan.app/api/v1/tenders           | jq ".byRoute.W12[0]"
+
+<span class="c"># which routes are diverted right now, and where does W12 actually go?</span>
+curl -s https://atlas.farhan.app/api/v1/route-diversions | jq ".count, (.routes | keys[:10])"
+curl -s https://atlas.farhan.app/api/v1/route-diversions | jq ".routes.W12 | {status, until, geometryStatus, missed: [.missedStops[][].name]}"
+
+<span class="c"># live: buses on a route · arrivals at a stop</span>
+curl -s "https://atlas.farhan.app/api/v1/live/vehicles?line=W12" | jq ".count, .data[0]"
+curl -s "https://atlas.farhan.app/api/v1/live/arrivals?stop=490011979N" | jq ".data[0] | {lineName, destinationName, timeToStation}"
+
+<span class="c"># history: reliability trend · what changed on a route over time</span>
+curl -s "https://atlas.farhan.app/api/v1/history/reliability-daily?route=W12&amp;from=2026-08-01" | jq ".rows[] | {day, ewt_minutes, sample_count}"
+curl -s "https://atlas.farhan.app/api/v1/history/route-snapshots?route=W12&amp;limit=30" | jq "[.rows[] | {snapshot_date, operator, propulsion, pvr}] | unique_by(.operator, .propulsion, .pvr)"
+</pre>
+
+<h2 class="sec" id="agents">For AI agents</h2>
+<div class="callout cyan">
+<p>A condensed, machine-digestible version of this page is served at <a href="/llms.txt"><code>GET /llms.txt</code></a> (llms.txt convention). Deterministic rules an agent should hold:</p>
+</div>
+<ul class="tight">
+  <li><strong>Enumerate, don't guess</strong>: <code>GET /api/v1</code>, <code>/api/v1/live</code>, <code>/api/v1/history</code> list every valid name; a 404 body lists <code>available</code> names.</li>
+  <li><strong>Key normalisation</strong>: to look a route up across datasets, carry both <code>id</code> (lowercase) and <code>name</code> from <code>routes</code>, and match <code>route-performance</code> keys case-insensitively (see <a href="#joins">the key map</a>).</li>
+  <li><strong>Freshness</strong>: read <code>manifest</code> once; trust <code>fetchedAt</code> + <code>status</code>. Data changes at most daily except the live group.</li>
+  <li><strong>Never poll faster than the cache TTLs</strong> (they match upstream reality); batch questions against one fetched payload instead of re-fetching.</li>
+  <li><strong>Nulls are honest</strong> — absent knowledge, not zero. Don't impute.</li>
+  <li><strong>Shape stability</strong>: fields are added, never repurposed, under <code>/api/v1</code>; a permanently removed feed answers <code>410</code> with an <code>alternative</code>.</li>
+  <li><strong>Provenance</strong>: every dataset documents its upstream here; when citing figures, TfL's QSI (<code>route-performance</code>) is official — Atlas's own reliability estimate (<code>history/reliability-daily</code>) is experimental and must be labelled as such.</li>
 </ul>
 
 <h2 class="sec" id="lifecycle">How data flows — Fetch → Clean → Validate → Store → Serve</h2>
