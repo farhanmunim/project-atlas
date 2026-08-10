@@ -5,6 +5,29 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-10 — /docs for humans AND agents: joins, vocab, limits, examples, llms.txt
+
+The 100%-comprehension pass. New sections: Keys & limits (key NAMES and where
+they live — never values; every limit a consumer can hit: no caller key, no
+enforced rate limit today but edge-cache TTLs are the real floor, history
+limit<=1000/default 200, payload sizes); Every endpoint (the complete URL
+inventory incl. the legacy GPS path and the filter grammar); How everything
+joins (the key map — the three route-key conventions (lowercase id, published
+name, UPPERCASED perf keys), NaPTAN/reg/garage/borough/direction joins, the
+ONS-code-vs-name borough inconsistency stated honestly); Vocabularies &
+formats (every closed value set incl. the TfL severity scale, plus format
+rules: camelCase vs snake_case, [lng,lat] vs lat/lng vs the road-disruptions
+point-string, the non-ISO date exceptions, null-means-unknown); Worked
+examples (runnable curl+jq for discovery, per-route bundles, diversions,
+live, history trend/diff); For AI agents (deterministic integration rules).
+Plus /llms.txt at the site root (llms.txt convention): a condensed
+machine-readable summary of entry points, join rules, vocabularies and
+semantics — linked from the docs page; serve.js mirrors it with text/plain.
+Now 30 sections / 32 tables / 232 field rows. Verified: zero overflow
+320-1280px, no broken anchors, zero JS errors, llms.txt 200.
+
+---
+
 ## 2026-08-10 — /docs completeness pass: history row columns, live payloads, shape fixes
 
 A programmatic completeness audit (walk EVERY record of every dataset for the

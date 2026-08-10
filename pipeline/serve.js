@@ -51,13 +51,14 @@ function staticAllowed(rel, ext) {
   if (/^\/[\w-]+\.html$/.test(rel)) return true;
   if (rel === "/v2/index.html") return true;   // the v2 (Route Lens) page
   if (rel === "/docs/index.html") return true; // the API documentation page
+  if (rel === "/llms.txt") return true;        // machine-readable API summary (llms.txt convention)
 
   if (rel.startsWith("/data/") && (ext === ".json" || ext === ".geojson")) return true;
   return [".svg", ".png", ".ico", ".css", ".webmanifest"].includes(ext);
 }
 
 const TYPES = {
-  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".txt": "text/plain; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
   ".geojson": "application/geo+json; charset=utf-8", ".svg": "image/svg+xml",
   ".png": "image/png", ".ico": "image/x-icon", ".xlsx": "application/octet-stream",
