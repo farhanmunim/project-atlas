@@ -124,7 +124,8 @@ Time-series from our self-hosted warehouse (Postgres + PostgREST). Common params
 | Endpoint | What it returns |
 |---|---|
 | `GET /api/v1/history` | Index of historical datasets |
-| `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability (EWT/OTD/lost mileage). **Experimental** — surfaced in the app's route dossier + table as an "Atlas estimate" (cyan, `~`-prefixed), currently biased high (the ~30-min Arrivals sampling under-observes short headways); shown alongside, and explicitly not comparable to, TfL's published QSI. |
+| `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability (EWT/OTD). **Experimental** — surfaced in the app's route dossier + table as an "Atlas estimate" (cyan, `~`-prefixed), currently biased high (the ~30-min Arrivals sampling under-observes short headways); shown alongside, and explicitly not comparable to, TfL's published QSI. |
+| `GET /api/v1/history/lost-mileage?route=25` *(also `from=`/`to=`, `day_type=`, `confidence=`)* | Our own daily **gross** lost-mileage estimate — % of scheduled trips the continuous BODS trip-tracker never observed running (`lost_pct` + trip counts + `feed_coverage_pct`/`confidence`). Feed outages are excluded as unmeasured, never counted lost. **Experimental** — gross by construction (says trips didn't run, not why); not comparable to TfL's contractual in-control lost-mileage figures. |
 | `GET /api/v1/history/performance-history?route=25` | TfL quarterly performance, all periods |
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time |
 | `GET /api/v1/history/tender-programme?route=25` | TfL forward tendering programme |

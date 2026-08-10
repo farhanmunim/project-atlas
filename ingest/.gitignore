@@ -20,6 +20,9 @@ data/frequencies.json
 data/geometry-source.json
 data/build-meta.json
 data/audit/
+# Continuous collector output (track-vehicles.js) — daily trip logs, feed-health
+# counts and the open-trip checkpoint live on the Coolify /app/data volume only.
+data/tracking/
 
 # Sticky source caches: a one-time seed is committed (warm first run); runtime
 # updates persist via actions/cache, not git. Ignore the volatile/large members

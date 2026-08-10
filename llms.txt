@@ -66,6 +66,10 @@ Numeric routes ("25") coincide across all three.
   appear per-reg as coverage accrues (capped polite lookups per nightly run).
 - history/reliability-daily is Atlas's OWN estimate — EXPERIMENTAL, biased high; TfL's
   official figures are route-performance (QSI). Cite accordingly.
+- history/lost-mileage is Atlas's OWN daily GROSS estimate — EXPERIMENTAL: % of scheduled
+  trips our continuous BODS trip-tracking never saw run (lost_pct; feed outages excluded as
+  unmeasured, never lost; confidence high|medium|low). No in-/out-of-control split — never
+  comparable to TfL's contractual lost-mileage deductions.
 - accidents/crowding history fall back to filtering the static snapshot if the warehouse
   is unreachable (the response's `source` says so).
 
