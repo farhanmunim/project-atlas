@@ -230,6 +230,7 @@ prod as follows — keep both in sync:
     road-disruptions) ([`functions/api/v1/live/[[path]].js`]), keyless, edge-cached.
     Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
   - **history** — `/api/v1/history/*` serves the warehouse time-series (reliability-daily ·
+    **lost-mileage** (daily gross estimate from continuous BODS trip tracking, EXPERIMENTAL) ·
     performance-history · schedule · **route-snapshots** · **garage-snapshots** ·
     tender-programme · vehicle-sightings · accidents · crowding)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
@@ -415,7 +416,19 @@ can never block the Cloudflare site.
   - `npm run sample-headways` — every ~30 min in service hours; appends live
     arrival/headway observations to `arrival_samples`.
   - `npm run build-reliability` — daily; derives EWT/SWT/AWT, OTD and lost
-    mileage into `route_reliability_daily` from the samples + `route_schedule`.
+    mileage into `route_reliability_daily` from the samples + `route_schedule`;
+    chains `build-lost-mileage.js` (the daily gross lost-mileage matcher —
+    yesterday's tracked trips vs `route_schedule` departures at the timing point
+    → `route_lost_mileage_daily`, migration `0031`; soft-skips when the trip log,
+    warehouse env or table is missing).
+  - `npm run track-vehicles` — the continuous BODS SIRI-VM collector daemon
+    (`track-vehicles.js`): polls the whole-London feed every 25 s, runs each
+    vehicle through the trip state machine (`_lib/trip-tracker.js`), appends
+    completed trips to `data/tracking/trips-<day>.jsonl` + per-operator hourly
+    feed-health counts on the `/app/data` volume. Scheduled every 30 min —
+    `run-task.sh`'s lock makes firings while the daemon lives a no-op, so the
+    cron is a keepalive/restart, not a poller. SIGTERM checkpoints open trips;
+    restart within 30 min resumes them. Needs `BODS_API_KEY` in the resource env.
   - No heartbeat job — that existed only because Supabase's free tier auto-paused
     after 7 days with no DB write; self-hosted Postgres never does.
 - **Live reliability (our own, supplementing TfL's quarterly figures).** EWT =
@@ -427,6 +440,7 @@ can never block the Cloudflare site.
   as such; TfL's published `route_performance` remains the authoritative quarterly.
 - **Secrets:** `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY` (the service_role-equivalent
   JWT, signed with the PostgREST instance's own `PGRST_JWT_SECRET`), `DVLA_API_KEY`,
+  `BODS_API_KEY` (the SIRI-VM collector — same key as the Cloudflare Pages secret),
   and `TFL_APP_KEY` — bridged to the scripts' `BUS_API_KEY` in the task env. Live in
   the Coolify `ingest` resource's environment (the old GitHub Actions workflows are
   deleted; `.github/workflows/` is empty — any equivalently-named repo secrets are

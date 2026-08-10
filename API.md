@@ -124,6 +124,7 @@ size). Common query params: `route`, `from`, `to`, `reg`, `year`,
 |---|---|
 | `GET /api/v1/history` | Index of historical datasets |
 | `GET /api/v1/history/reliability-daily?route=25` | Our own daily reliability estimate per route — AWT/SWT/EWT (high-frequency), OTD (low-frequency), scheduled vs operated km, `sample_count`. **Experimental**: live-sampled, currently biased high; not comparable to TfL's published QSI |
+| `GET /api/v1/history/lost-mileage?route=25` *(filters: `route`, `from`/`to`, `day_type`, `confidence`)* | Our own daily **gross** lost-mileage estimate per route — % of scheduled trips our continuous BODS trip-tracking never observed running (`lost_pct`, `lost_trips`, `curtailed_trips`, `feed_coverage_pct`, `confidence`). Feed outages count as *unmeasured*, never as lost. **Experimental**: gross by construction (no in-/out-of-control split); not comparable to TfL's contractual lost-mileage deductions |
 | `GET /api/v1/history/performance-history?route=25` | TfL's published quarterly performance across all captured periods |
 | `GET /api/v1/history/schedule?route=25` | Scheduled service per route over time — service class, SWT, trips/km, headway |
 | `GET /api/v1/history/tender-programme?route=25&year=2026-2027` | TfL's forward LBSL tendering programme — issue/return/award/start dates, vehicle type |

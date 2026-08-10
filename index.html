@@ -845,6 +845,21 @@ async function loadReliabilityLatest(){
     for(const row of rows){ const k=row.route_id; if(k==null) continue; if(!(k in latest)) latest[k]=row; }
     store.reliabilityLatest=latest;
   }catch(e){ store.reliabilityLatest=store.reliabilityLatest||{}; }
+  // Atlas's own daily gross lost-mileage estimate (continuous BODS tracking vs the
+  // timetable) — same fire-and-forget pattern; absent until the warehouse serves rows.
+  try{
+    const r=await fetch(`/api/v1/history/lost-mileage?limit=1000`,{cache:"no-cache"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d=await r.json(); const latest={};
+    for(const row of (d&&d.rows)||[]){ const k=row.route_id; if(k==null) continue; if(!(k in latest)) latest[k]=row; }
+    store.lostLatest=latest;
+  }catch(e){ store.lostLatest=store.lostLatest||{}; }
+}
+// latest lost-mileage row for a route (same tolerant keying as reliabilityOf)
+function lostOf(r){
+  const m=store.lostLatest; if(!m||!r) return null;
+  for(const k of [r.name, String(r.name||"").toUpperCase(), r.id, String(r.id||"").toLowerCase()]){ if(k!=null && m[k]) return m[k]; }
+  return null;
 }
 // latest estimated-reliability row for a route, keyed tolerant of TfL line-id vs display name + case
 // (warehouse route_id can be e.g. "n73"/"sl1" while the app holds name "N73"/"SL1").
@@ -2120,6 +2135,8 @@ function routesTableHTML(){
     const rel = pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)}<span class="u">EWT</span>` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}<span class="u">%OTP</span>` : "—") : "—";
     const er = reliabilityOf(r);
     const erCell = er ? (er.service_class==="high-frequency"&&er.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — biased high">~${(+er.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : er.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental">~${Math.round(+er.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
+    const lm = lostOf(r);
+    const lmCell = lm&&lm.lost_pct!=null ? `<span style="color:var(--cyan)" title="experimental — gross, from continuous BODS tracking (${esc(lm.confidence||"")} confidence, ${esc(lm.day||"")})">~${(+lm.lost_pct).toFixed(1)}<span class="u">%</span></span>` : "—";
     const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?esc(fmtDate(m.contractDate)):"—");
     const lt=latestTender(r.name); const cpm=(lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:null;
     const jbCell = lt ? (isJointBid(lt)?`<span style="color:var(--amber)">joint</span>`:`<span style="color:var(--paper-3)">sole</span>`) : "—";
@@ -2137,6 +2154,7 @@ function routesTableHTML(){
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
       <td class="num">${erCell}</td>
+      <td class="num">${lmCell}</td>
       <td class="num" title="${cw?esc(CROWD_LABEL[cw.band]+" · peak "+Math.round(cw.peakVC*100)+"% V/C "+cw.dayType+" "+String(cw.time).slice(0,5)):"no BUSTO data"}">${cwCell}</td>
       <td class="num" style="font-size:10px">${contract}</td>
       <td class="num">${cpm!=null?"£"+cpm:"—"}</td>
@@ -2144,8 +2162,8 @@ function routesTableHTML(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="17" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own daily GROSS lost-mileage estimate: every scheduled trip vs continuously-observed BODS trips; feed outages count as unmeasured, never lost. Not TfL's contractual figure.">Lost mi <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="18" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2902,6 +2920,10 @@ function renderContext(){
     const cards=[];
     if(isHF && e.ewt_minutes!=null) cards.push(mcard("Excess wait",`~${(+e.ewt_minutes).toFixed(1)}<span class="u">min</span>`,"experimental","color:var(--cyan)"));
     else if(!isHF && e.otd_percent!=null) cards.push(mcard("On time",`~${(+e.otd_percent).toFixed(0)}<span class="u">%</span>`,"experimental","color:var(--cyan)"));
+    // gross lost mileage — the CONTINUOUS tracker's estimate (unlike the sampled figures
+    // above, this one observes the whole day, so it is shown; feed outages read unmeasured)
+    const lm = lostOf(r);
+    if(lm && lm.lost_pct!=null) cards.push(mcard("Lost mileage",`~${(+lm.lost_pct).toFixed(1)}<span class="u">%</span>`,`${lm.lost_trips||0} trips · ${lm.confidence||""}`,"color:var(--cyan)"));
     if(!cards.length) return "";
     const when = e.day ? esc(fmtDate(e.day)) : "";
     const caveat = isHF
@@ -3020,12 +3042,13 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r);
         return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
           (er&&er.ewt_minutes!=null)?(+er.ewt_minutes).toFixed(2):"", (er&&er.otd_percent!=null)?Math.round(+er.otd_percent):"", (er&&er.sample_count!=null)?er.sample_count:"", (er&&er.day)?er.day:"",
+          (lm&&lm.lost_pct!=null)?(+lm.lost_pct).toFixed(1):"", (lm&&lm.lost_trips!=null)?lm.lost_trips:"", lm?(lm.confidence||""):"", (lm&&lm.day)?lm.day:"",
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",

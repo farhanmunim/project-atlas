@@ -2,6 +2,49 @@
 
 ---
 
+## 2026-08-10 — Experimental gross lost-mileage estimator (end-to-end)
+
+New daily per-route GROSS lost-mileage estimate — "which routes' scheduled
+trips never ran" — from continuous BODS trip tracking, full lockstep:
+
+- Warehouse: migration 0031 `route_lost_mileage_daily` (PK route_id+day; trips
+  scheduled/measured/observed/matched/lost/curtailed, km scheduled/operated/
+  lost, lost_pct, unmeasured trips/km, feed_coverage_pct, confidence,
+  anon-read RLS); bundle regenerated (31 migrations).
+- Collector: `ingest/scripts/track-vehicles.js` — long-lived daemon polling the
+  BODS SIRI-VM London bbox every 25 s through a per-vehicle trip state machine
+  (`_lib/trip-tracker.js`: open on first on-route fix, close on line/dir
+  change, 150 m off-route streak, or 10-min gap; geometry projection via
+  our own routes-overview). Daily JSONL trip logs + per-operator hourly
+  feed-health counts on the /app/data volume, 16-day retention, SIGTERM
+  checkpoint of OPEN trips only (resume ≤30 min; a smoke test caught and
+  fixed a flush-then-save double-write). Scheduled Task every 30 min as a
+  keepalive via run-task.sh's lock. Needs BODS_API_KEY on atlas-ingest.
+- Matcher: `build-lost-mileage.js`, chained after build-reliability (00:37) —
+  interpolates each outbound trip's passing time at the route's timing point
+  (route-stops projected onto geometry), greedy-matches to route_schedule
+  departures ±12 min; unmatched = lost, <85% coverage = curtailed; operator
+  feed outages (hourly count vs 14-day median, 40% floor) excluded as
+  UNMEASURED, never lost; refuses partial collector days (<500 trips
+  network-wide); soft-skips missing log/env/table. Calibration target: TfL's
+  quarterly ~3% lost. Unit suite `test-lost-mileage.js` — 28 checks.
+- API: `/api/v1/history/lost-mileage` (prod Function + serve.js mirror) —
+  filters route/from/to/day_type/confidence.
+- Apps: `/` dossier "Lost mileage" card in the Atlas-estimate block, table
+  column "Lost mi (exp)", CSV export columns; `/v2` dossier "Lost mileage —
+  Atlas estimate" section. All cyan/~-prefixed EXPERIMENTAL.
+- Docs: /docs (endpoint row, full column reference, methodology, cadence,
+  lifecycle diagram), llms.txt, README, API.md, CLAUDE.md, SELF-HOSTING.md
+  (new task row + BODS_API_KEY env). reliability-daily's lost_km columns
+  marked superseded for lost-mileage questions.
+
+Honesty rules: gross by construction (no in-/out-of-control split — says
+trips didn't run, not why); never comparable to TfL's contractual
+deductions; feed outages are unmeasured, not lost. First rows appear the
+morning after the collector's first full day.
+
+---
+
 ## 2026-08-10 — Drop TfL's misattributed statuses (the 376/379 class)
 
 Farhan spotted route 376 carrying a Special Service note about route 379.

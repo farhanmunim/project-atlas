@@ -96,7 +96,9 @@ GitHub-App-sourced app, Build Pack **Dockerfile**, Base Directory `/ingest` (bui
 `ingest/Dockerfile`: node:22-alpine, `npm ci --include=dev` — the runtime deps live in
 devDependencies — then idles on `sleep infinity` for the tasks to exec into).
 
-- Env: `BUS_API_KEY` (TfL), `DVLA_API_KEY`, `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY`.
+- Env: `BUS_API_KEY` (TfL), `DVLA_API_KEY`, `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY`,
+  `BODS_API_KEY` (the continuous SIRI-VM vehicle collector — same key as the
+  Cloudflare Pages `BODS_API_KEY` secret).
 - **Auto Deploy OFF** (Advanced) — a git push must not rebuild the container mid-run
   (rebuilds wipe generated data + kill running jobs). Redeploy manually.
 - **Persistent Storage**: volume mounted at `/app/data` so warm caches (DVLA ~9k regs,
@@ -114,6 +116,14 @@ devDependencies — then idles on `sleep infinity` for the tasks to exec into).
 | daily-fleet-sample | `sh scripts/run-task.sh sample-vehicles npm run sample-vehicles` | `37 8 * * *` |
 | headway-sampler | `sh scripts/run-task.sh sample-headways npm run sample-headways` | `*/30 6-22 * * *` |
 | reliability-build | `sh scripts/run-task.sh build-reliability npm run build-reliability` | `37 0 * * *` |
+| track-vehicles | `sh scripts/run-task.sh track-vehicles npm run track-vehicles` | `*/30 * * * *` |
+
+`track-vehicles` is a **daemon, not a batch job** — the continuous BODS SIRI-VM
+collector behind the daily gross lost-mileage estimate (its trip logs land on the
+`/app/data` volume; `build-reliability` chains the matcher at 00:37). The 30-min
+cron is a keepalive: `run-task.sh`'s lock makes every firing while the daemon
+lives a no-op, and the first firing after a crash/redeploy restarts it (the ≤30 min
+gap is reported as unmeasured, never as lost). Needs `BODS_API_KEY` set.
 
 No heartbeat task — that existed only for Supabase free-tier auto-pause.
 Trade-off of detaching: Coolify always reports the task as succeeded — real

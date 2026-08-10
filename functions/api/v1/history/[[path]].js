@@ -66,6 +66,12 @@ const ENDPOINTS = {
     defaultOrder: "collision_date.desc",
     desc: "STATS19 bus/coach-involved collisions over time — lat/lng, severity, date, borough (ONS code), vehicle count, plus decoded context: road_type, speed_limit, junction, light, weather, road_surface, day, time_band. Filter by from/to date, severity, borough, road_type, speed_limit, day, time_band. The temporal source behind the /api/v1/accidents snapshot.",
   },
+  "lost-mileage": {
+    table: "route_lost_mileage_daily",
+    filters: { route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"], day_type: ["day_type", "eq"], confidence: ["confidence", "eq"] },
+    defaultOrder: "day.desc",
+    desc: "Atlas's own daily GROSS lost-mileage estimate per route — EXPERIMENTAL. Scheduled trips (route_schedule) matched against continuously-observed BODS trips; hours with an unhealthy operator feed count as unmeasured, never lost. Gross: cause split (in/out of operator control) is invisible externally — TfL's contractual figure will differ. Filter by route, from/to day, day_type, confidence.",
+  },
   "crowding": {
     table: "bus_crowding",
     filters: { route: ["route_id", "eq"], band: ["band", "eq"], year: ["busto_year", "eq"], day_type: ["day_type", "eq"] },

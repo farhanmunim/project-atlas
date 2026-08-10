@@ -648,6 +648,7 @@ var state = {
   netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   relLatest:null,        // latest Atlas-estimated reliability per route (history API), keyed by route_id
+  lostLatest:null,       // latest Atlas-estimated gross lost mileage per route (history API), keyed by route_id
   localities:null,       // place-name labels (towns/suburbs) for the map — /api/v1/localities
   crowding:null, crowdingMeta:null, crowdMode:false,   // BUSTO bus crowding (per route) + the "Crowding" colour layer
   crowdingProfile:null,  // BUSTO per-route detail (load-along-route + time-of-day), lazy-loaded
@@ -1284,6 +1285,21 @@ function relEstimateOf(name, id){
   for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
   return null;
 }
+// Atlas's OWN gross lost-mileage estimate (continuous BODS trip tracking matched to the
+// scheduled departures, via /api/v1/history/lost-mileage) — EXPERIMENTAL and gross: says
+// how many scheduled trips never ran, not why. Same latest-row-per-route bulk load.
+function ensureLostEstimate(){
+  if(state.lostLatest) return Promise.resolve();
+  return getJSON(atlasBase()+'/history/lost-mileage?limit=1000').then(function(d){
+    var latest={}; ((d&&d.rows)||[]).forEach(function(row){ var k=row.route_id; if(k!=null && !(k in latest)) latest[k]=row; });
+    state.lostLatest=latest;
+  }).catch(function(){ state.lostLatest={}; });
+}
+function lostEstimateOf(name, id){
+  var m=state.lostLatest||{}, keys=[id, name, String(id||'').toLowerCase(), String(name||'').toLowerCase(), String(name||'').toUpperCase()];
+  for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
+  return null;
+}
 // ── Diversion overlay — the store's route-diversions dataset (daily diff of TfL's
 // diverted Route/Sequence vs the canonical baseline). Route-scoped, always on: the
 // REAL diverted path dashed amber, bypassed section dotted red, missed stops red,
@@ -1330,6 +1346,7 @@ function ensureDossierData(){
   if(!state.crowding) jobs.push(getJSON(atlasBase()+'/crowding').then(function(d){ state.crowding=(d.routes||d); state.crowdingMeta={year:d.year}; }).catch(function(){ state.crowding={}; }));
   if(!state.crowdingProfile) jobs.push(ensureCrowdingProfile());   // load-along-route + time-of-day charts
   if(!state.relLatest) jobs.push(ensureRelEstimate());             // Atlas-estimated reliability (experimental)
+  if(!state.lostLatest) jobs.push(ensureLostEstimate());           // Atlas-estimated gross lost mileage (experimental)
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1404,6 +1421,17 @@ function renderDossier(){
       else if(!isHF && er.otd_percent!=null) re+=drow('~OTD', '~'+(+er.otd_percent).toFixed(0)+'% on time · experimental', 'var(--cyan)');
       if(re) rc+=dsec('Reliability — Atlas estimate', (er.sample_count?er.sample_count+' samples':'experimental'))+re+
         '<div class="dempty">Our own live-sampled estimate — biased high; not comparable to TfL’s QSI.</div>';
+    }
+
+    // Lost mileage — Atlas estimate (EXPERIMENTAL, cyan): gross % of scheduled trips our
+    // continuous BODS tracking never observed running. Gross by design — no cause split
+    // (traffic vs operator), and feed outages are excluded as unmeasured, not counted lost.
+    var le=lostEstimateOf(name, state.routeId);
+    if(le && le.lost_pct!=null){
+      var lrow=drow('~Lost mi', '~'+(+le.lost_pct).toFixed(1)+'% of scheduled trips · experimental', 'var(--cyan)');
+      if(le.lost_trips!=null) lrow+=drow('Missing trips', le.lost_trips+' of '+(le.scheduled_trips!=null?le.scheduled_trips:'?')+' scheduled'+(le.day?' · '+le.day:''));
+      rc+=dsec('Lost mileage — Atlas estimate', (le.confidence||'experimental'))+lrow+
+        '<div class="dempty">Gross estimate from continuous BODS trip tracking — says trips didn’t run, not why; not TfL’s in-control lost-mileage figure.</div>';
     }
 
     // Fleet subsection — the LIVE DVLA sample of what's actually rostered, vs the contracted Spec above.
