@@ -476,7 +476,10 @@ CSV export → docs.** A change that lands in one of these but not the rest is a
   incomplete change.
 
 Net: capture once, expose everywhere — the warehouse, the public API, the app (dossier
-**and** table), the CSV export, and the docs stay in lockstep. The default expectation for
+**and** table), the CSV export, and the docs stay in lockstep. "Docs" includes the
+**`/docs` reference page** (`docs/index.html`, served at atlas.farhan.app/docs and linked
+from both apps): the exhaustive per-field contract — meaning, source, processing,
+validation, fallbacks, cadence per datapoint. A new/changed field gets a row there too. The default expectation for
 any data change is "is it in the database, queryable through `/api/v1`, shown in the app +
 table, exported, and documented?"
 

@@ -61,6 +61,7 @@ itself consumes this API; you get exactly the same data.
 > kept in sync with it.
 
 - **Base URL:** `https://atlas.farhan.app/api/v1`
+- **Full data reference:** [`https://atlas.farhan.app/docs`](https://atlas.farhan.app/docs) — every dataset and field documented: meaning, upstream source, processing, validation gates, fallbacks and refresh cadence. The tables below are the summary; `/docs` is the complete contract.
 - **Discovery:** `GET /api/v1` returns the service description and every endpoint.
 - **Methods:** `GET` / `HEAD` only. `OPTIONS` is handled for CORS preflight.
 - **Caching:** responses are edge-cached (~5 min). Reference data changes at most daily.
