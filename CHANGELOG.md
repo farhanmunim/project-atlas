@@ -5,6 +5,28 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-10 — /docs: the complete API data reference
+
+New documentation page at atlas.farhan.app/docs (docs/index.html — single
+self-contained page on the shared tokens, dark/light via the shared settings
+key, served by Cloudflare Pages directory-index + a serve.js dev mirror route,
+linked from both apps' chrome). Documents every dataset and every field the
+API serves — ~166 field rows across 23 tables: meaning, upstream source,
+exact processing (derivations, canonicalisation, decode tables, comma-
+convention handling, band lower-bound safety rule, etc.), validation gates
+with their real bounds, fallback tiers, upstream cadence vs our refresh
+cadence, plus the live group (params, TTLs, SIRI-VM fields), the history
+group (filters, methodology incl. the EWT formula and the experimental
+labelling), an integrity section (the 50/43/18-check validation stack) and
+licensing/attribution. Field inventory generated from the live data files;
+processing facts extracted from the builders — including honest caveats
+(fleet is a point-in-time sample; contractStart/End is an 8-route curated
+map pending the OCDS ingester; BUSTO omits school routes). Verified headless:
+zero JS errors, all nav anchors resolve, zero horizontal overflow 320–1440px,
+theme toggle works, /docs links live in both apps.
+
+---
+
 ## 2026-08-05 — iBus geometry source, degraded-feed gates, full source audit
 
 Farhan's hunch confirmed: ibus.data.tfl.gov.uk is a public S3 bucket of dated

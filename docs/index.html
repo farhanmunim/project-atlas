@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>API Docs · Atlas — London Bus Network</title>
+<meta name="description" content="Complete reference for the Atlas API — every dataset and field: what it is, where it comes from, how it is processed, validated and refreshed. Interactive map + analytics for the London bus network.">
+<meta property="og:title" content="API Docs · Atlas — London Bus Network">
+<meta property="og:description" content="Complete reference for the Atlas API — every dataset, every field: source, processing, validation, cadence.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://atlas.farhan.app/docs">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%230a0e16"/><circle cx="16" cy="16" r="9" fill="none" stroke="%23f5a524" stroke-width="3"/><path d="M4 16h24" stroke="%23e7edf6" stroke-width="3"/></svg>'>
+<style>
+:root, [data-theme="dark"]{
+  --ink:#0a0e16; --ink-2:#0c111b; --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
+  --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
+  --paper:#e7edf6; --paper-2:#9fb0c8; --paper-3:#647691; --paper-4:#3f4d63;
+  --amber:#f5a524; --cyan:#37c5c5; --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
+  --ease:cubic-bezier(0.4,0,0.2,1);
+  --mono:"SF Mono","Cascadia Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+[data-theme="light"]{
+  --ink:#f4f7fb; --ink-2:#eef2f8; --panel:#ffffff; --panel-2:#f7fafd; --panel-3:#eef2f8;
+  --line:#dbe3ee; --line-2:#c8d3e2; --line-3:#aab8cc;
+  --paper:#1f2733; --paper-2:#46566b; --paper-3:#68788e; --paper-4:#93a2b5;
+  --amber:#b26f04; --cyan:#0e7c7c; --violet:#5b47c9; --green:#177a48; --alert:#c92a4e;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--ink);color:var(--paper);font:14px/1.65 var(--sans)}
+a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.92em}
+code{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--paper);white-space:nowrap}
+.skip{position:absolute;left:-9999px;top:0;background:var(--amber);color:#0a0e16;padding:8px 14px;z-index:99;border-radius:0 0 6px 0}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+header.topbar{position:sticky;top:0;z-index:50;height:52px;display:flex;align-items:center;gap:12px;padding:0 18px;background:color-mix(in srgb,var(--ink) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;color:var(--paper);font-weight:650;letter-spacing:.2px}
+.brand svg{width:22px;height:22px}
+.brand .sub{color:var(--paper-3);font-weight:450;font-size:12.5px}
+.topbar .sp{flex:1}
+.tblink{font-family:var(--mono);font-size:11.5px;color:var(--paper-2);border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 10px}
+.tblink:hover{text-decoration:none;border-color:var(--line-2);color:var(--paper)}
+button.tblink{cursor:pointer}
+.layout{display:grid;grid-template-columns:248px minmax(0,1fr);gap:0;max-width:1280px;margin:0 auto}
+nav.side{position:sticky;top:52px;align-self:start;height:calc(100vh - 52px);overflow-y:auto;padding:20px 8px 40px 18px;border-right:1px solid var(--line)}
+nav.side h2{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-3);margin:18px 0 6px;font-weight:600}
+nav.side ul{list-style:none;margin:0;padding:0}
+nav.side a{display:block;padding:3.5px 10px;border-radius:6px;color:var(--paper-2);font-size:12.8px}
+nav.side a:hover{background:var(--panel);color:var(--paper);text-decoration:none}
+nav.side a .mono{color:var(--paper-3);font-size:11px}
+main{padding:28px 34px 90px;min-width:0}
+h1{font-size:25px;margin:.2em 0 .35em;letter-spacing:-.01em}
+.lede{color:var(--paper-2);max-width:72ch;margin:0 0 8px}
+h2.sec{font-size:19px;margin:2.2em 0 .4em;padding-top:1em;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:15.5px;margin:1.8em 0 .3em}
+h3 code{font-size:14px;background:var(--panel);border-color:var(--line-2)}
+p{max-width:78ch}
+.pill{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;border-radius:999px;padding:2px 9px;border:1px solid var(--line-2);color:var(--paper-2);vertical-align:2px;margin-left:6px}
+.pill.amber{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.pill.cyan{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 45%,transparent)}
+.pill.green{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.pill.alert{color:var(--alert);border-color:color-mix(in srgb,var(--alert) 45%,transparent)}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));gap:8px;margin:12px 0 6px}
+.meta-grid .mg{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+.meta-grid .mg .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-3)}
+.meta-grid .mg .v{font-family:var(--mono);font-size:12.2px;color:var(--paper);margin-top:2px;word-break:break-word}
+.tw{overflow-x:auto;margin:10px 0 4px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:12.6px}
+th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-3);text-align:left;font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line-2);background:var(--panel-2);white-space:nowrap}
+td{padding:7.5px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.f{font-family:var(--mono);font-size:12px;white-space:nowrap;color:var(--paper)}
+td.t{font-family:var(--mono);font-size:11px;color:var(--violet);white-space:nowrap}
+td.num{font-family:var(--mono)}
+.callout{border:1px solid var(--line-2);border-left:3px solid var(--amber);background:var(--panel);border-radius:8px;padding:11px 15px;margin:14px 0;max-width:84ch}
+.callout.cyan{border-left-color:var(--cyan)}
+.callout.alert{border-left-color:var(--alert)}
+.callout.green{border-left-color:var(--green)}
+.callout p{margin:.25em 0}
+pre{background:var(--ink-2);border:1px solid var(--line);border-radius:9px;padding:13px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--paper-2)}
+pre .c{color:var(--paper-3)} pre .a{color:var(--amber)}
+ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22em 0}
+.small{font-size:12px;color:var(--paper-3)}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.side{position:static;height:auto;max-height:220px;border-right:none;border-bottom:1px solid var(--line);padding:12px 18px}
+  main{padding:20px 16px 70px}
+}
+@media (max-width:620px){
+  .topbar a.tblink{display:none}   /* keep only the theme toggle; the brand links home */
+  code{white-space:normal;word-break:break-word}
+  .meta-grid .mg .v{word-break:break-all}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="/" title="Back to the Atlas app">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="none" stroke="var(--line-2)"/><circle cx="16" cy="16" r="9" fill="none" stroke="var(--amber)" stroke-width="3"/><path d="M4 16h24" stroke="var(--paper)" stroke-width="3"/></svg>
+    Atlas <span class="sub">· API documentation</span>
+  </a>
+  <span class="sp"></span>
+  <a class="tblink" href="/">Map app</a>
+  <a class="tblink" href="/v2">Route Lens</a>
+  <a class="tblink" href="/api/v1">GET /api/v1</a>
+  <button type="button" class="tblink" id="themeBtn" aria-pressed="false" title="Toggle dark / light theme">◐ theme</button>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Page contents">
+  <h2>Start here</h2>
+  <ul>
+    <li><a href="#overview">Overview &amp; conventions</a></li>
+    <li><a href="#lifecycle">How data flows</a></li>
+    <li><a href="#cadence">Refresh cadences</a></li>
+    <li><a href="#integrity">Integrity &amp; validation</a></li>
+  </ul>
+  <h2>Current datasets</h2>
+  <ul>
+    <li><a href="#routes"><span class="mono">routes</span></a></li>
+    <li><a href="#route-meta"><span class="mono">route-meta</span></a></li>
+    <li><a href="#route-classifications"><span class="mono">route-classifications</span></a></li>
+    <li><a href="#route-stops"><span class="mono">route-stops</span></a></li>
+    <li><a href="#routes-overview"><span class="mono">routes-overview</span></a></li>
+    <li><a href="#line-status"><span class="mono">line-status</span></a></li>
+    <li><a href="#route-diversions"><span class="mono">route-diversions</span></a></li>
+    <li><a href="#garages"><span class="mono">garages</span></a></li>
+    <li><a href="#fleet"><span class="mono">fleet</span></a></li>
+    <li><a href="#vehicles"><span class="mono">vehicles</span></a></li>
+    <li><a href="#tenders"><span class="mono">tenders</span></a></li>
+    <li><a href="#route-performance"><span class="mono">route-performance</span></a></li>
+    <li><a href="#accidents"><span class="mono">accidents</span></a></li>
+    <li><a href="#bridges"><span class="mono">bridges</span></a></li>
+    <li><a href="#crowding"><span class="mono">crowding</span></a></li>
+    <li><a href="#crowding-profile"><span class="mono">crowding-profile</span></a></li>
+    <li><a href="#localities"><span class="mono">localities</span></a></li>
+    <li><a href="#manifest"><span class="mono">manifest</span></a></li>
+  </ul>
+  <h2>Live feeds</h2>
+  <ul><li><a href="#live">The <span class="mono">/live</span> group</a></li></ul>
+  <h2>History</h2>
+  <ul><li><a href="#history">The <span class="mono">/history</span> group</a></li></ul>
+  <h2>Appendix</h2>
+  <ul><li><a href="#licensing">Licensing &amp; attribution</a></li></ul>
+</nav>
+<main id="main">
+<h1>Atlas API — the complete data reference</h1>
+<p class="lede">Every dataset and every field the Atlas API serves: what it means, which upstream source it comes from, how it is fetched, cleaned, derived and validated, how often the upstream changes, and how often we refresh it. This page is generated from the same pipeline the data ships from — if a field exists in the API, it is documented here.</p>
+
+<h2 class="sec" id="overview">Overview &amp; conventions</h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Base URL</div><div class="v">https://atlas.farhan.app/api/v1</div></div>
+  <div class="mg"><div class="k">Auth</div><div class="v">none — open, no key</div></div>
+  <div class="mg"><div class="k">Methods</div><div class="v">GET / HEAD only</div></div>
+  <div class="mg"><div class="k">CORS</div><div class="v">Access-Control-Allow-Origin: *</div></div>
+  <div class="mg"><div class="k">Format</div><div class="v">JSON (GeoJSON where noted)</div></div>
+  <div class="mg"><div class="k">Discovery</div><div class="v">GET /api/v1 → full index</div></div>
+</div>
+<p>The API has <strong>three groups</strong>, discoverable from the index:</p>
+<div class="tw"><table>
+<thead><tr><th>Group</th><th>Path</th><th>What it serves</th><th>Backing</th></tr></thead>
+<tbody>
+<tr><td><strong>current</strong></td><td class="f">/api/v1/&lt;dataset&gt;</td><td>Today's snapshot of every dataset — the same files the Atlas apps render</td><td>Committed store files, edge-cached 5–10&nbsp;min</td></tr>
+<tr><td><strong>live</strong></td><td class="f">/api/v1/live/&lt;feed&gt;</td><td>Real-time bus + road feeds proxied from TfL, plus live bus GPS</td><td>TfL Unified API / BODS SIRI-VM, edge-cached 10–120&nbsp;s</td></tr>
+<tr><td><strong>history</strong></td><td class="f">/api/v1/history/&lt;dataset&gt;</td><td>Time-series that accrues in the warehouse — daily reliability, CDC snapshots, sightings, collision history</td><td>Self-hosted Postgres via PostgREST (server-side key, never exposed)</td></tr>
+</tbody></table></div>
+<h3>Response &amp; error conventions</h3>
+<ul class="tight">
+  <li><strong>Versioned</strong>: breaking changes only ever arrive under a new version prefix. <code>/api/v1</code> shapes are stable; fields are added, not repurposed.</li>
+  <li><strong>Errors are JSON</strong>: <code>404</code> unknown dataset (body lists <code>available</code> names), <code>405</code> non-GET, <code>410</code> permanently retired feeds (e.g. <code>live/national-highways</code>), <code>502</code> upstream failure, <code>503</code> history store unconfigured. Live-feed parameter errors return <code>400</code>.</li>
+  <li><strong>Caching</strong>: current group <code>max-age=300, s-maxage=600</code>; live feeds 10–120&nbsp;s matched to each upstream's real cadence; error responses inherit these TTLs, so a transient upstream 404/502 self-heals within minutes.</li>
+  <li><strong>Freshness is explicit</strong>: every dataset carries <code>generatedAt</code> (or equivalent), and <a href="#manifest"><code>manifest</code></a> is the ledger of when each dataset last refreshed, from which source, with how many rows.</li>
+</ul>
+
+<h2 class="sec" id="lifecycle">How data flows — Fetch → Clean → Validate → Store → Serve</h2>
+<p>Nothing is served straight from a scrape or a live pull. Every dataset moves through the same five-stage pipeline, run unattended every night:</p>
+<pre>
+03:17 UTC  <span class="a">atlas-refresh</span> (VPS scheduled task) clones main and runs the pipeline:
+           <span class="c">for each dataset:</span> fetch upstream → clean/normalise → <span class="a">validate (hard gate)</span> → write store JSON
+           diversions builder runs FIRST and freezes the canonical baselines of diverted routes
+           validate-atlas.js (50 checks) gates the commit — a failing dataset keeps its last-good file
+           bot commits data/*.json → push → Cloudflare Pages redeploys the API + apps automatically
+08:37 UTC  daily fleet sample (warehouse)         <span class="c">ingest pipeline, decoupled — can never block the API</span>
+09:23 UTC  warehouse refresh: CDC snapshots per route/garage + reference mirror (incl. diversions history)
+every 30m  live arrival/headway sampler (service hours) → our own reliability estimates
+</pre>
+<ul class="tight">
+  <li><strong>Last-good retention</strong>: a failed or implausible fetch never overwrites a good file. Failure is recorded in the <code>manifest</code> (<code>status:"failed"</code>, <code>lastError</code>) while the previous data keeps serving.</li>
+  <li><strong>Validation is a hard gate, not a warning</strong>: row-count bands, required-field checks, coordinate bounds, totals reconciliation and dataset-specific sanity checks all run before a byte lands (see <a href="#integrity">Integrity</a>).</li>
+  <li><strong>Degraded-feed gates</strong>: TfL's bulk status feed intermittently reports the entire network as Good Service while per-line endpoints still carry disruptions. Status-consuming builders detect the signature (zero disruptions after a run that saw many), retry once, then keep last-good.</li>
+  <li><strong>Idempotent + atomic</strong>: re-runs produce the same state; files are written via temp-file + rename so a killed run never leaves a torn file.</li>
+  <li><strong>Decoupled warehouse</strong>: the history warehouse ingests on its own schedule and writes only to Postgres — a slow or failed ingest can never block or corrupt the static API.</li>
+</ul>
+
+<h2 class="sec" id="cadence">Refresh cadences at a glance</h2>
+<p>Polling matches each upstream's real publication rhythm — a quarterly PDF is not fetched hourly, and a 30-second feed is not cached for a day.</p>
+<div class="tw"><table>
+<thead><tr><th>Dataset</th><th>Upstream publishes</th><th>We refresh</th><th>Skip logic (politeness)</th></tr></thead>
+<tbody>
+<tr><td class="f">routes · route-stops · routes-overview · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
+<tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>every run (daily)</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed</td></tr>
+<tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net)</td><td>daily</td><td>geocodes cached; overrides pinned</td></tr>
+<tr><td class="f">fleet · vehicles</td><td>continuous (live arrivals) · DVLA static</td><td>daily sample</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
+<tr><td class="f">tenders</td><td>event-driven awards</td><td>daily incremental</td><td>append-only by tender id — only NEW ids fetched</td></tr>
+<tr><td class="f">route-performance</td><td>~4-weekly (QSI) · quarterly (MPS)</td><td>daily check</td><td>Last-Modified skip makes the daily check ~free</td></tr>
+<tr><td class="f">accidents (STATS19)</td><td>annual</td><td>monthly re-check</td><td>bulk CSV, conditional</td></tr>
+<tr><td class="f">bridges (EPOWR)</td><td>annual</td><td>monthly re-check</td><td>single xlsx</td></tr>
+<tr><td class="f">crowding · crowding-profile (BUSTO)</td><td>annual</td><td>monthly re-check</td><td>~98&nbsp;MB CSV streamed, skipped when year unchanged</td></tr>
+<tr><td class="f">localities (OSM)</td><td>rarely</td><td>monthly</td><td>single Overpass query</td></tr>
+<tr><td class="f">line-status</td><td>~30&nbsp;s (TfL cache)</td><td>every run</td><td>stored snapshot is the offline fallback tier; apps read TfL live</td></tr>
+</tbody></table></div>
+<h2 class="sec" id="routes">routes <span class="pill green">reference</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/routes</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL Unified API · /Line/Mode/bus</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">array of route objects</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~640–680 (validated band 400–2000)</div></div>
+</div>
+<p>The route catalogue — every bus line TfL currently registers. Non-public placeholder lines (the <code>ZZ*</code> test/rail-replacement designations) are filtered out so counts reconcile across datasets. Sorted numerically then lexically (<code>2</code> before <code>10</code>, letters after).</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">id</td><td class="t">string</td><td>TfL line id — lowercase, e.g. <code>w12</code>. The join key for <code>route-stops</code>, <code>routes-overview</code> and live TfL calls.</td><td>TfL verbatim</td></tr>
+<tr><td class="f">name</td><td class="t">string</td><td>Public route number, e.g. <code>W12</code>. The join key for <code>route-meta</code>, <code>fleet</code>, <code>tenders</code>, <code>crowding</code>, <code>route-diversions</code>.</td><td>TfL verbatim</td></tr>
+<tr><td class="f">type</td><td class="t">string</td><td><code>regular</code> · <code>night</code> · <code>twentyfour</code> · <code>school</code></td><td>Derived: <code>N</code>-prefix → night; <code>6xx/9xx</code> → school. 24-hour isn't in any free feed — set from a curated overrides file. Lettered/express classification is refined app-side (<code>prefix</code>).</td></tr>
+</tbody></table></div>
+<p class="small">Validation: 400–2000 rows; every row must carry <code>id</code>, <code>name</code>, <code>type</code>. Failure keeps last-good.</p>
+
+<h2 class="sec" id="route-meta">route-meta <span class="pill green">reference</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-meta</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">londonbusroutes.net (garages.csv + details.htm)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, routes: { [name]: {…} } }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">route name (e.g. "W12")</div></div>
+</div>
+<p>Operational metadata per route — who runs it, from which garage, with how many buses, on what vehicle type and contract. Sourced from the long-running londonbusroutes.net reference (the community authority on garage allocations), scraped in the pipeline only — never at runtime — and joined against the TfL route list.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">type</td><td class="t">string</td><td>Route type (same vocabulary as <code>routes.type</code>)</td><td>as <code>routes</code></td></tr>
+<tr><td class="f">operator</td><td class="t">string</td><td>Operating brand, e.g. <code>Stagecoach London</code></td><td>Scraped operator string canonicalised via the operator-alias table (legal suffixes stripped, subsidiary variants rolled up to the parent brand)</td></tr>
+<tr><td class="f">company</td><td class="t">string</td><td>The legal operating company, e.g. <code>East London Bus &amp; Coach Co. Ltd.</code></td><td>Scraped verbatim (the raw counterpart to <code>operator</code>)</td></tr>
+<tr><td class="f">propulsion</td><td class="t">string|null</td><td><code>electric</code> · <code>hybrid</code> · <code>hydrogen</code> · <code>diesel</code></td><td>Parsed from the vehicle-type string; then <strong>reconciled against the DVLA-enriched live fleet</strong>: a fleet sample ≥4 vehicles that is ≥75% zero-emission upgrades a stale diesel/null (DVLA reliably identifies zero-emission but mis-reports hybrids as diesel, so hybrid-vs-diesel stays this source's call). Guarded by a regression check in the validator.</td></tr>
+<tr><td class="f">garage</td><td class="t">string|null</td><td>Garage code(s), e.g. <code>AW</code></td><td>garages.csv allocation</td></tr>
+<tr><td class="f">garageName</td><td class="t">string|null</td><td>Garage display name, e.g. <code>Walthamstow Avenue</code></td><td>joined from the garages dataset</td></tr>
+<tr><td class="f">pvr</td><td class="t">number|null</td><td>Peak Vehicle Requirement — buses needed to run the peak timetable</td><td>Scraped; the operationally-current figure (tender awards freeze PVR at award time — see <code>tenders</code>)</td></tr>
+<tr><td class="f">fleet</td><td class="t">string|null</td><td>Rostered vehicle spec, e.g. <code>E100EV/Enviro100EV 8.5m</code></td><td>Scraped verbatim</td></tr>
+<tr><td class="f">lengthKm</td><td class="t">number|null</td><td>Route length, km</td><td>Scraped; cross-checkable against <code>routes-overview.lengthKm</code> (haversine)</td></tr>
+<tr><td class="f">contractDate</td><td class="t">string|null</td><td>Contract spec date, <code>DD/MM/YY</code></td><td>Parsed from details.htm — the <em>last</em> date on the route's row; a lone date on a night-route row that defers to its day route (<code>See&nbsp;…</code>) is a timetable date and deliberately not read as a contract date</td></tr>
+<tr><td class="f">contractStart / contractEnd</td><td class="t">string|null</td><td>Contract window, <code>YYYY-MM</code></td><td>Currently a curated map covering 8 flagship routes only — an interim measure until the Find-a-Tender OCDS ingester lands; <code>null</code> elsewhere</td></tr>
+<tr><td class="f">source</td><td class="t">string</td><td>Provenance marker (<code>londonbusroutes.net</code>)</td><td>constant</td></tr>
+</tbody></table></div>
+<p class="small">Coverage: every current route (676/676 at last audit). TfL-sourced values are never overwritten by scraped ones — scrape fills only what TfL doesn't publish.</p>
+
+<h2 class="sec" id="route-classifications">route-classifications <span class="pill green">reference</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-classifications</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ routes: { [id]: { name, type } } }</div></div>
+</div>
+<p>A convenience projection of the route list keyed by <strong>lowercase line id</strong> — the lookup the map filter layer uses. Fields <code>name</code> and <code>type</code> are identical to <a href="#routes"><code>routes</code></a>; same derivation, same validation, written by the same builder in the same run (they can never drift apart).</p>
+
+<h2 class="sec" id="route-stops">route-stops <span class="pill green">reference</span> <span class="pill">daily</span> <span class="pill amber">diversion-frozen</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-stops</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL · /Line/{id}/Route/Sequence/{dir}</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, routes: { [id]: { outbound:[…], inbound:[…] } } }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">line id · direction</div></div>
+</div>
+<p>The ordered stop sequence for every route, both directions. Stops are de-duplicated by NaPTAN id across branch variants while preserving order. <strong>Canonical-baseline rule:</strong> when a route is on (or within 14 days of) an active diversion, its entry is <em>frozen at the last pre-diversion state</em> — TfL temporarily rewrites the sequence during diversions, and absorbing that would silently redefine the route. The temporary state is served separately in <a href="#route-diversions"><code>route-diversions</code></a>; the freeze self-heals when the episode ends.</p>
+<div class="tw"><table>
+<thead><tr><th>Field (per stop)</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">id</td><td class="t">string</td><td>NaPTAN stop-point id, e.g. <code>490011525W</code> — nationally unique, joinable to any NaPTAN dataset and to live arrivals</td><td>TfL verbatim</td></tr>
+<tr><td class="f">name</td><td class="t">string</td><td>Public stop name</td><td>TfL verbatim</td></tr>
+<tr><td class="f">lat / lng</td><td class="t">number</td><td>WGS84 position</td><td>TfL verbatim</td></tr>
+<tr><td class="f">lines</td><td class="t">array[string]</td><td>Every route serving this stop (by name)</td><td>TfL stop-point line list</td></tr>
+</tbody></table></div>
+<p class="small">Validation: a full run must yield stop sequences for ≥400 routes or the write is refused (a wholesale sequence failure can't blank the file).</p>
+
+<h2 class="sec" id="routes-overview">routes-overview <span class="pill green">reference</span> <span class="pill">daily</span> <span class="pill amber">diversion-frozen</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/routes-overview</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL · Route/Sequence lineStrings</div></div>
+  <div class="mg"><div class="k">Format</div><div class="v">GeoJSON FeatureCollection</div></div>
+  <div class="mg"><div class="k">Features</div><div class="v">~1,270–1,350 (validated floor 800)</div></div>
+</div>
+<p>Route line geometry for the whole network — one <code>LineString</code> feature per route per direction. Geometry is simplified (Ramer–Douglas–Peucker, tolerance 0.0005° ≈ ≤55&nbsp;m) and coordinate-rounded to 4&nbsp;dp (~11&nbsp;m) so the entire network renders instantly; the un-simplified length is computed <em>before</em> simplification. The same <strong>diversion freeze</strong> as <code>route-stops</code> applies. An independent cross-check against TfL's iBus scheduling geometry is part of the source health sweep.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">metadata.generatedAt</td><td class="t">ISO datetime</td><td>Build timestamp</td><td>pipeline</td></tr>
+<tr><td class="f">metadata.routeCount / featureCount</td><td class="t">number</td><td>Routes attempted / features written</td><td>pipeline; a run where &gt;30% of routes lose geometry is refused as an upstream outage</td></tr>
+<tr><td class="f">metadata.partial</td><td class="t">boolean</td><td><code>true</code> only for capped dev builds — always <code>false</code> in production</td><td>pipeline</td></tr>
+<tr><td class="f">metadata.simplificationTolerance / coordinatePrecision</td><td class="t">number</td><td>The exact simplification parameters (0.0005° / 4&nbsp;dp) so consumers can reason about positional error</td><td>pipeline constants</td></tr>
+<tr><td class="f">properties.routeId / name</td><td class="t">string</td><td>Line id (lowercase) / public route number</td><td>TfL</td></tr>
+<tr><td class="f">properties.direction</td><td class="t">string</td><td><code>"1"</code> outbound · <code>"2"</code> inbound</td><td>TfL direction encoding, validated to exactly {1,2}</td></tr>
+<tr><td class="f">properties.routeType</td><td class="t">string</td><td>Route type</td><td>as <code>routes.type</code></td></tr>
+<tr><td class="f">properties.lengthKm</td><td class="t">number</td><td>Haversine length of the un-simplified line, 0.1&nbsp;km precision</td><td>computed pre-simplification (unit-tested against an independent implementation)</td></tr>
+<tr><td class="f">properties.stops</td><td class="t">number</td><td>Stop count for this direction</td><td>same sequence call</td></tr>
+<tr><td class="f">geometry.coordinates</td><td class="t">[lng,lat][]</td><td>The simplified line</td><td>RDP + rounding as above</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="line-status">line-status <span class="pill cyan">snapshot</span> <span class="pill">every run</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/line-status</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL · /Line/Mode/bus/Status</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ capturedAt, summary, rows[] }</div></div>
+  <div class="mg"><div class="k">Role</div><div class="v">cached/offline fallback tier</div></div>
+</div>
+<p>The most recent stored network-status snapshot. The apps read <em>live</em> status from TfL directly (or via <code>/api/v1/live/status</code>); this file is the graceful-degrade tier when live is unreachable, and the historical record's source. Two important interpretations are applied:</p>
+<ul class="tight">
+  <li><strong>Validity windows are checked by date, not by TfL's <code>isNow</code> flag</strong> — TfL routinely publishes in-progress works with <code>isNow:false</code>, which would misreport active diversions as Good Service. A status counts only if its window brackets the current time (or it has no window).</li>
+  <li><strong>Degraded-feed gate</strong> — a snapshot reporting zero disrupted routes after one that saw many is a known TfL bulk-feed failure mode, and is rejected (retry once, keep last-good).</li>
+  <li><code>ZZ*</code> placeholder lines are dropped; rows sort worst-severity first.</li>
+</ul>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">capturedAt</td><td class="t">ISO datetime</td><td>Snapshot time</td><td>pipeline</td></tr>
+<tr><td class="f">summary.total / good / disrupted</td><td class="t">number</td><td>Network tallies (validated: parts sum to total)</td><td>computed</td></tr>
+<tr><td class="f">rows[].route</td><td class="t">string</td><td>Route name</td><td>TfL</td></tr>
+<tr><td class="f">rows[].status</td><td class="t">string</td><td>TfL severity description active <em>now</em>, e.g. <code>Good Service</code>, <code>Special Service</code>, <code>Severe Delays</code></td><td>window-filtered as above</td></tr>
+<tr><td class="f">rows[].reason</td><td class="t">string</td><td>TfL's prose explanation (empty for Good Service) — names roads, dates and skipped stops</td><td>TfL verbatim</td></tr>
+<tr><td class="f">rows[].severity</td><td class="t">number</td><td>TfL <code>statusSeverity</code> (10 = Good Service; 0 = Special Service; lower = worse)</td><td>TfL verbatim</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="route-diversions">route-diversions <span class="pill amber">derived</span> <span class="pill">every run</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-diversions</div></div>
+  <div class="mg"><div class="k">Sources</div><div class="v">TfL live status + Route/Sequence diff + iBus archive</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, count, upcomingFreeze, routes: { [name]: … } }</div></div>
+  <div class="mg"><div class="k">History</div><div class="v">warehouse route_diversions, append-only per episode</div></div>
+</div>
+<p>Active diversion episodes with <strong>real diverted geometry</strong>. TfL publishes no structured diversion data (its <code>affectedStops</code>/<code>affectedRoutes</code> arrays are empty), but for planned diversions it <em>redraws</em> the route's sequence — so the truth is recovered by diffing TfL's current Route/Sequence against our frozen canonical baseline. Detection uses date-window checking (TfL's <code>isNow</code> is unreliable) plus a diversion-language text signal; both the degraded-feed gate and per-route last-good retention apply. Three baseline tiers:</p>
+<ul class="tight">
+  <li><strong>store</strong> — the frozen canonical baseline (the normal case; the freeze also engages up to 14 days <em>before</em> a window opens, because TfL redraws ~10 days in advance).</li>
+  <li><strong>ibus:&lt;version&gt;</strong> — recovery tier: if a baseline was already polluted (missed stops fire but no geometry diff), the pipeline walks TfL's dated fortnightly iBus schedule drops and diffs against the first version whose line passes <em>all</em> the episode's missed stops — a self-validating criterion.</li>
+  <li><strong>unpublished</strong> — TfL hasn't redrawn (typically short-notice/emergency works): the episode still carries status, reason, window and any stop diffs; the map app supplements with a live-GPS estimated path, clearly labelled.</li>
+</ul>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">generatedAt / count</td><td class="t">ISO / number</td><td>Build time · active episode count (validated: count = routes, ≤400)</td><td>pipeline</td></tr>
+<tr><td class="f">upcomingFreeze</td><td class="t">array[string]</td><td>Line ids frozen ahead of a window opening within 14 days (not yet active episodes)</td><td>derived from validity windows + diversion text</td></tr>
+<tr><td class="f">routes[name].id</td><td class="t">string</td><td>Lowercase line id</td><td>TfL</td></tr>
+<tr><td class="f">routes[name].status / severity</td><td class="t">string / number</td><td>Worst active TfL status for the route</td><td>TfL, window-filtered</td></tr>
+<tr><td class="f">routes[name].disruptions[]</td><td class="t">array</td><td>Each active status: <code>reason</code> (TfL prose), <code>category</code>, <code>since</code>/<code>until</code> (earliest/latest window bounds, ISO, nullable)</td><td>TfL validity periods, date-parsed</td></tr>
+<tr><td class="f">routes[name].since / until</td><td class="t">ISO|null</td><td>Overall episode window (min/max across disruptions)</td><td>derived</td></tr>
+<tr><td class="f">routes[name].detectedAt</td><td class="t">ISO datetime</td><td>First pipeline run that saw this episode — stable across the episode's life; the warehouse history key</td><td>carried over run-to-run</td></tr>
+<tr><td class="f">routes[name].geometryStatus</td><td class="t">string</td><td><code>published</code> (segments present) · <code>unpublished</code></td><td>derived; validated vocabulary</td></tr>
+<tr><td class="f">routes[name].baselineSource</td><td class="t">string</td><td><code>store</code> or <code>ibus:&lt;YYYYMMDD&gt;</code> — which baseline the diff ran against</td><td>see tiers above</td></tr>
+<tr><td class="f">routes[name].missedStops.{outbound,inbound}[]</td><td class="t">array</td><td>Stops on the canonical route <em>not</em> currently served — <code>id</code>, <code>name</code>, <code>lat</code>, <code>lng</code></td><td>baseline stop-set minus current stop-set, by NaPTAN id</td></tr>
+<tr><td class="f">routes[name].addedStops.{…}[]</td><td class="t">array</td><td>Temporary stops served <em>only</em> during the diversion (same shape, in sequence order — they trace the diversion path)</td><td>current minus baseline</td></tr>
+<tr><td class="f">routes[name].diversionSegments.{…}</td><td class="t">[[lng,lat][]]</td><td>The diverted path — segments of the current line deviating &gt;75&nbsp;m from the baseline, extended one point each side to rejoin visually. Noise-filtered: leave→rejoin separation ≥150&nbsp;m of bypassed roadway (or ≥400&nbsp;m travelled for loops); ≤12 segments/direction; 5&nbsp;dp coords; every coordinate validated inside Greater London</td><td>geometric diff (threshold sits above the ≤55&nbsp;m simplification noise, verified empirically)</td></tr>
+<tr><td class="f">routes[name].bypassedSegments.{…}</td><td class="t">[[lng,lat][]]</td><td>Baseline sections not currently served (the closed roadway) — same filtering</td><td>reverse diff</td></tr>
+</tbody></table></div>
+<div class="callout"><p><strong>Guarantee:</strong> a temporary diversion never redefines the canonical route in <code>route-stops</code>/<code>routes-overview</code> — the freeze holds the last-good baseline for flagged routes and releases it automatically when the episode ends. Ended episodes leave this dataset but remain forever in the warehouse's <code>route_diversions</code> table (one row per <code>route_id, detected_at</code>), which accrues into a permanent diversion history.</p></div>
+<h2 class="sec" id="garages">garages <span class="pill green">reference</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/garages</div></div>
+  <div class="mg"><div class="k">Sources</div><div class="v">londonbusroutes.net + postcodes.io</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, garages: [...] }</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~86 (validated floor 50)</div></div>
+</div>
+<p>Every London bus garage with position, operator, allocation and utilisation. Tramlink depots are excluded (their lines 1–4 would collide with bus routes 1–4). A stale-duplicate rule drops a routeless garage sitting &lt;150&nbsp;m from an active one (e.g. a depot listed under both a former and current operator's code); garages that fail to geocode are kept without coordinates so route→garage joins still work.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">code</td><td class="t">string</td><td>LBR garage code, e.g. <code>AW</code></td><td>garages.csv</td></tr>
+<tr><td class="f">name</td><td class="t">string</td><td>Garage name</td><td>garages.csv</td></tr>
+<tr><td class="f">operator / company</td><td class="t">string</td><td>Operating brand / legal company</td><td>garages.csv, operator normalised to the parent brand</td></tr>
+<tr><td class="f">postcode</td><td class="t">string|null</td><td>Postcode used for geocoding</td><td>Regex-extracted from the garage address</td></tr>
+<tr><td class="f">postcodeSource</td><td class="t">string|null</td><td><code>garage</code> · <code>override</code> · <code>company</code> — which address won</td><td>Precedence: garage address → curated per-code override → company/HQ address</td></tr>
+<tr><td class="f">lat / lng</td><td class="t">number|null</td><td>WGS84 position</td><td>postcodes.io bulk geocoder (one batched pass per run); validated not-all-null so a failed geocode run can't blank coordinates</td></tr>
+<tr><td class="f">pvr</td><td class="t">number|null</td><td>Total PVR allocated to this garage</td><td>garages.csv</td></tr>
+<tr><td class="f">capacity</td><td class="t">number|null</td><td>Approximate bus capacity</td><td>curated per-garage file (community-sourced)</td></tr>
+<tr><td class="f">utilisation</td><td class="t">number|null</td><td><code>pvr ÷ capacity</code>, 3&nbsp;dp</td><td>computed only when both known</td></tr>
+<tr><td class="f">routes</td><td class="t">array[string]</td><td>Routes allocated here</td><td>garages.csv; first listing wins as a route's primary garage</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="fleet">fleet <span class="pill cyan">sampled</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/fleet</div></div>
+  <div class="mg"><div class="k">Sources</div><div class="v">TfL Line Arrivals + DVLA VES</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, enriched, byRoute: {…} }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">route name</div></div>
+</div>
+<p>The fleet actually running each route, observed live. Registrations come from TfL's arrival predictions (each prediction carries the vehicle id); DVLA's Vehicle Enquiry Service then enriches each registration with make, year and fuel. Important honesty note: this is a <strong>point-in-time sample</strong> of vehicles on the road at build time — a route's <code>count</code> is "seen this run", not its full roster (the warehouse accrues the roster over time). The DVLA lookup set includes every historically-rostered registration, not just today's, so new plates fill in regardless of timing.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">enriched</td><td class="t">boolean</td><td>Whether DVLA enrichment ran this build (requires the server-side key)</td><td>pipeline</td></tr>
+<tr><td class="f">byRoute[r].regs</td><td class="t">array[string]</td><td>Registrations observed on the route this run</td><td>TfL <code>/Line/{id}/Arrivals</code> <code>vehicleId</code>s, deduped, uppercased; concurrency-capped fetch</td></tr>
+<tr><td class="f">byRoute[r].count</td><td class="t">number</td><td>Distinct vehicles observed</td><td>derived</td></tr>
+<tr><td class="f">byRoute[r].avgAgeYears</td><td class="t">number|null</td><td>Mean vehicle age, 1&nbsp;dp</td><td>current&nbsp;year − DVLA <code>yearOfManufacture</code>, years outside 1990–now discarded</td></tr>
+<tr><td class="f">byRoute[r].propulsion</td><td class="t">object</td><td><code>{electric, hydrogen, hybrid, diesel}</code> counts</td><td>DVLA <code>fuelType</code> bucketed (HEAVY OIL→diesel, FUEL CELL→hydrogen, any *HYBRID*→hybrid). DVLA mis-reports many hybrids as diesel — which is why <code>route-meta.propulsion</code> stays authoritative for hybrid-vs-diesel</td></tr>
+<tr><td class="f">byRoute[r].makes</td><td class="t">array</td><td>Top-5 <code>{make, n}</code> chassis makers</td><td>DVLA make cleaned to display brands (ALL-CAPS chassis strings → e.g. <code>Alexander Dennis</code>, body-noise stripped)</td></tr>
+<tr><td class="f">byRoute[r].enriched</td><td class="t">number</td><td>How many regs carried valid DVLA data</td><td>derived</td></tr>
+</tbody></table></div>
+<p class="small">DVLA politeness: one lookup per registration <em>ever</em> (hits and misses both cached persistently), ~220&nbsp;ms between calls, capped per run (currently 5,000), exponential backoff on 429 with a hard stop that resumes next run. Validation: ≥400 routes present; at least one route must have live vehicles or the write is refused.</p>
+
+<h2 class="sec" id="vehicles">vehicles <span class="pill green">derived</span> <span class="pill">daily</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/vehicles</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">fleet (inverted) + DVLA cache — no API calls</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, byReg: {…} }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">registration</div></div>
+</div>
+<p>The vehicle register: <code>fleet</code> turned inside-out, keyed by registration. Purely derived — zero network calls. A registration appearing on more than one route in the same snapshot is a cross-route working; day-to-day fleet <em>moves</em> are recovered from the warehouse's daily snapshots, not from this file.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">reg</td><td class="t">string</td><td>Vehicle registration mark</td><td>fleet</td></tr>
+<tr><td class="f">routes</td><td class="t">array[string]</td><td>Routes this vehicle was observed on (deduped, sorted)</td><td>fleet inversion</td></tr>
+<tr><td class="f">operator</td><td class="t">string|null</td><td>Operator inherited from its route(s)</td><td>route-meta join</td></tr>
+<tr><td class="f">make / year / fuel / propulsion</td><td class="t">varies</td><td>Chassis maker (cleaned) · build year · raw DVLA fuel string · derived bucket</td><td>DVLA cache; present only for enriched regs</td></tr>
+</tbody></table></div>
+<p class="small">Validation: ≥100 registrations. If the fleet dataset is missing the builder skips without writing — it can never blank the register.</p>
+
+<h2 class="sec" id="tenders">tenders <span class="pill green">reference</span> <span class="pill">daily · incremental</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/tenders</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL tender award results (13923/13796.aspx)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, count, byId, byRoute }</div></div>
+  <div class="mg"><div class="k">Depth</div><div class="v">~2,500 awards · ~25 years</div></div>
+</div>
+<p>The complete TfL route-tendering award history. Awards are immutable once published, so the store is <strong>append-only and incremental</strong> — a daily run fetches only award ids it hasn't seen. Multi-route awards (<code>1/N1</code>) are split so each route carries the award. <code>byRoute</code> lists are sorted newest-first; the raw <code>byId</code> cache is never mutated.</p>
+<div class="tw"><table>
+<thead><tr><th>Field (per award)</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">btID</td><td class="t">string</td><td>TfL's award id — the incremental-fetch key</td><td>TfL</td></tr>
+<tr><td class="f">route</td><td class="t">string</td><td>Route(s) as published, e.g. <code>W12</code> or <code>1/N1</code></td><td>TfL verbatim</td></tr>
+<tr><td class="f">operator</td><td class="t">string</td><td>Winning operator, canonicalised to the parent brand</td><td><code>operatorRaw</code> preserves the published subsidiary name</td></tr>
+<tr><td class="f">numberOfTenderers</td><td class="t">number|null</td><td>How many bids were received</td><td>Accepts TfL's English number-words ("three") as well as digits</td></tr>
+<tr><td class="f">acceptedBid / lowestBid / highestBid</td><td class="t">number|null</td><td>The bid spread, £/year</td><td>Parsed from the award table</td></tr>
+<tr><td class="f">costPerMile</td><td class="t">number|null</td><td>£ per live mile</td><td>Two comma conventions in the same TfL column are disambiguated (<code>4,205,196</code> thousands vs <code>6,25</code> European decimal); values outside £0–200 are nulled — TfL sometimes pastes the annual bid into this cell</td></tr>
+<tr><td class="f">jointBid / jb</td><td class="t">string|null / object|null</td><td>Raw joint-bid text · derived <code>{isJoint, partners[], total, raw}</code></td><td>Partner routes extracted from the prose (token-validated as route numbers, own variants excluded); <code>total</code> = the first £ amount</td></tr>
+<tr><td class="f">notes / vehicle</td><td class="t">string|null / object|null</td><td>Award notes · derived <code>{basis, propulsion, deck, lowFloor, euro, summary}</code></td><td>Vehicle spec parsed from the prose: basis new/existing, propulsion with precedence hydrogen→hybrid→electric→diesel (diesel only when neither "electric" nor "hybrid" appears), deck, Euro standard. Everything degrades to <code>null</code>, never a guess</td></tr>
+<tr><td class="f">tranche</td><td class="t">number|null</td><td>LBSL tendering tranche</td><td>First <code>tranche N</code> found in joint-bid text, then notes</td></tr>
+<tr><td class="f">awardDate</td><td class="t">string|null</td><td>Award date, e.g. <code>16 January 2024</code></td><td>First long-form date on the award page</td></tr>
+</tbody></table></div>
+<p class="small">Validation: the award count may never shrink (append-only guarantee) — a shrunken result refuses to overwrite last-good. The derived fields (<code>jb</code>/<code>vehicle</code>/<code>tranche</code>) are computed identically in the warehouse ingester, kept in deliberate lockstep.</p>
+<h2 class="sec" id="route-performance">route-performance <span class="pill cyan">official stats</span> <span class="pill">daily check · ~4-weekly data</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-performance</div></div>
+  <div class="mg"><div class="k">Sources</div><div class="v">TfL QSI quarter PDF + per-route MPS PDFs</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, periodLabel, routes: {…} }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">UPPERCASE route id</div></div>
+</div>
+<p>TfL's published reliability figures — the authoritative Quality of Service Indicators — extracted from TfL's own PDFs (there is no API for these). Position-aware PDF text extraction reconstructs the real table rows; a sticky table-shape detector tells high-frequency pages (EWT/SWT) from low-frequency ones (on-time %). Numbers are sanity-capped (SWT/AWT ≤ 60&nbsp;min, EWT ≤ 30, percentages ≤ 100) and anything unparseable becomes <code>null</code>, never a guess. Covers ~738 route ids — more than the current network, because TfL publishes for some night/school variants too.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">periodLabel</td><td class="t">string</td><td>QSI period, e.g. <code>Q4 25/26</code></td><td>parsed from the quarter PDF</td></tr>
+<tr><td class="f">pdfModifiedAt</td><td class="t">ISO datetime</td><td>Upstream PDF's Last-Modified — the change-detection key</td><td>HTTP HEAD; an unchanged PDF skips the whole download</td></tr>
+<tr><td class="f">routes[R].serviceClass</td><td class="t">string</td><td><code>high-frequency</code> (measured by EWT) · <code>low-frequency</code> (measured by on-time %)</td><td>table-shape detection; falls back to the route's MPS PDF class</td></tr>
+<tr><td class="f">routes[R].ewtMinutes / swtMinutes / awtMinutes</td><td class="t">number|null</td><td>Excess / Scheduled / Actual Wait Time (high-freq). EWT = AWT − SWT — the headline reliability metric</td><td>QSI PDF</td></tr>
+<tr><td class="f">routes[R].onTimePercent</td><td class="t">number|null</td><td>% departures on time (low-freq)</td><td>QSI PDF</td></tr>
+<tr><td class="f">routes[R].mileagePercent</td><td class="t">number|null</td><td>% scheduled mileage operated (latest period, from the 13-period MPS table)</td><td>MPS PDF; the 13-value row must parse completely, all values 50–100, or it is rejected</td></tr>
+<tr><td class="f">routes[R].ewtMps / otpMps / mileageMps</td><td class="t">number|null</td><td>The contractual Minimum Performance Standard each figure is judged against</td><td>per-route MPS PDF, 28-day sticky cache (one TfL period), ≤1,000 PDFs per run rotating oldest-first; genuine 404s (e.g. school routes) cached so they aren't re-tried; parse errors retry next run</td></tr>
+</tbody></table></div>
+<p class="small">Fallbacks: QSI and MPS halves fail independently, each keeping its last-good values. Validation: 400–2000 routes. Atlas's own higher-frequency reliability <em>estimate</em> is a separate, clearly-labelled dataset — see <a href="#history">history · reliability-daily</a>.</p>
+
+<h2 class="sec" id="accidents">accidents <span class="pill cyan">official stats</span> <span class="pill">monthly check · annual data</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/accidents</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">DfT STATS19 (collision + vehicle tables)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, sample, period, count, bbox, accidents[] }</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~7,100 · 2020–2024 (cap 12,000)</div></div>
+</div>
+<p>Bus/coach-involved road collisions in Greater London from the national STATS19 casualty statistics. Two CSV tables per year are <em>streamed</em> (never buffered — 100k+ rows/year): the vehicle table first, collecting collision ids where a bus, coach or minibus was involved (vehicle types 10/11), then the collision table filtered to those ids, to finite coordinates inside the London bounding box, and to a decodable severity. All coded attributes are decoded to human labels; an unknown code becomes <code>null</code>, never a wrong label (e.g. the historic junction column is preferred because the newer one uses an incompatible code set).</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">sample</td><td class="t">boolean</td><td><code>false</code> = real STATS19 data. <code>true</code> only if the live pull <em>and</em> last-good both failed — a clearly-labelled deterministic sample keeps the UI honest instead of blank</td><td>three-tier fallback: live (≥200 rows) → last-good live file → labelled sample</td></tr>
+<tr><td class="f">period / count / bbox</td><td class="t">varies</td><td>Year range of kept rows · row count · geographic extent</td><td>computed over kept rows</td></tr>
+<tr><td class="f">id</td><td class="t">string</td><td>STATS19 collision index — stable national id</td><td>DfT verbatim</td></tr>
+<tr><td class="f">lat / lng</td><td class="t">number</td><td>Collision location, 6&nbsp;dp</td><td>DfT; bbox-validated</td></tr>
+<tr><td class="f">severity</td><td class="t">string</td><td><code>fatal</code> · <code>serious</code> · <code>slight</code></td><td>decoded 1/2/3; validated vocabulary; severity split must sum to total</td></tr>
+<tr><td class="f">date / day / timeBand</td><td class="t">string</td><td>ISO date · <code>Mon…Sun</code> · <code>AM peak / Inter-peak / PM peak / Evening / Night</code></td><td>date reformatted from DD/MM/YYYY; day decoded (STATS19 counts Sunday=1); time bucketed &lt;6/&lt;10/&lt;16/&lt;19/else</td></tr>
+<tr><td class="f">borough</td><td class="t">string|null</td><td>ONS district code, e.g. <code>E09000001</code></td><td>DfT <code>local_authority_ons_district</code>; <code>-1</code> → null</td></tr>
+<tr><td class="f">vehicles / casualties</td><td class="t">number|null</td><td>Vehicles involved · people injured</td><td>kept only when finite and &gt;0; casualties validated positive-integer</td></tr>
+<tr><td class="f">roadType / speedLimit / junction / light / weather / roadSurface</td><td class="t">string|null</td><td>Decoded collision context — the "aggregate by" dimensions in the apps</td><td>each decoded from its STATS19 code table; speed limits accepted only 20–70 → <code>"N mph"</code>; context null-rates monitored by the validator</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="bridges">bridges <span class="pill green">reference</span> <span class="pill">monthly check · annual data</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/bridges</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL EPOWR via London Datastore (xlsx)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, sample, count, bbox, bridges[] }</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">877 structures (floor 50)</div></div>
+</div>
+<p>Every height-restricted structure in London — the low-bridge layer and the double-deck diversion-risk input. The workbook is discovered through the Datastore's dataset API (the landing page is JS-rendered) with a pinned TfL fallback URL, and parsed with a dependency-free xlsx reader. <strong>The safety-critical rule:</strong> published heights are bands ("Between 4.6 and 5.1"); we always normalise to the band's <em>lower</em> bound — the guaranteed clearance, never an optimistic one. Imperial values (<code>9'10"</code>) are converted exactly (ft + in/12 × 0.3048).</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">id</td><td class="t">string</td><td>OS grid reference (or a synthetic id when absent)</td><td>EPOWR</td></tr>
+<tr><td class="f">lat / lng</td><td class="t">number</td><td>WGS84 position</td><td>File's own lat/lng preferred; a full OSGB36→WGS84 Helmert transform runs only when they're missing; rows without usable coords are dropped</td></tr>
+<tr><td class="f">height_m</td><td class="t">number</td><td>Guaranteed clearance in metres (band lower bound, 2&nbsp;dp). <code>&lt;4.4&nbsp;m</code> = below double-deck height</td><td>see rule above</td></tr>
+<tr><td class="f">height_imperial</td><td class="t">string|null</td><td>The published imperial band, verbatim</td><td>EPOWR</td></tr>
+<tr><td class="f">name / road</td><td class="t">string|null</td><td>Structure / road name</td><td>EPOWR</td></tr>
+<tr><td class="f">structure_type</td><td class="t">string</td><td><code>bridge</code> · <code>tunnel</code> · <code>barrier</code></td><td>classified from road + comments text</td></tr>
+<tr><td class="f">borough</td><td class="t">string|null</td><td>Borough name</td><td>EPOWR</td></tr>
+</tbody></table></div>
+<p class="small">Same three-tier fallback as <code>accidents</code> (live ≥50 → last-good live → labelled sample).</p>
+
+<h2 class="sec" id="crowding">crowding <span class="pill cyan">official stats</span> <span class="pill">monthly check · annual data</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/crowding</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL BUSTO — "MAX DEMAND HOUR" CSV (~98 MB, ~800k rows)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ …, year, bands, routes: {…} }</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~606 routes (floor 300)</div></div>
+</div>
+<p>How full each route gets, from TfL's BUSTO demand model. The newest year folder is auto-discovered on TfL's crowding bucket and the ~98&nbsp;MB CSV is <em>streamed</em> line-by-line, reduced to one record per route: the peak <strong>V/C</strong> (load ÷ capacity) across every stop × timeband × direction, plus the per-day-type peaks. Stop names can contain commas, so the numeric columns are read right-anchored — a classic CSV trap handled explicitly. Band thresholds ship <em>in the payload</em> so consumers never hardcode them: comfortable &lt;0.5 · moderate &lt;0.65 · busy &lt;0.8 · crowded ≥0.8.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">year / sourceFile</td><td class="t">string</td><td>BUSTO year (e.g. <code>2025-2026</code>) · the exact S3 object parsed</td><td>discovery</td></tr>
+<tr><td class="f">bands</td><td class="t">array</td><td><code>{key, label, max}</code> banding thresholds (<code>max:null</code> = unbounded)</td><td>pipeline constants, shared with the apps</td></tr>
+<tr><td class="f">routes[r].peakVC</td><td class="t">number</td><td>Peak volume/capacity at the max-demand hour, 4&nbsp;dp — the headline number</td><td>max over all cells; validated ∈ (0,2] and ≈ load÷capacity</td></tr>
+<tr><td class="f">routes[r].band</td><td class="t">string</td><td>Band for <code>peakVC</code></td><td>validated against the thresholds</td></tr>
+<tr><td class="f">routes[r].load / capacity / seats / boardings</td><td class="t">number</td><td>Passengers · total capacity · seats · boardings/hr at the peak cell</td><td>BUSTO, 1&nbsp;dp</td></tr>
+<tr><td class="f">routes[r].dayType / time / timeband / direction</td><td class="t">varies</td><td>When and which way the peak occurs</td><td>BUSTO</td></tr>
+<tr><td class="f">routes[r].stopcode / stopname / stopSeq</td><td class="t">varies</td><td>The busiest stop</td><td>BUSTO</td></tr>
+<tr><td class="f">routes[r].maxLoad / maxCapacity</td><td class="t">number</td><td>Network-normalisation extremes for the route</td><td>computed</td></tr>
+<tr><td class="f">routes[r].byDay.{Weekday,Saturday,Sunday}</td><td class="t">object</td><td>Per-day-type peak: <code>{vc, load, capacity, time, stopname}</code></td><td>reduced per day type</td></tr>
+</tbody></table></div>
+<p class="small">School (6xx/9xx) routes are absent from BUSTO — coverage ~606 of ~640 routes is expected, not a defect. Fallback: last-good only (no synthetic sample for crowding).</p>
+
+<h2 class="sec" id="crowding-profile">crowding-profile <span class="pill cyan">official stats</span> <span class="pill">monthly check · annual data</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/crowding-profile</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ …, routes: { [name]: { profileDir, loadProfile, timeOfDay } } }</div></div>
+</div>
+<p>The per-route detail deliberately split out of <code>crowding</code> so the network layer stays light — apps lazy-load this only when a route is selected. Same source, same build, same validation run.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">routes[r].profileDir</td><td class="t">string</td><td>Direction the load profile describes (the busiest one)</td><td>direction of the route's peak cell</td></tr>
+<tr><td class="f">routes[r].loadProfile</td><td class="t">array</td><td><code>{seq, name, vc}</code> per stop in sequence — V/C along the route; powers the corridor gradient. <code>vc:0</code> = empty terminus</td><td>per-stop maxima in the peak direction, sequence-sorted, 3&nbsp;dp; validated ∈ [0,2]</td></tr>
+<tr><td class="f">routes[r].timeOfDay</td><td class="t">object</td><td><code>{ [dayType]: [{t:"HH:MM", vc}] }</code> — the demand curve through the day</td><td>per-timeband maxima, sorted by clock time (BUSTO's timeband index is <em>not</em> time-ordered — validated chronological)</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="localities">localities <span class="pill green">reference</span> <span class="pill">monthly</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/localities</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">OpenStreetMap via Overpass (ODbL)</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~528 places (floor 300)</div></div>
+</div>
+<p>Town and suburb labels for the map's "Place names" layer — one bounded Overpass query for <code>place=town|suburb</code> nodes across Greater London. Nameless nodes and names &gt;60 chars dropped; duplicates collapsed by name within a ~1&nbsp;km cell; coordinates rounded to 5&nbsp;dp; alphabetically sorted.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">name</td><td class="t">string</td><td>Place name</td><td>OSM <code>name</code> tag</td></tr>
+<tr><td class="f">lat / lng</td><td class="t">number</td><td>Label anchor</td><td>OSM node, 5&nbsp;dp, bbox-clamped</td></tr>
+<tr><td class="f">kind</td><td class="t">string</td><td><code>town</code> (labels from z10) · <code>suburb</code> (joins at z12)</td><td>OSM <code>place</code> tag</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="manifest">manifest <span class="pill amber">meta</span> <span class="pill">every run</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/manifest</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, datasets: { [name]: {…} } }</div></div>
+</div>
+<p>The pipeline's own ledger — the machine-readable answer to "how fresh is this?". One entry per dataset. A failed refresh is <em>recorded</em> here while the previous data keeps serving, so consumers can detect staleness honestly.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td class="f">datasets[d].source</td><td class="t">string</td><td>Human-readable upstream description</td></tr>
+<tr><td class="f">datasets[d].fetchedAt</td><td class="t">ISO datetime</td><td>When this dataset last refreshed successfully</td></tr>
+<tr><td class="f">datasets[d].status</td><td class="t">string</td><td><code>ok</code> · <code>failed</code> (last-good still serving)</td></tr>
+<tr><td class="f">datasets[d].lastError / lastAttempt</td><td class="t">string</td><td>Present after a failure — what broke, when</td></tr>
+<tr><td class="f">datasets[d].rows / files / cadence / note</td><td class="t">varies</td><td>Row count · files written · refresh cadence · builder notes (e.g. enrichment counts)</td></tr>
+</tbody></table></div>
+<h2 class="sec" id="live">The live group — /api/v1/live <span class="pill alert">real-time</span></h2>
+<p>Live feeds proxied through our API so external callers get the same real-time view the apps do — CORS-open, keyless, edge-cached so a flood of callers collapses to a trickle of upstream pulls. Every response wraps the payload as <code>{ feed, capturedAt, data }</code>.</p>
+<div class="tw"><table>
+<thead><tr><th>Endpoint</th><th>Cache</th><th>Params</th><th>Returns · source</th></tr></thead>
+<tbody>
+<tr><td class="f">GET /live/status</td><td class="num">30&nbsp;s</td><td><code>?route=25</code> or <code>25,86</code>; omit = whole network</td><td>TfL line status + disruption reason + validity windows, verbatim from <code>/Line/…/Status</code>. Note: interpret windows by date, not TfL's <code>isNow</code> flag (see <a href="#line-status">line-status</a>)</td></tr>
+<tr><td class="f">GET /live/disruptions</td><td class="num">60&nbsp;s</td><td>—</td><td>Active bus-line disruptions (description + affected stops), <code>/Line/Mode/bus/Disruption</code></td></tr>
+<tr><td class="f">GET /live/arrivals</td><td class="num">30&nbsp;s</td><td><code>?stop=&lt;naptanId&gt;</code> or <code>?route=&lt;id&gt;</code> (one required → else 400)</td><td>Live arrival predictions; TfL caches this feed 30&nbsp;s upstream — polling faster gains nothing</td></tr>
+<tr><td class="f">GET /live/road-disruptions</td><td class="num">60&nbsp;s</td><td>—</td><td>London road incidents/closures from TfL's traffic control centre (~5&nbsp;min upstream cadence), <code>/Road/all/Disruption</code></td></tr>
+<tr><td class="f">GET /live/national-highways</td><td class="num">—</td><td>—</td><td><strong>Retired — always 410 Gone.</strong> National Highways withdrew the keyless RSS this proxied; use <code>road-disruptions</code></td></tr>
+<tr><td class="f">GET /live/vehicles</td><td class="num">10&nbsp;s</td><td><code>?line=25</code> / <code>?line=25,86</code>; omit = whole network</td><td>Live bus GPS (BODS SIRI-VM, Greater London bounding box). All callers share ONE 10-second-cached upstream snapshot — the BODS key stays server-side. Also at the legacy <code>/api/live/vehicles</code></td></tr>
+</tbody></table></div>
+<h3>Live vehicle fields (SIRI-VM, parsed)</h3>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td class="f">reg</td><td class="t">string</td><td>Vehicle registration (<code>VehicleRef</code>) — joins to <a href="#vehicles"><code>vehicles</code></a></td></tr>
+<tr><td class="f">line / publishedLine</td><td class="t">string</td><td>Operator-internal line ref / the public route number — <strong>filter on <code>publishedLine</code></strong>; <code>LineRef</code> is not the public number</td></tr>
+<tr><td class="f">direction</td><td class="t">string</td><td><code>1</code> outbound · <code>2</code> inbound</td></tr>
+<tr><td class="f">lat / lng / bearing</td><td class="t">number</td><td>Position + heading (bearing may be null)</td></tr>
+<tr><td class="f">destination / origin</td><td class="t">string</td><td>Journey endpoints as published</td></tr>
+<tr><td class="f">operatorRef / recordedAt</td><td class="t">string</td><td>Operator code · when the position was recorded (positions update every ~10–30&nbsp;s)</td></tr>
+</tbody></table></div>
+
+<h2 class="sec" id="history">The history group — /api/v1/history <span class="pill violet" style="color:var(--violet);border-color:color-mix(in srgb,var(--violet) 45%,transparent)">time-series</span></h2>
+<p>The static datasets are "today's values"; this group serves the time-series that accrues in our self-hosted warehouse (Postgres + PostgREST — the server-side key never reaches the browser; each endpoint is a strict whitelist of table + filters). Common params: <code>limit</code> (max 1000, default 200), <code>order=col.asc|desc</code>, plus the per-endpoint filters below. Responses: <code>{ dataset, table, count, limit, rows }</code>. Returns 503 (never a fake 200) if the store is unconfigured; <code>accidents</code> and <code>crowding</code> transparently fall back to filtering the static snapshot.</p>
+<div class="tw"><table>
+<thead><tr><th>Endpoint</th><th>Filters</th><th>What accrues</th></tr></thead>
+<tbody>
+<tr><td class="f">/history/reliability-daily</td><td class="f">route, from, to</td><td><strong>Atlas's own daily reliability estimate</strong> — AWT/SWT/EWT (high-freq), OTD (low-freq), scheduled vs operated km. Methodology: EWT = AWT − SWT where each = Σh²/2Σh over observed/scheduled headways; observed side sampled from live arrivals every ~30&nbsp;min in service hours. <span class="pill cyan">EXPERIMENTAL</span> — biased high (sparse sampling under-observes short headways); never comparable to TfL's QSI</td></tr>
+<tr><td class="f">/history/performance-history</td><td class="f">route</td><td>TfL's quarterly QSI per route, every period we've captured</td></tr>
+<tr><td class="f">/history/schedule</td><td class="f">route, from, to</td><td>Scheduled service over time — service class, SWT, trips/km, representative headway (from TfL Timetable)</td></tr>
+<tr><td class="f">/history/tender-programme</td><td class="f">route, year</td><td>TfL's forward LBSL tendering programme — issue/return/award/start dates, vehicle type</td></tr>
+<tr><td class="f">/history/route-snapshots</td><td class="f">route, from, to, operator, propulsion, garage</td><td>Daily change-data-capture per route — PVR, propulsion, deck, operator, garage, fleet size/age, MPS. The record behind fleet-move / electrification / PVR-change analysis</td></tr>
+<tr><td class="f">/history/garage-snapshots</td><td class="f">garage, operator, from, to</td><td>Per-garage over time — total PVR, route count, allocation</td></tr>
+<tr><td class="f">/history/vehicle-sightings</td><td class="f">route, reg, from, to</td><td>Vehicle-on-route observations (reg ↔ route ↔ timestamp), months deep</td></tr>
+<tr><td class="f">/history/accidents</td><td class="f">from, to, severity, borough, road_type, speed_limit, day, time_band</td><td>STATS19 collisions, snake_case row shape; the temporal source behind the <a href="#accidents">snapshot</a></td></tr>
+<tr><td class="f">/history/crowding</td><td class="f">route, band, year, day_type</td><td>BUSTO crowding per route per <em>year</em> — trend across annual releases</td></tr>
+</tbody></table></div>
+<p class="small">The warehouse also mirrors reference data (stops, geometry, bridges, crowding profiles, localities) and accrues <code>route_diversions</code> — one row per episode keyed <code>(route_id, detected_at)</code>, never deleted: a permanent diversion history. These are storage/history tables; their current values are served by the datasets above.</p>
+
+<h2 class="sec" id="integrity">Integrity &amp; validation — how we know the data is right</h2>
+<ul class="tight">
+  <li><strong>Per-builder hard gates</strong> (documented per dataset above): row-count bands, not-all-null columns, coordinate bounds, vocabulary checks, append-only counts, totals reconciliation. Any failure throws — the dataset keeps last-good and the manifest records the error.</li>
+  <li><strong><code>validate-atlas</code></strong> — 50 dataset-level checks gate every nightly commit: severity splits sum to totals, V/C ≈ load÷capacity, band thresholds honoured, time curves chronological, geometry direction encoding exact, diversion coords inside London, profile peaks reconcile with summaries, and a propulsion-reconciliation regression guard.</li>
+  <li><strong><code>test-functions</code></strong> — 43 unit checks validate the custom maths against independent reference implementations: haversine distances (±0.5%), the diversion deviation thresholds, validity-window logic (including the real-world TfL <code>isNow</code> failure case), zip reading, DVLA/operator canonicalisation rules.</li>
+  <li><strong><code>check-sources</code></strong> — a reproducible health sweep of every upstream (TfL Unified, iBus, BODS, DVLA, londonbusroutes, postcodes.io, EPOWR, Datastore, STATS19, BUSTO, Overpass, QSI host), including a deep mode that cross-checks our stored geometry against TfL's independent iBus scheduling geometry.</li>
+  <li><strong>Rendered ↔ source cross-checks</strong> — headless-browser verification drives the map apps, reads back what they render, and asserts it equals what the API serves (the front-end pages are kept precisely because they make every dataset visually inspectable).</li>
+  <li><strong>Politeness &amp; resilience</strong>: 30&nbsp;s timeouts and up to 4 retries with jittered exponential backoff honouring <code>Retry-After</code>; conditional requests (ETag/Last-Modified) wherever upstreams support them; bounded concurrency everywhere; per-source rate caps (e.g. 4&nbsp;req/s on TfL's PDF host, ~4.5&nbsp;req/s on DVLA with a hard-stop-and-resume).</li>
+</ul>
+
+<h2 class="sec" id="licensing">Licensing &amp; attribution</h2>
+<div class="tw"><table>
+<thead><tr><th>Source</th><th>Feeds</th><th>Licence / terms</th></tr></thead>
+<tbody>
+<tr><td>TfL Unified API, iBus static drops, BUSTO, EPOWR, QSI/MPS reports</td><td>routes, stops, geometry, status, diversions, crowding, bridges, performance, live feeds</td><td>TfL Transport Data Service terms (free with attribution) — <em>Powered by TfL Open Data</em></td></tr>
+<tr><td>DfT — Bus Open Data Service (SIRI-VM), STATS19</td><td>live bus GPS, collisions</td><td>Open Government Licence v3.0</td></tr>
+<tr><td>DVLA Vehicle Enquiry Service</td><td>vehicle make/year/fuel</td><td>OGL; keyed server-side, one lookup per vehicle ever</td></tr>
+<tr><td>OpenStreetMap (Overpass)</td><td>localities</td><td>ODbL — © OpenStreetMap contributors</td></tr>
+<tr><td>postcodes.io</td><td>garage geocoding</td><td>Open (ONS/OS open data)</td></tr>
+<tr><td>londonbusroutes.net</td><td>operators, garages, PVR, vehicle types</td><td>Community reference — scraped politely in-pipeline only, credited; TfL-sourced values are never overwritten by it</td></tr>
+</tbody></table></div>
+<p class="small">Respect the upstream licences when reusing this API. Data is provided as-is; the <a href="#manifest">manifest</a> tells you exactly how fresh each dataset is.</p>
+</main>
+</div>
+<script>
+(function(){
+  var KEY="transit-instruments:settings";
+  function readTheme(){ try{ var s=JSON.parse(localStorage.getItem(KEY)||"{}"); return s.theme||null; }catch(e){ return null; } }
+  function sysTheme(){ return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; }
+  function apply(t){ document.documentElement.setAttribute("data-theme", t); var b=document.getElementById("themeBtn"); if(b) b.setAttribute("aria-pressed", String(t==="light")); }
+  var cur = readTheme() || sysTheme();
+  apply(cur);
+  document.getElementById("themeBtn").addEventListener("click", function(){
+    cur = (document.documentElement.getAttribute("data-theme")==="light") ? "dark" : "light";
+    apply(cur);
+    try{ var s=JSON.parse(localStorage.getItem(KEY)||"{}"); s.theme=cur; localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){}
+  });
+})();
+</script>
+</body>
+</html>
