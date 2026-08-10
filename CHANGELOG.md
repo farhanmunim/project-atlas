@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-08-10 — EWT/OTD v2 groundwork: waypoint trails + tracked-reliability core
+
+Preparation for replacing the biased sampled reliability estimate with one
+derived from the continuous BODS tracker (audited bias: sampled EWT mean
+~2.6 min vs TfL ~1.1; OTD ~48% vs ~80%+ — the ~30-min Arrivals sampling
+under-observes short headways by construction).
+
+- Trip tracker now records a sparse waypoint trail per trip
+  (`wp: [[minuteFromStart, alongKm]…]`, one point per ≥2.5 min, cap 48 +
+  endpoints) so passing times interpolate on the trip's REAL pace per
+  segment instead of one flat speed. Landed before the collector's first
+  deployment so day-one trip logs already carry trails. Old checkpoints
+  without `wp` still close cleanly (resume-compatible).
+- `estimatePassingMin` (lost-mileage lib) upgraded: piecewise-linear over
+  the cleaned monotone trail when present; whole-trip clamped-speed line as
+  fallback/extrapolation. Benefits the lost-mileage matcher immediately.
+- New pure core `_lib/reliability-tracked.js` — daily EWT (AWT−SWT, each
+  Σh²/2Σh) and OTD (−2…+5 min, unmatched departures = non-arrivals) from
+  timing-point passing times, computing headways only WITHIN feed-healthy
+  windows (an outage gap is never a service gap; departures inside outages
+  are unmeasured, not non-arrivals). Not yet wired to a builder/warehouse
+  table — that's the EWT/OTD v2 build proper (planned, pending approval).
+- Tests: test-lost-mileage extended to 38 checks (waypoint capture, pace-
+  aware interpolation, cap, resume-compat); new test-reliability-tracked
+  suite, 19 checks against hand-computed QSI references (uniform → SWT h/2,
+  15/5 bunching → AWT 6.25, every-4th-missing → EWT 2.5, boundary ±,
+  outage-window honesty pairs with controls). Live smoke: 4 min against
+  real BODS — 7,160 open trips, 100% carrying trails, 0 malformed,
+  monotone time verified.
+
 ## 2026-08-10 — Experimental gross lost-mileage estimator (end-to-end)
 
 New daily per-route GROSS lost-mileage estimate — "which routes' scheduled

@@ -23,10 +23,38 @@ export const TOLERANCE_MIN = 12;
 export const CURTAIL_COVERAGE = 0.85;
 const SPEED_MIN = 5, SPEED_MAX = 40, SPEED_FALLBACK = 17;   // km/h
 
-/** Minute-of-day the trip passed (or projects to pass) `alongKm` — linear on the
- *  trip's own observed timing inside [startKm,endKm], speed-clamped outside. */
+/** Minute-of-day the trip passed (or projects to pass) `alongKm`.
+ *
+ *  Preferred path: the trip's waypoint trail (`wp: [[minuteFromStart, alongKm]…]`,
+ *  recorded every ~2.5 min by the tracker) — piecewise-linear between the two
+ *  waypoints bracketing the target, so a slow crawl through the centre and a fast
+ *  suburban leg each contribute their own real pace. Fallback (trips from
+ *  pre-waypoint checkpoints, or targets outside the observed span): one linear
+ *  speed over the whole trip, clamped to plausible bus speeds. */
 export function estimatePassingMin(trip, alongKm, dayStartMs) {
   const t0 = Date.parse(trip.startAt), t1 = Date.parse(trip.endAt);
+  const startMin = (t0 - dayStartMs) / 60000;
+
+  // waypoint interpolation — clean the trail to a strictly-advancing sequence
+  // first (GPS jitter can nudge along-km backwards; time is already monotone)
+  if (Array.isArray(trip.wp) && trip.wp.length >= 2) {
+    const mono = [];
+    for (const p of trip.wp) {
+      if (!Array.isArray(p) || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) continue;
+      if (!mono.length || p[1] > mono[mono.length - 1][1]) mono.push(p);
+    }
+    if (mono.length >= 2 && alongKm >= mono[0][1] && alongKm <= mono[mono.length - 1][1]) {
+      for (let i = 1; i < mono.length; i++) {
+        const [m0, km0] = mono[i - 1], [m1, km1] = mono[i];
+        if (alongKm <= km1) {
+          const f = (alongKm - km0) / Math.max(0.01, km1 - km0);
+          return Math.round(startMin + m0 + f * (m1 - m0));
+        }
+      }
+    }
+  }
+
+  // whole-trip linear fallback (also the extrapolation path outside the span)
   const k0 = trip.startKm, k1 = Math.max(trip.endKm, k0 + 0.01);
   const durH = Math.max(1 / 60, (t1 - t0) / 3600000);
   let speed = (k1 - k0) / durH;

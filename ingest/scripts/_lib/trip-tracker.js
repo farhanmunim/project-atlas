@@ -11,6 +11,12 @@
  * gates keep noise out of the trip log: minimum duration, minimum distance,
  * and an off-route share cap. Everything is injectable/deterministic so the
  * whole machine unit-tests without a network.
+ *
+ * Each trip also carries a sparse waypoint trail `wp: [[minute, alongKm]…]`
+ * (one point per WAYPOINT_MS, capped, endpoints always present) so downstream
+ * consumers (lost-mileage, tracked reliability) can interpolate the passing
+ * time at ANY along-route position — timing point, QSI points — instead of
+ * assuming one constant speed across the whole trip.
  */
 
 const R = 6371000, RAD = Math.PI / 180;
@@ -22,6 +28,8 @@ export const DEFAULTS = {
   MIN_TRIP_MS: 5 * 60_000, // shorter = noise (layover shuffle, GPS bounce)
   MIN_TRIP_KM: 1,          // must actually go somewhere
   JITTER_KM: 0.35,         // tolerated backwards wobble in along-km
+  WAYPOINT_MS: 150_000,    // record a [minute, alongKm] waypoint at most this often
+  WAYPOINT_MAX: 48,        // per-trip cap (~2 h at the interval; endpoints always kept)
 };
 
 /** Project [lng,lat] onto a polyline → { alongKm, offM }. */
@@ -86,7 +94,8 @@ export class TripTracker {
         if (offM > this.o.OFF_ROUTE_M) continue;            // don't open trips off-route
         s = { reg: v.reg, route, dir, operatorRef: v.operatorRef || null,
           startAt: rec, lastAt: rec, lastRecordedAt: rec, lastSeen: nowMs,
-          minAlong: alongKm, maxAlong: alongKm, pings: 1, offPings: 0, offStreak: 0 };
+          minAlong: alongKm, maxAlong: alongKm, pings: 1, offPings: 0, offStreak: 0,
+          lastAlong: alongKm, lastWpAt: rec, wp: [[0, +alongKm.toFixed(2)]] };
         this.state.set(v.reg, s);
         continue;
       }
@@ -101,6 +110,14 @@ export class TripTracker {
       }
       s.offStreak = 0;
       s.lastAt = rec;
+      s.lastAlong = alongKm;
+      // sparse waypoint trail — the raw material for passing-time interpolation at
+      // any point on the route (timing point, QSI points). Old checkpoints may lack
+      // `wp`; guard so a resumed pre-waypoint trip just closes without a trail.
+      if (s.wp && rec - s.lastWpAt >= this.o.WAYPOINT_MS && s.wp.length < this.o.WAYPOINT_MAX) {
+        s.wp.push([+((rec - s.startAt) / 60000).toFixed(1), +alongKm.toFixed(2)]);
+        s.lastWpAt = rec;
+      }
       if (alongKm > s.maxAlong) s.maxAlong = alongKm;
       else if (s.maxAlong - alongKm > this.o.JITTER_KM && alongKm < s.minAlong) s.minAlong = alongKm;
     }
@@ -127,6 +144,15 @@ export class TripTracker {
     if (durMs < this.o.MIN_TRIP_MS || kmObserved < this.o.MIN_TRIP_KM) return null;
     if (s.pings >= 4 && s.offPings / s.pings > 0.5) return null;   // mostly off-route = not this route's trip
     const lenKm = this.lenKm(s.route, s.dir) || null;
+    // waypoint trail: ensure the final on-route position closes it (endpoints matter
+    // most for interpolation); emit only when there's a usable trail (≥2 points).
+    let wp;
+    if (s.wp && s.wp.length) {
+      wp = s.wp;
+      const endMin = +(durMs / 60000).toFixed(1);
+      if (endMin > wp[wp.length - 1][0]) wp = [...wp, [endMin, +(s.lastAlong ?? s.maxAlong).toFixed(2)]];
+      if (wp.length < 2) wp = undefined;
+    }
     return {
       reg: s.reg, route: s.route, dir: s.dir, operatorRef: s.operatorRef,
       startAt: new Date(s.startAt).toISOString(), endAt: new Date(s.lastAt).toISOString(),
@@ -134,6 +160,7 @@ export class TripTracker {
       kmObserved: +kmObserved.toFixed(2), routeLenKm: lenKm ? +lenKm.toFixed(2) : null,
       coverage: lenKm ? +(kmObserved / lenKm).toFixed(3) : null,
       closed: why,
+      ...(wp ? { wp } : {}),
     };
   }
 }
