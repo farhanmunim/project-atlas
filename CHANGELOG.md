@@ -5,6 +5,30 @@ Newest first. Dates are when the work landed.
 
 ---
 
+## 2026-08-10 — /docs completeness pass: history row columns, live payloads, shape fixes
+
+A programmatic completeness audit (walk EVERY record of every dataset for the
+union of field paths + pull real rows from every history and live endpoint,
+then diff against the docs text) found and fixed real gaps: (1) the
+route-classifications shape was documented wrong — it is a flat
+{ [id]: {name,type} } map with no routes envelope; (2) the entire history
+group's ROW COLUMNS were undocumented — now every endpoint has its full
+column list with semantics, including route-snapshots' ~60-column CDC record
+(identity / vehicle & fleet / operation / performance & MPS / the complete
+current_contract_* and previous_* award families / the forward tender view)
+and honest caveats (lost_km reflects sampling coverage; snake_case vs
+camelCase; garage-snapshots uses lon not lng); (3) the live TfL passthrough
+payloads now have key-field tables — status (severity codes, the isNow and
+empty-affectedStops caveats), disruptions, arrivals (vehicleId joins,
+timeToStation, timeToLive), road-disruptions (including the point-is-a-
+JSON-string quirk); (4) the /api/v1 discovery response is documented;
+(5) fleet field-presence + gas-bucket caveat; (6) manifest lastError
+persists after recovery — judge health by status. Now 26 tables / 183 field
+rows; audit re-run: every data leaf, history column and live field name
+appears in the page. Verified: no overflow, no broken anchors, no JS errors.
+
+---
+
 ## 2026-08-10 — /docs: the complete API data reference
 
 New documentation page at atlas.farhan.app/docs (docs/index.html — single
