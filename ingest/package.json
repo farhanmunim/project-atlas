@@ -27,6 +27,7 @@
     "build-reliability": "node scripts/build-reliability.js && node scripts/build-lost-mileage.js",
     "build-lost-mileage": "node scripts/build-lost-mileage.js",
     "test-lost-mileage": "node scripts/test-lost-mileage.js",
+    "test-reliability-tracked": "node scripts/test-reliability-tracked.js",
     "build-classifications": "node scripts/build-classifications.js",
     "build-overview": "node scripts/build-overview.js",
     "build-garage-locations": "node scripts/build-garage-locations.js",

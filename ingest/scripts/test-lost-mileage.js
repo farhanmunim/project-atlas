@@ -129,5 +129,53 @@ console.log('\n_lib/lost-mileage.js');
   ok('median helper', median([3, 1, 2]) === 2 && median([]) === 0 && median([4, 1, 3, 2]) === 2.5);
 }
 
+console.log('\nwaypoint trails (tracker capture → interpolation)');
+{
+  const day0 = Date.parse('2026-08-10T00:00:00Z');
+  const T8 = day0 + 480 * 60000;   // 08:00
+  const iso8 = (min) => new Date(T8 + min * 60000).toISOString();
+  const v = (lngDeg, min) => ({ reg: 'W1', publishedLine: '25', direction: '1', lat: 51.5, lng: lngDeg, recordedAt: iso8(min) });
+
+  // capture: a full run with a SLOW first half (0→5.55 km in 30 min) and a FAST
+  // second half (5.55→11.1 km in 10 min), pinged every minute.
+  const tr = new TripTracker(GEO);
+  const lngAt = (min) => {
+    const km = min <= 30 ? (min / 30) * 5.55 : 5.55 + ((min - 30) / 10) * 5.55;
+    return (km / 11.1) * 0.16;
+  };
+  let done = [];
+  for (let m = 0; m <= 40; m++) done.push(...tr.update([v(lngAt(m), m)], T8 + m * 60000));
+  done.push(...tr.update([], T8 + 55 * 60000));
+  const t = done[0];
+  ok('trip closed with a waypoint trail', !!t && Array.isArray(t.wp) && t.wp.length >= 2, t && `wp=${t.wp ? t.wp.length : 0}`);
+  ok('trail starts at [0, startKm] and ends at trip end', t && t.wp[0][0] === 0 && approx(t.wp[t.wp.length - 1][0], 40, 0.2) && approx(t.wp[t.wp.length - 1][1], 11.1, 0.2), t && JSON.stringify([t.wp[0], t.wp[t.wp.length - 1]]));
+  ok('waypoints spaced ≥ WAYPOINT_MS apart', t && t.wp.slice(1, -1).every((p, i) => p[0] - t.wp[i][0] >= 2.4), t && `${t.wp.length} points over 40 min`);
+
+  // interpolation: with the trail, passing 2.775 km (¼ distance) should read
+  // ~minute 495 (halfway through the slow half), NOT ~490 (one flat speed).
+  const passWp = estimatePassingMin(t, 2.775, day0);
+  ok('waypoint interpolation follows real pace (slow half)', approx(passWp, 495, 2), `got ${passWp}, flat-speed would say ~490`);
+  const passFast = estimatePassingMin(t, 8.325, day0);   // ¾ distance: min 35 real, 510+35=545... wait: 30 + 5 = minute 35 → 515
+  ok('waypoint interpolation follows real pace (fast half)', approx(passFast, 515, 2), `got ${passFast}, flat-speed would say ~510`);
+  const noWp = { ...t }; delete noWp.wp;
+  ok('same trip without trail falls back to flat speed', approx(estimatePassingMin(noWp, 2.775, day0), 490, 2), `${estimatePassingMin(noWp, 2.775, day0)}`);
+  ok('target outside trail span uses fallback (finite)', Number.isFinite(estimatePassingMin({ ...t, wp: [[5, 3], [10, 6]] }, 11, day0)));
+  ok('junk waypoints tolerated (non-monotone cleaned)', Number.isFinite(estimatePassingMin({ ...t, wp: [[0, 2], [5, 1.8], [10, 4]] }, 3, day0)));
+
+  // waypoint cap respected on a very long trip
+  const tr2 = new TripTracker(GEO, { MIN_TRIP_MS: 0 });
+  let done2 = [];
+  for (let m = 0; m <= 300; m++) done2.push(...tr2.update([v(Math.min(0.16, m * 0.0005), m)], T8 + m * 60000));
+  done2.push(...tr2.flush());
+  const t2 = done2[0];
+  ok('waypoint cap holds on a 5-hour trip', !!t2 && t2.wp.length <= 49, t2 && `wp=${t2.wp.length}`);
+
+  // resume-compat: a pre-waypoint checkpoointed state (no wp field) closes cleanly
+  const tr3 = new TripTracker(GEO);
+  tr3.state.set('OLD', { reg: 'OLD', route: '25', dir: '1', operatorRef: null, startAt: T8, lastAt: T8 + 20 * 60000, lastRecordedAt: T8 + 20 * 60000, lastSeen: T8 + 20 * 60000, minAlong: 0, maxAlong: 8, pings: 10, offPings: 0, offStreak: 0 });
+  const d3 = tr3.flush();
+  ok('pre-waypoint checkpoint state closes without wp', d3.length === 1 && !('wp' in d3[0]));
+}
+
 console.log(`\n${'='.repeat(48)}\ntest-lost-mileage: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
