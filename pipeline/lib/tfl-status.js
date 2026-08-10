@@ -31,6 +31,28 @@ export function windowStartsWithin(validityPeriods, days, now = Date.now()) {
   });
 }
 
+/** Route names explicitly cited in a disruption reason ("ROUTES 238 and 376",
+ *  "Routes 304 & 376:", "Route 379 will…") — uppercased tokens after a
+ *  "route(s)" keyword, scanning through connectors until the first non-route
+ *  word. Empty when the text names roads only. Used to drop TfL's occasional
+ *  MISATTRIBUTED statuses (verified live: a route-379 parked-vehicle diversion
+ *  attached to line 376's status while 379 itself read Good Service). */
+export function routesNamedIn(text) {
+  const out = new Set();
+  const token = /^[A-Z]{0,3}\d{1,3}[A-Z]?$/;   // 376 · W12 · N136 · SL10 · 108D · EL1
+  const parts = String(text || "").split(/\s+/);
+  for (let i = 0; i < parts.length; i++) {
+    if (!/^routes?[:.,]?$/i.test(parts[i])) continue;
+    for (let j = i + 1; j < parts.length; j++) {
+      const w = parts[j].replace(/^[("'‘“]+/, "").replace(/[.,:;)"'’”]+$/, "").toUpperCase();
+      if (w === "" || w === "&" || w === "/" || w === "," || w === "AND") continue;
+      if (token.test(w) && /\d/.test(w)) { out.add(w); continue; }
+      break;
+    }
+  }
+  return [...out];
+}
+
 /** Earliest fromDate / latest toDate across a status's windows (ISO or null). */
 export function windowBounds(validityPeriods) {
   let from = null, to = null;
