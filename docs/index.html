@@ -547,11 +547,12 @@ every 30m  live arrival/headway sampler (service hours) → our own reliability 
 <h2 class="sec" id="vehicles">vehicles <span class="pill green">derived</span> <span class="pill">daily</span></h2>
 <div class="meta-grid">
   <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/vehicles</div></div>
-  <div class="mg"><div class="k">Source</div><div class="v">fleet (inverted) + DVLA cache — no API calls</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">fleet (inverted) + DVLA cache + bustimes.org</div></div>
   <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, byReg: {…} }</div></div>
   <div class="mg"><div class="k">Keyed by</div><div class="v">registration</div></div>
 </div>
-<p>The vehicle register: <code>fleet</code> turned inside-out, keyed by registration. Purely derived — zero network calls. A registration appearing on more than one route in the same snapshot is a cross-route working; day-to-day fleet <em>moves</em> are recovered from the warehouse's daily snapshots, not from this file.</p>
+<p>The vehicle register: <code>fleet</code> turned inside-out, keyed by registration. A registration appearing on more than one route in the same snapshot is a cross-route working; day-to-day fleet <em>moves</em> are recovered from the warehouse's daily snapshots, not from this file.</p>
+<div class="callout cyan"><p><strong>Source-priority chain (decision 2026-08-10):</strong> ① <strong>DVLA VES</strong> is first and authoritative — its values are never overwritten. ② <strong>bustimes.org</strong> (open community API) fills only what DVLA cannot provide — the full vehicle <em>type</em> (chassis + bodywork), deck and operator fleet code — plus one documented exception: DVLA registers most hybrids as plain <code>DIESEL</code> and fuel-cell buses as <code>ELECTRICITY</code>, so a bustimes <code>hybrid</code>/<code>electric</code> value upgrades a diesel/null bucket (flagged <code>propulsionSource:"bustimes"</code>). ③ <strong>londonbusroutes.net</strong> remains the route-level spec authority (<a href="#route-meta">route-meta's <code>fleet</code></a>). LVF (lvf.io) was evaluated: it is a login-gated vehicle <em>finder</em> built on TfL location data — a capability this dataset + <code>history/vehicle-sightings</code> already provide natively — and carries no make/body register, so it is not a source here. bustimes politeness: one lookup per reg ever (misses re-checked monthly), ~300&nbsp;ms spacing, 250-lookup run cap (full roster accrues over ~3 nightly runs), backoff-and-stop on 429/5xx.</p></div>
 <div class="tw"><table>
 <thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
 <tbody>
@@ -559,8 +560,12 @@ every 30m  live arrival/headway sampler (service hours) → our own reliability 
 <tr><td class="f">routes</td><td class="t">array[string]</td><td>Routes this vehicle was observed on (deduped, sorted)</td><td>fleet inversion</td></tr>
 <tr><td class="f">operator</td><td class="t">string|null</td><td>Operator inherited from its route(s)</td><td>route-meta join</td></tr>
 <tr><td class="f">make / year / fuel / propulsion</td><td class="t">varies</td><td>Chassis maker (cleaned) · build year · raw DVLA fuel string · derived bucket</td><td>DVLA cache; present only for enriched regs</td></tr>
+<tr><td class="f">body</td><td class="t">string?</td><td>Full vehicle type — chassis + bodywork, e.g. <code>"Volvo B5LH Wright Eclipse Gemini 3"</code>. DVLA has no body field; this is the community tier's contribution</td><td>bustimes.org <code>vehicle_type.name</code>; present once the reg has been looked up</td></tr>
+<tr><td class="f">deck</td><td class="t">string?</td><td><code>double</code> · <code>single</code></td><td>bustimes <code>double_decker</code>/<code>style</code></td></tr>
+<tr><td class="f">fleetCode</td><td class="t">string?</td><td>Operator fleet code, e.g. <code>VWH2399</code> — how enthusiasts &amp; depots reference the vehicle</td><td>bustimes <code>fleet_code</code> (falls back to <code>fleet_number</code>)</td></tr>
+<tr><td class="f">propulsionSource</td><td class="t">string?</td><td><code>"bustimes"</code> when <code>propulsion</code> was community-corrected (DVLA's hybrid/FCEV misreport)</td><td>set only on upgrade; absent ⇒ propulsion is DVLA-derived</td></tr>
 </tbody></table></div>
-<p class="small">Validation: ≥100 registrations. If the fleet dataset is missing the builder skips without writing — it can never blank the register.</p>
+<p class="small">Validation: ≥100 registrations; deck vocab enforced; <code>propulsionSource</code> only ever accompanies a set propulsion; DVLA-sourced make/year always survive enrichment. If the fleet dataset is missing the builder skips without writing — it can never blank the register. Enrichment cache: <code>vehicle-body-cache.json</code>, committed like the DVLA cache so unattended runs inherit it.</p>
 
 <h2 class="sec" id="tenders">tenders <span class="pill green">reference</span> <span class="pill">daily · incremental</span></h2>
 <div class="meta-grid">

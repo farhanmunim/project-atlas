@@ -3266,7 +3266,7 @@ function dirColor(dir){ return String(dir)==="1"?"var(--cyan)":String(dir)==="2"
 function vehicleIcon(v){ return L.divIcon({ className:"veh-pin", iconSize:[26,26], iconAnchor:[13,13], html:`<span class="lv" style="--vc:${v._routeColor||dirColor(v.direction)}">${bearingArrow(v.bearing)}</span>` }); }
 function vehiclePopup(v){ const fd=store.vehicles?store.vehicles[v.reg]:null; const yr=new Date().getUTCFullYear();
   const age=fd&&fd.year?(yr-fd.year)+"y":null;
-  const prop=fd&&fd.fuel?fuelBucket(fd.fuel):null;
+  const prop=fd&&(fd.propulsion||null)||(fd&&fd.fuel?fuelBucket(fd.fuel):null);   // prefer the corrected bucket (bustimes-fixed hybrids)
   const rt=routes.find(r=>r.name===v.publishedLine); const rtype=rt?TYPE_DEFS[typeOf(rt)].label:null;
   const others=(fd&&Array.isArray(fd.routes)?fd.routes:[]).filter(x=>x!==v.publishedLine);
   return `<div class="rh-pop"><div class="rh-h">${esc(v.reg||"vehicle")}</div>
@@ -3278,6 +3278,7 @@ function vehiclePopup(v){ const fd=store.vehicles?store.vehicles[v.reg]:null; co
       <span><b>${fd&&fd.make?esc(fd.make.split(" ")[0]):"—"}</b>make</span>
       <span><b>${age||"—"}</b>age</span>
       <span><b>${esc(v.journeyRef||"—")}</b>run</span></div>
+    ${fd&&(fd.body||fd.fleetCode)?`<div class="rh-also"><b>${esc(fd.fleetCode||"")}</b>${fd.fleetCode&&fd.body?" · ":""}${esc(fd.body||"")}</div>`:""}
     ${others.length?`<div class="rh-also"><b>Also runs</b> ${esc(others.slice(0,6).join(", "))}${others.length>6?` +${others.length-6}`:""}</div>`:""}</div>`; }
 function drawLiveVehicles(){ if(!mapOK||!liveLayer) return; liveLayer.clearLayers();
   liveVehicles.forEach(v=>{ if(Number.isFinite(v.lat)&&Number.isFinite(v.lng)) L.marker([v.lat,v.lng],{icon:vehicleIcon(v),zIndexOffset:2000}).bindPopup(vehiclePopup(v)).addTo(liveLayer); }); }

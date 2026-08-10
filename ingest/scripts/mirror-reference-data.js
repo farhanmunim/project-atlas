@@ -142,6 +142,17 @@ async function mirrorDiversions() {
   await upsert('route_diversions', rows, 'route_id,detected_at');
 }
 
+// Body/type enrichment for public.vehicles — only rows that HAVE enrichment, upserted on
+// registration so PostgREST merges just these columns and never disturbs DVLA-sourced ones.
+async function mirrorVehicleBodies() {
+  const d = await getJson('vehicles');
+  const rows = Object.values(d.byReg || {}).filter((v) => v.reg && (v.body || v.fleetCode || v.deck)).map((v) => ({
+    registration: v.reg, body: v.body ?? null, deck: v.deck ?? null,
+    fleet_code: v.fleetCode ?? null, propulsion_source: v.propulsionSource ?? null,
+  }));
+  await upsert('vehicles', rows, 'registration');
+}
+
 async function main() {
   console.log(`Mirroring reference datasets from ${ATLAS_API} → warehouse`);
   await step('route_stops', mirrorStops);
@@ -150,6 +161,7 @@ async function main() {
   await step('crowding_profile', mirrorCrowdingProfile);
   await step('localities', mirrorLocalities);
   await step('route_diversions', mirrorDiversions);
+  await step('vehicle_bodies', mirrorVehicleBodies);
   console.log('Reference mirror done.');
 }
 main().catch((e) => { console.error(`mirror-reference-data failed: ${e.message}`); process.exit(1); });

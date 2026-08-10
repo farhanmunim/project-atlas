@@ -17,6 +17,11 @@
 
 import { rowsWithin } from "../lib/validate.js";
 import { cleanMake, propulsionOf } from "../lib/normalize.js";
+import { lookupVehicle, MISS_RECHECK_DAYS } from "../sources/bustimes.js";
+
+// Per-run cap on NEW bustimes lookups — coverage accrues across daily runs
+// (whole roster in ~3 runs, then only newly-plated vehicles trigger calls).
+const BUSTIMES_RUN_CAP = 250;
 
 export async function build(ctx) {
   const { sink, log } = ctx;
@@ -37,6 +42,38 @@ export async function build(ctx) {
       if (d) { v.make = cleanMake(d.make); v.year = d.year; v.fuel = d.fuel; v.propulsion = propulsionOf(d.fuel); }
     }
   }
+
+  // ── body/deck/fleet-code enrichment — bustimes.org (the LVF-class community tier) ──
+  // Source priority (decision 2026-08-10): DVLA first, never overwritten. bustimes fills
+  // only what DVLA cannot provide — the TYPE (chassis+body), deck and fleet code — plus
+  // ONE documented exception: DVLA registers most hybrids as plain DIESEL and FCEVs as
+  // ELECTRICITY, so a bustimes hybrid/electric value upgrades a diesel/null propulsion
+  // (flagged via propulsionSource). One lookup per reg ever; misses re-checked monthly.
+  const cache = (await sink.readDataset("vehicle-body-cache")) || { byReg: {} };
+  const now = Date.now();
+  let looked = 0, enriched = 0;
+  for (const reg of Object.keys(byReg).sort()) {
+    let c = cache.byReg[reg];
+    const staleMiss = c && c.miss && now - (c.at || 0) > MISS_RECHECK_DAYS * 86400000;
+    if ((!c || staleMiss) && looked < BUSTIMES_RUN_CAP) {
+      const rec = await lookupVehicle(reg);
+      looked++;
+      if (rec === undefined) { /* unavailable this run — keep cache state, try next run */ }
+      else cache.byReg[reg] = c = rec === null ? { miss: true, at: now } : { ...rec, at: now };
+    }
+    if (c && !c.miss) {
+      const v = byReg[reg];
+      if (c.body) v.body = c.body;
+      if (c.deck) v.deck = c.deck;
+      if (c.fleetCode) v.fleetCode = c.fleetCode;
+      if ((c.fuel === "hybrid" || c.fuel === "electric") && (v.propulsion == null || v.propulsion === "diesel")) {
+        v.propulsion = c.fuel; v.propulsionSource = "bustimes";
+      }
+      enriched++;
+    }
+  }
+  await sink.writeDataset("vehicle-body-cache", cache);
+
   for (const v of Object.values(byReg)) v.routes.sort();
   // a reg seen on >1 route in a single snapshot is already a cross-route working
   const multiRoute = Object.values(byReg).filter((v) => v.routes.length > 1).length;
@@ -45,6 +82,6 @@ export async function build(ctx) {
   // A near-empty roster means fleet went empty; don't overwrite the last-good roster.
   rowsWithin(Object.values(byReg), 100, undefined, "vehicles regs");
   await sink.writeDataset("vehicles", { generatedAt: new Date().toISOString(), byReg });
-  log.info(`vehicles: ${Object.keys(byReg).length} regs rostered · ${multiRoute} on multiple routes this snapshot`);
-  return { source: "fleet (inverted) + DVLA cache", rows: Object.keys(byReg).length, files: ["data/vehicles.json"], note: `${multiRoute} multi-route` };
+  log.info(`vehicles: ${Object.keys(byReg).length} regs rostered · ${multiRoute} on multiple routes · body known for ${enriched} (${looked} bustimes lookups this run)`);
+  return { source: "fleet (inverted) + DVLA cache + bustimes.org", rows: Object.keys(byReg).length, files: ["data/vehicles.json"], note: `${multiRoute} multi-route · ${enriched} with body` };
 }
