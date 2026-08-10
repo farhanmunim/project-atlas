@@ -424,7 +424,10 @@ can never block the Cloudflare site.
   - `npm run track-vehicles` — the continuous BODS SIRI-VM collector daemon
     (`track-vehicles.js`): polls the whole-London feed every 25 s, runs each
     vehicle through the trip state machine (`_lib/trip-tracker.js`), appends
-    completed trips to `data/tracking/trips-<day>.jsonl` + per-operator hourly
+    completed trips (each carrying a sparse `wp: [[minute, alongKm]…]` waypoint
+    trail for pace-aware passing-time interpolation — the raw material for
+    lost-mileage AND the planned tracked EWT/OTD estimate) to
+    `data/tracking/trips-<day>.jsonl` + per-operator hourly
     feed-health counts on the `/app/data` volume. Scheduled every 30 min —
     `run-task.sh`'s lock makes firings while the daemon lives a no-op, so the
     cron is a keepalive/restart, not a poller. SIGTERM checkpoints open trips;
