@@ -767,7 +767,15 @@ gated, PDF-only) — see the note.
 - **NaPTAN** 🟢 🟡 — national stop database (IDs, coords). https://naptan.api.dft.gov.uk/swagger/index.html
 - **NPTG** 🟢 🟡 — national locality hierarchy. https://www.gov.uk/government/publications/national-public-transport-gazetteer
 - **TransportAPI** 🟠 🔴 — managed UK transport JSON (turnkey). https://www.transportapi.com/
-- **bustimes.org** ⚪ 🔴+⚫ — live tracking + community fleet/route/operator history. https://bustimes.org/
+- **bustimes.org** ⚪ 🔴+⚫ — live tracking + community fleet/route/operator history; open REST API
+  (`/api/vehicles/?reg=`) is the per-vehicle BODY/type + fleet-code source in the vehicles
+  enrichment chain (DVLA first → bustimes fills body/deck/fleetCode + corrects DVLA's hybrid
+  misreports → londonbusroutes route-level spec). One lookup per reg ever, cached in
+  `data/vehicle-body-cache.json`. https://bustimes.org/
+- **LVF (London Vehicle Finder)** ⚪ 🔴 — login-gated vehicle *finder* built on TfL location data
+  (where a vehicle is / route history); NO make/body register, and the finder capability is
+  native to Atlas (`vehicles` + `history/vehicle-sightings`). Not a source; contact
+  lvf_help@hotmail.com if an arrangement is ever wanted. https://lvf.io/
 
 #### Route-type classification (night / school / 24h / express)
 - **Night service** — TfL Line API `serviceTypes` (the only explicit machine-readable type field). `/Line/Route/Sequence/{dir}?serviceTypes=night`

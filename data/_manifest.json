@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-10T03:21:45.340Z",
+  "generatedAt": "2026-08-10T12:30:30.707Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -69,15 +69,15 @@
       "note": "179 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
-      "source": "fleet (inverted) + DVLA cache",
-      "fetchedAt": "2026-08-10T03:21:43.956Z",
+      "source": "fleet (inverted) + DVLA cache + bustimes.org",
+      "fetchedAt": "2026-08-10T12:30:30.707Z",
       "status": "ok",
       "rows": 662,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · derived from fleet (no API calls)",
-      "note": "2 multi-route"
+      "note": "2 multi-route · 250 with body"
     },
     "tenders": {
       "status": "ok",

@@ -71,7 +71,7 @@ export const DATASETS = [
     build: buildVehicles,
     ttlMs: 1 * DAY,        // inverts fleet (free, no API) → reg→routes roster; Relay scaffold
     soft: true,
-    cadence: "daily · derived from fleet (no API calls)",
+    cadence: "daily · fleet (inverted) + bustimes.org body enrichment (capped)",
   },
   {
     name: "tenders",

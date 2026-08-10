@@ -1,5 +1,32 @@
 # Changelog — Transit Instruments
 
+---
+
+## 2026-08-10 — Vehicle body/type enrichment: DVLA → bustimes.org → LBR chain
+
+Farhan set the vehicle-data source priority: DVLA first, then an LVF-class
+community source, then londonbusroutes. Investigated LVF (lvf.io) honestly:
+it is a login-gated vehicle FINDER built on TfL location data — no make/body
+register, and the finder capability (reg ↔ route, history) is already native
+to Atlas (vehicles + history/vehicle-sightings). The community source that
+genuinely carries spec data is bustimes.org, with an open documented REST
+API — verified live: vehicle_type.name gives chassis + BODY ("Volvo B5LH
+Wright Eclipse Gemini 3"), plus deck, operator fleet code, and a fuel value
+that corrects DVLA's known hybrid misreporting. New sources/bustimes.js
+(normaliser unit-tested; politeness: one lookup per reg EVER, misses
+re-checked monthly, ~300ms spacing, 250-lookup run cap, backoff-and-stop on
+429/5xx, identified UA, persistent committed cache vehicle-body-cache.json).
+build/vehicles.js now enriches under the priority contract: DVLA values
+never overwritten; bustimes fills body/deck/fleetCode; ONE documented
+exception — bustimes hybrid/electric upgrades a diesel/null bucket, flagged
+propulsionSource:"bustimes". First live run: 250/662 regs enriched (cap),
+159 hybrid misreports corrected, deck vocab clean. Lockstep: migration 0030
+(vehicles body/deck/fleet_code/propulsion_source) + bundle + mirror step;
+live-bus popup shows fleet code + body; docs page vehicles section rewritten
+with the chain + LVF verdict; llms.txt, README, API.md, catalogue (bustimes
+promoted to active source; LVF catalogued as not-a-source with contact
+path). validate-atlas 55/55 (5 new checks) · test-functions 48/48.
+
 A running log of major features. Each entry: **what** we built, **how**, and **why**.
 Newest first. Dates are when the work landed.
 

@@ -164,6 +164,18 @@ try {
   const r25p = cwpRoutes["25"], r25s = cwRoutes["25"];
   if (r25p && r25s) ok("route 25 profile peak ≈ summary peak", Math.abs(Math.max(...r25p.loadProfile.map((s) => s.vc)) - r25s.peakVC) < 0.01, `profile ${Math.max(...r25p.loadProfile.map((s) => s.vc))} vs summary ${r25s.peakVC}`);
 
+  // ── vehicles.json — per-vehicle enrichment (DVLA → bustimes chain) ────────
+  section("vehicles.json (enrichment chain)");
+  try {
+    const vv = Object.values(load("vehicles.json").byReg || {});
+    ok("roster present (>100 regs)", vv.length > 100, `${vv.length} regs`);
+    const withBody = vv.filter((v) => v.body);
+    ok("body enrichment accruing (some regs carry body)", withBody.length > 0, `${withBody.length} with body`);
+    ok("deck vocab ⊆ {double,single}", vv.every((v) => v.deck == null || ["double", "single"].includes(v.deck)), "");
+    ok("propulsionSource only 'bustimes' and only with propulsion set", vv.every((v) => v.propulsionSource == null || (v.propulsionSource === "bustimes" && v.propulsion)), "");
+    ok("DVLA priority: every reg with DVLA fuel keeps make/year", vv.filter((v) => v.fuel).every((v) => v.make !== undefined && v.year !== undefined), "");
+  } catch (e) { ok("vehicles.json checks ran", false, e.message); }
+
   // ── route-diversions.json — active diversion episodes (status + sequence diff) ──
   section("route-diversions.json (diversions)");
   try {

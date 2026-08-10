@@ -53,7 +53,7 @@ The API has **three groups**, all listed in the discovery index:
 | `GET /api/v1/line-status` | Latest line-status snapshot — per-route service status + a network summary (`capturedAt`) |
 | `GET /api/v1/garages` | Bus garages — `{ garages: [{ code, name, operator, company, postcode, lat, lng, pvr, capacity, utilisation, routes }] }` |
 | `GET /api/v1/fleet` | Fleet profile per route — `{ byRoute: { "25": { regs, count, avgAgeYears, propulsion, makes } } }` (DVLA-enriched) |
-| `GET /api/v1/vehicles` | Vehicle register keyed by registration — routes, operator, make, year, fuel |
+| `GET /api/v1/vehicles` | Vehicle register keyed by registration — `{ byReg: { [reg]: { reg, routes, operator, make, year, fuel, propulsion, body?, deck?, fleetCode?, propulsionSource? } } }`. Enrichment chain: DVLA VES (authoritative, never overwritten) → bustimes.org (body/deck/fleetCode + hybrid-misreport correction) → londonbusroutes (route-level spec) |
 | `GET /api/v1/tenders` | Tender / contract award history per route — `{ byRoute: { "25": [awards…] } }`; each award carries bids (low/won/high), `costPerMile`, `awardDate`, notes, plus derived `jb` (joint-bid partners + total £), `vehicle` (awarded deck/propulsion/basis) and `tranche` |
 | `GET /api/v1/route-performance` | Reliability per route (TfL QSI) — EWT/OTP vs the contractual MPS benchmark, % mileage operated, service class |
 | `GET /api/v1/accidents` | STATS19 bus/coach-involved collisions — lat/lng, severity, date, borough (ONS GSS code), vehicles, casualties, plus decoded context: `roadType`, `speedLimit`, `junction`, `light`, `weather`, `roadSurface`, `day`, `timeBand` |

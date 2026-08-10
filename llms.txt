@@ -59,6 +59,11 @@ Numeric routes ("25") coincide across all three.
   route-stops/routes-overview always keep the CANONICAL (pre-diversion) route.
 - fleet is a point-in-time 03:17 UTC sample (night/school routes often empty); the
   history group accrues the full roster over time.
+- vehicles enrichment chain: DVLA VES first (make/year/fuel — never overwritten);
+  bustimes.org community API fills body (chassis+bodywork type), deck, fleetCode, and
+  upgrades DVLA's known hybrid/FCEV fuel misreports (flagged propulsionSource:"bustimes");
+  londonbusroutes supplies the route-level spec (route-meta.fleet). body/deck/fleetCode
+  appear per-reg as coverage accrues (capped polite lookups per nightly run).
 - history/reliability-daily is Atlas's OWN estimate — EXPERIMENTAL, biased high; TfL's
   official figures are route-performance (QSI). Cite accordingly.
 - accidents/crowding history fall back to filtering the static snapshot if the warehouse

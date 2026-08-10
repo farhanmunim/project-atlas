@@ -17,6 +17,7 @@ import { distToLineM, deviatingSegments } from "./build/diversions.js";
 import { lengthKm, simplify, round } from "./lib/geo.js";
 import { cleanMake, propulsionOf, canonicalOperator, reconcilePropulsion } from "./lib/normalize.js";
 import { zipEntries, parseRouteGeometry } from "./sources/ibus.js";
+import { normaliseVehicle } from "./sources/bustimes.js";
 import { deflateRawSync, crc32 } from "node:zlib";
 
 let pass = 0, fail = 0;
@@ -154,6 +155,16 @@ console.log("\nsources/ibus.js — zip reader & Route_Geometry parser");
   ok("parser: sequences sorted", g["1"][0][0] === -0.1 && g["1"][1][0] === -0.2, JSON.stringify(g["1"]));
   ok("parser: lowest run wins per direction (variant run 3 ignored)", !g["1"].some((p) => p[0] === -9));
   ok("parser: both directions extracted", g["2"]?.length === 2, JSON.stringify(g["2"]));
+}
+
+console.log("\nsources/bustimes.js — vehicle record normalisation");
+{
+  const rec = normaliseVehicle({ reg: "LK67ENF", fleet_code: "VWH2399", vehicle_type: { name: "Volvo B5LH Wright Eclipse Gemini 3", style: "double decker", fuel: "hybrid", double_decker: true }, operator: { name: "Metroline Travel" }, withdrawn: false });
+  ok("full record → body/deck/fuel/fleetCode", rec.body === "Volvo B5LH Wright Eclipse Gemini 3" && rec.deck === "double" && rec.fuel === "hybrid" && rec.fleetCode === "VWH2399", JSON.stringify(rec));
+  ok("single decker style → deck single", normaliseVehicle({ vehicle_type: { style: "single decker", double_decker: false } }).deck === "single");
+  ok("no vehicle_type → nulls, no crash", normaliseVehicle({ reg: "X" }).body === null && normaliseVehicle({ reg: "X" }).deck === null);
+  ok("null input → null", normaliseVehicle(null) === null);
+  ok("fleet_number fallback when fleet_code absent", normaliseVehicle({ fleet_number: 123, vehicle_type: {} }).fleetCode === 123);
 }
 
 console.log(`\n${"=".repeat(48)}\ntest-functions: ${pass} passed, ${fail} failed`);
