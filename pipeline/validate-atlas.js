@@ -86,6 +86,31 @@ try {
   ok("direction encoded as 1/2 (outbound/inbound)", dirs.includes("1") && dirs.includes("2"), `values: ${dirs.join(",")}`);
   ok("every feature has geometry coords", feats.every((f) => f.geometry?.coordinates?.length), "");
 
+  // ── route-geometry/<id>.json — per-route FULL-FIDELITY rings ───────────────
+  section("route-geometry/ (per-route full fidelity)");
+  const geoDir = path.join(DIR, "route-geometry");
+  const geoFiles = fs.existsSync(geoDir) ? fs.readdirSync(geoDir).filter((f) => f.endsWith(".json")) : [];
+  ok("detailed files for most of the network (frozen-diverted may be absent)", geoFiles.length >= 400, `${geoFiles.length} files`);
+  {
+    const featPts = {};
+    for (const f of feats) { const k = `${f.properties.routeId}|${f.properties.direction}`; featPts[k] = f.geometry.coordinates.length; }
+    let denser = 0, checked = 0, badShape = 0, outOfBbox = 0;
+    for (const fn of geoFiles.slice(0, 50)) {
+      const d = JSON.parse(fs.readFileSync(path.join(geoDir, fn), "utf8"));
+      const id = fn.replace(/\.json$/, "");
+      if (!d.directions || d.routeId !== id) { badShape++; continue; }
+      for (const [dir, g] of Object.entries(d.directions)) {
+        checked++;
+        if (!Array.isArray(g.coordinates) || g.coordinates.length < 2) { badShape++; continue; }
+        if (!g.coordinates.every(([x, y]) => x > -1.2 && x < 0.9 && y > 51 && y < 52)) outOfBbox++;
+        if (g.coordinates.length >= (featPts[`${id}|${dir}`] || 0)) denser++;
+      }
+    }
+    ok("sampled files well-formed ({routeId, directions.{1,2}.coordinates})", badShape === 0, `${badShape} malformed`);
+    ok("sampled rings inside Greater London bbox", outOfBbox === 0, `${outOfBbox} out of bbox`);
+    ok("full-fidelity ≥ overview point count (sampled)", checked > 0 && denser === checked, `${denser}/${checked}`);
+  }
+
   // ── accidents.json — the enriched STATS19 layer (deep checks) ──────────────
   section("accidents.json (STATS19 — enriched)");
   const acc = load("accidents.json");

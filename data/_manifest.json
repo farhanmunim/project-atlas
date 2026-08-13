@@ -1,18 +1,20 @@
 {
-  "generatedAt": "2026-08-13T03:18:02.173Z",
+  "generatedAt": "2026-08-13T10:08:34.613Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-08-12T03:20:25.419Z",
+      "fetchedAt": "2026-08-13T10:08:34.612Z",
       "status": "ok",
       "rows": 642,
       "files": [
         "data/routes.json",
         "data/route-classifications.json",
         "data/routes-overview.geojson",
+        "data/route-geometry/<id>.json",
         "data/route-stops.json"
       ],
-      "cadence": "daily"
+      "cadence": "daily",
+      "note": "detailed geometry for 614 routes"
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
@@ -149,14 +151,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-13T03:18:01.661Z",
+      "fetchedAt": "2026-08-13T10:05:46.213Z",
       "status": "ok",
-      "rows": 172,
+      "rows": 147,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "17 published geometry · 155 unpublished"
+      "note": "20 published geometry · 127 unpublished"
     }
   }
 }

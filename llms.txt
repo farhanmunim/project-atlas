@@ -21,7 +21,7 @@
 ## Route keys — the #1 integration rule
 Three conventions, carried verbatim from upstreams. From GET /api/v1/routes take BOTH:
 - id (lowercase, e.g. "w12"): keys route-stops, route-classifications, routes-overview
-  properties.routeId, route-diversions routes[*].id, TfL live URLs.
+  properties.routeId, route-geometry/<id>, route-diversions routes[*].id, TfL live URLs.
 - name (as published, e.g. "W12"): keys route-meta, fleet.byRoute, tenders.byRoute,
   crowding, crowding-profile, route-diversions.routes, live publishedLine, and the
   history group's route_id columns.
@@ -53,6 +53,10 @@ Numeric routes ("25") coincide across all three.
 - live statusSeverity: 10=Good Service, 0=Special Service (diversions), lower=worse; read the description field
 
 ## Notable semantics
+- geometry fidelity: routes-overview is SIMPLIFIED (~11 m RDP) for the whole-network
+  layer; route-geometry/<id> is the full-fidelity ring (TfL's raw line, 5 dp, per
+  direction + lengthKm) — use it for anything that must follow the road path. 404 =
+  no detail file (diversion-freeze bootstrap) → fall back to the overview feature.
 - route-diversions: TfL publishes no structured diversion data; we diff TfL's current
   Route/Sequence against a frozen canonical baseline. missedStops = not served now;
   addedStops = temporary; diversionSegments = the real diverted path (per direction).

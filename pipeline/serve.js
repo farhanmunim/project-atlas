@@ -107,7 +107,7 @@ const V1_SETS = {
   "route-classifications": { file: "route-classifications.json", desc: "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered)." },
   "route-stops":       { file: "route-stops.json",        desc: "Ordered stop sequences per route and direction." },
   "line-status":       { file: "line-status.json",        desc: "Most recent line-status snapshot — per-route service status + a network summary (capturedAt)." },
-  "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection." },
+  "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection — simplified (~11 m tolerance) for the whole-network layer. For the road-faithful line of one route use route-geometry/<id>." },
   "garages":           { file: "garages.json",            desc: "Bus garages — code, name, operator, lat/lng, PVR, routes served." },
   "fleet":             { file: "fleet.json",              desc: "Fleet profile per route — vehicle count, average age, propulsion mix, makes." },
   "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
@@ -127,6 +127,12 @@ function v1File(name) {
   try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", ds.file), "utf8")) }; }
   catch { return { code: 404, obj: { error: "dataset unavailable: " + name } }; }
 }
+// /api/v1/route-geometry/<id> — per-route full-fidelity geometry (mirrors the prod function).
+function v1RouteGeometry(id) {
+  if (!/^[a-z0-9-]{1,12}$/.test(id)) return { code: 400, obj: { error: "usage: /api/v1/route-geometry/<route id>, e.g. /api/v1/route-geometry/w12" } };
+  try { return { code: 200, obj: JSON.parse(fs.readFileSync(path.join(ROOT, "data", "route-geometry", `${id}.json`), "utf8")) }; }
+  catch { return { code: 404, obj: { error: "no detailed geometry for route: " + id, fallback: "/api/v1/routes-overview" } }; }
+}
 const V1_CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS", "Access-Control-Allow-Headers": "*" };
 function jsonCors(res, code, obj) { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300", ...V1_CORS }); res.end(JSON.stringify(obj)); }
 function v1Discovery(req) {
@@ -141,7 +147,10 @@ function v1Discovery(req) {
       history: { path: "/api/v1/history", url: `${origin}/api/v1/history`, note: "Time-series from the Supabase warehouse — daily reliability, performance history, schedule, tender programme, vehicle sightings." },
       live: { path: "/api/v1/live", url: `${origin}/api/v1/live`, note: "Live bus + road feeds proxied from TfL — status, arrivals, disruptions, road incidents." },
     },
-    endpoints: Object.entries(V1_SETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
+    endpoints: [
+      ...Object.entries(V1_SETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
+      { name: "route-geometry", path: "/api/v1/route-geometry/<id>", url: `${origin}/api/v1/route-geometry/w12`, description: "Full-fidelity geometry for ONE route (TfL's raw ring, 5 dp, both directions + lengthKm) — the road-faithful line the apps draw on selection. 404 when no detailed file exists (fall back to routes-overview)." },
+    ],
   };
 }
 // ── Live API (TfL proxy) — mirrors functions/api/v1/live/[[path]].js. Keyless TfL.
@@ -319,6 +328,10 @@ http.createServer(async (req, res) => {
   if (urlPath.startsWith("/api/v1/live/")) return serveLive(req, res, urlPath.slice("/api/v1/live/".length));
   if (urlPath === "/api/v1/history" || urlPath === "/api/v1/history/") return jsonCors(res, 200, histDiscovery(req));
   if (urlPath.startsWith("/api/v1/history/")) return serveHistory(req, res, urlPath.slice("/api/v1/history/".length));
+  if (urlPath.startsWith("/api/v1/route-geometry/")) {
+    const { code, obj } = v1RouteGeometry(urlPath.slice("/api/v1/route-geometry/".length).toLowerCase());
+    return jsonCors(res, code, obj);
+  }
   if (urlPath.startsWith("/api/v1/")) {
     const name = urlPath.slice("/api/v1/".length);
     if (!V1_SETS[name]) return jsonCors(res, 404, { error: "unknown dataset: " + name, available: Object.keys(V1_SETS) });

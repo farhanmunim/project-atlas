@@ -305,7 +305,10 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
 - **Responsive**: ≤820px → simple single-column, page-scrolling layout (route list →
   map → analysis all reachable); map `invalidateSize` on resize.
 - **Atlas data files** (seam-read): routes, route-meta, route-stops, garages, fleet,
-  vehicles, tenders, routes-overview.geojson, **route-performance.json** (EWT/OTP/MPS,
+  vehicles, tenders, routes-overview.geojson (simplified ~11 m — the network layer) +
+  **route-geometry/<id>.json** (full-fidelity per-route rings, lazy-loaded on selection
+  by both apps so drawn lines are road-faithful to TfL; freeze-aware — structurally
+  diverted routes keep last-good, absent file → overview fallback), **route-performance.json** (EWT/OTP/MPS,
   `pipeline/build/performance.js`), **accidents.json** (STATS19, `pipeline/build/accidents.js`
   — per collision: severity/date/borough/vehicles/**casualties** **plus decoded context** roadType/
   speedLimit/junction/light/weather/roadSurface/day/timeBand, which surface as the lens "aggregate
