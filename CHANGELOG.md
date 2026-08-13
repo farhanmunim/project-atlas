@@ -2,6 +2,41 @@
 
 ---
 
+## 2026-08-13 — EWT/OTD v2: tracked reliability estimator (phase 1, end-to-end)
+
+The estimated-MPS revisit. Method: the observed side moves from ~30-min
+Arrivals sampling (audited bias: EWT ~2.6 vs TfL ~1.1; OTD ~48% vs ~80%+)
+to the continuous BODS trip tracker — every trip's timing-point passing
+time (waypoint-trail interpolation) gives COMPLETE observed headways within
+feed-healthy windows, removing the bias by construction. Storage: a
+separate table so v1/v2/TfL-QSI calibrate against each other before any
+promotion.
+
+- Warehouse: migration 0032 route_reliability_tracked_daily (EWT/AWT/SWT,
+  headway counts, OTD + on_time/early/late/non_arrival breakdown,
+  passings_observed, feed_coverage_pct, confidence; anon-read RLS); bundle
+  regenerated (32 migrations).
+- Ingest: shared _lib/tracking-day.js extracted (trip-log/schedule/timing-
+  point/feed-window loaders — build-lost-mileage refactored onto it, byte-
+  identical behavior) + new build-reliability-tracked.js chained third on
+  the 00:37 task. Same honesty gates: partial-day refusal, outage windows
+  never spanned, soft-skips for missing log/env/table.
+- API: /api/v1/history/reliability-tracked (prod Function + serve.js
+  mirror), filters route/from/to/day_type/confidence.
+- Apps: / dossier now shows "tracked" + "sampled" side by side in the
+  Atlas-estimate block, table gains "Trk rel. (exp)" column (colspan 19),
+  CSV gains Trk EWT/OTD/confidence/day columns; /v2 dossier shows
+  ~EWT/~OTD tracked above the sampled line. All cyan EXPERIMENTAL.
+- Tests: suite extended to 22 checks incl. an end-to-end synthetic day
+  (trip log → waypoint passing times → EWT: perfect day reads 0.0, every
+  5th trip missing reads ≈2.0); builder guard smokes; all suites green.
+- Docs: /docs endpoint + full column reference + lifecycle/cadence,
+  API.md, README, llms.txt, CLAUDE.md.
+
+Calibration plan: 2–4 weeks of tracked vs sampled vs TfL quarterly QSI
+per route; promote tracked to the headline estimate only on demonstrated
+convergence. First rows the morning after the collector's first full day.
+
 ## 2026-08-13 — Route lines faithful to TfL (full-fidelity geometry end-to-end)
 
 Farhan compared route 175 side-by-side with the old london-buses site and the

@@ -72,6 +72,12 @@ const ENDPOINTS = {
     defaultOrder: "day.desc",
     desc: "Atlas's own daily GROSS lost-mileage estimate per route — EXPERIMENTAL. Scheduled trips (route_schedule) matched against continuously-observed BODS trips; hours with an unhealthy operator feed count as unmeasured, never lost. Gross: cause split (in/out of operator control) is invisible externally — TfL's contractual figure will differ. Filter by route, from/to day, day_type, confidence.",
   },
+  "reliability-tracked": {
+    table: "route_reliability_tracked_daily",
+    filters: { route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"], day_type: ["day_type", "eq"], confidence: ["confidence", "eq"] },
+    defaultOrder: "day.desc",
+    desc: "Atlas's own daily TRACKED reliability estimate per route (EWT/OTD v2) — EXPERIMENTAL. Passing times from continuous BODS trip tracking give COMPLETE observed headways within feed-healthy windows, removing the sampling bias of reliability-daily. EWT = AWT − SWT (Σh²/2Σh, high-frequency); OTD = % departures −2…+5 min with non-arrivals counted (low-frequency). Feed outages are unmeasured, never late/lost. Calibrating against TfL's quarterly QSI before promotion. Filter by route, from/to day, day_type, confidence.",
+  },
   "crowding": {
     table: "bus_crowding",
     filters: { route: ["route_id", "eq"], band: ["band", "eq"], year: ["busto_year", "eq"], day_type: ["day_type", "eq"] },

@@ -231,6 +231,8 @@ prod as follows — keep both in sync:
     Real-time bus GPS stays separate at `/api/live/vehicles` (volatile, keyed).
   - **history** — `/api/v1/history/*` serves the warehouse time-series (reliability-daily ·
     **lost-mileage** (daily gross estimate from continuous BODS trip tracking, EXPERIMENTAL) ·
+    **reliability-tracked** (EWT/OTD v2 from the same tracking — complete observed headways,
+    EXPERIMENTAL, calibrating vs TfL QSI) ·
     performance-history · schedule · **route-snapshots** · **garage-snapshots** ·
     tender-programme · vehicle-sightings · accidents · crowding)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
@@ -422,8 +424,13 @@ can never block the Cloudflare site.
     mileage into `route_reliability_daily` from the samples + `route_schedule`;
     chains `build-lost-mileage.js` (the daily gross lost-mileage matcher —
     yesterday's tracked trips vs `route_schedule` departures at the timing point
-    → `route_lost_mileage_daily`, migration `0031`; soft-skips when the trip log,
-    warehouse env or table is missing).
+    → `route_lost_mileage_daily`, migration `0031`) and
+    `build-reliability-tracked.js` (EWT/OTD **v2** — passing times from the same
+    trip log through the pure QSI core `_lib/reliability-tracked.js` →
+    `route_reliability_tracked_daily`, migration `0032`; complete observed
+    headways, so no sampling bias; coexists with the sampled v1 for calibration
+    against TfL's QSI before promotion). All three share `_lib/tracking-day.js`
+    loaders and soft-skip when the trip log, warehouse env or table is missing.
   - `npm run track-vehicles` — the continuous BODS SIRI-VM collector daemon
     (`track-vehicles.js`): polls the whole-London feed every 25 s, runs each
     vehicle through the trip state machine (`_lib/trip-tracker.js`), appends

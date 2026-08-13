@@ -8,6 +8,7 @@
  * return null rather than noise.
  */
 import { computeTrackedReliability, OTD_MATCH_MIN, MIN_HEADWAYS } from './_lib/reliability-tracked.js';
+import { estimatePassingMin } from './_lib/lost-mileage.js';
 
 let pass = 0, fail = 0;
 const ok = (label, cond, detail = '') => {
@@ -93,6 +94,31 @@ console.log('\ncomputeTrackedReliability — low-frequency (OTD)');
   // thin day → null
   const r7 = computeTrackedReliability({ departuresMin: [480, 600, 720] }, [481, 601, 721], []);
   ok('fewer than 5 departures → OTD null', r7.otd_percent === null);
+}
+
+console.log('\nend-to-end: trip log → passing times → EWT (the builder chain)');
+{
+  // synthetic day: a 12-km route, timing point at 4 km, buses every 10 min from
+  // 06:00, each trip pinged with a waypoint trail (18 km/h ⇒ passes 4 km at
+  // start + ~13.3 min). Perfect service, so tracked EWT must read 0.
+  const day0 = Date.parse('2026-08-12T00:00:00Z');
+  const mkTrip = (startMin) => ({
+    startAt: new Date(day0 + startMin * 60000).toISOString(),
+    endAt: new Date(day0 + (startMin + 40) * 60000).toISOString(),
+    startKm: 0, endKm: 12, kmObserved: 12, routeLenKm: 12, coverage: 1,
+    wp: Array.from({ length: 17 }, (_, i) => [i * 2.5, +(i * 2.5 * 0.3).toFixed(2)]),  // 18 km/h
+  });
+  const deps = range(360, 1200, 10).map((m) => m + 13);   // timetable at the timing point
+  const trips = range(360, 1200, 10).map((m) => mkTrip(m));
+  const passings = trips.map((t) => estimatePassingMin(t, 4, day0));
+  ok('passing times land at start + ~13 min (waypoint pace)', passings.every((p, i) => Math.abs(p - (360 + i * 10 + 13.3)) <= 1), `first=${passings[0]}`);
+  const r = computeTrackedReliability({ departuresMin: deps }, passings, []);
+  ok('perfect synthetic day → tracked EWT 0.0', r.ewt_minutes === 0 && r.swt_minutes === 5, `ewt=${r.ewt_minutes} swt=${r.swt_minutes}`);
+  // drop every 5th trip → real gaps appear (headways repeat 10,10,10,20:
+  // AWT = Σh²/2Σh = 700/100 = 7.0 → EWT = 2.0)
+  const gappy = passings.filter((_, i) => i % 5 !== 4);
+  const r2 = computeTrackedReliability({ departuresMin: deps }, gappy, []);
+  ok('every 5th trip missing → EWT ≈ 2.0', approx(r2.ewt_minutes, 2.0, 0.15), `${r2.ewt_minutes}`);
 }
 
 console.log(`\n${'='.repeat(48)}\ntest-reliability-tracked: ${pass} passed, ${fail} failed`);
