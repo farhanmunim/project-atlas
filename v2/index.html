@@ -650,6 +650,7 @@ var state = {
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
   relLatest:null,        // latest Atlas-estimated reliability per route (history API), keyed by route_id
   lostLatest:null,       // latest Atlas-estimated gross lost mileage per route (history API), keyed by route_id
+  trackedLatest:null,    // latest TRACKED reliability (EWT/OTD v2, history API), keyed by route_id
   localities:null,       // place-name labels (towns/suburbs) for the map — /api/v1/localities
   crowding:null, crowdingMeta:null, crowdMode:false,   // BUSTO bus crowding (per route) + the "Crowding" colour layer
   crowdingProfile:null,  // BUSTO per-route detail (load-along-route + time-of-day), lazy-loaded
@@ -1324,6 +1325,21 @@ function lostEstimateOf(name, id){
   for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
   return null;
 }
+// TRACKED reliability (EWT/OTD v2, /api/v1/history/reliability-tracked) — complete
+// observed headways from continuous BODS trip tracking; supersedes the sampled
+// estimate once calibrated. Same latest-row-per-route bulk load.
+function ensureTrackedEstimate(){
+  if(state.trackedLatest) return Promise.resolve();
+  return getJSON(atlasBase()+'/history/reliability-tracked?limit=1000').then(function(d){
+    var latest={}; ((d&&d.rows)||[]).forEach(function(row){ var k=row.route_id; if(k!=null && !(k in latest)) latest[k]=row; });
+    state.trackedLatest=latest;
+  }).catch(function(){ state.trackedLatest={}; });
+}
+function trackedEstimateOf(name, id){
+  var m=state.trackedLatest||{}, keys=[id, name, String(id||'').toLowerCase(), String(name||'').toLowerCase(), String(name||'').toUpperCase()];
+  for(var i=0;i<keys.length;i++){ if(keys[i]!=null && m[keys[i]]) return m[keys[i]]; }
+  return null;
+}
 // ── Diversion overlay — the store's route-diversions dataset (daily diff of TfL's
 // diverted Route/Sequence vs the canonical baseline). Route-scoped, always on: the
 // REAL diverted path dashed amber, bypassed section dotted red, missed stops red,
@@ -1371,6 +1387,7 @@ function ensureDossierData(){
   if(!state.crowdingProfile) jobs.push(ensureCrowdingProfile());   // load-along-route + time-of-day charts
   if(!state.relLatest) jobs.push(ensureRelEstimate());             // Atlas-estimated reliability (experimental)
   if(!state.lostLatest) jobs.push(ensureLostEstimate());           // Atlas-estimated gross lost mileage (experimental)
+  if(!state.trackedLatest) jobs.push(ensureTrackedEstimate());     // TRACKED reliability (EWT/OTD v2, experimental)
   return Promise.all(jobs);
 }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
@@ -1435,16 +1452,24 @@ function renderDossier(){
       if(r) rc+=dsec('Reliability', pf.serviceClass)+r;
     }
 
-    // Reliability — Atlas estimate (EXPERIMENTAL, cyan): our own live-sampled EWT (high-freq) /
-    // OTD (low-freq). Biased high (sparse Arrivals sampling under-observes short headways) — never
-    // to be read as TfL's QSI figures above. Lost-mileage deliberately NOT shown (coverage sliver).
+    // Reliability — Atlas estimates (EXPERIMENTAL, cyan). TRACKED (v2) first: complete
+    // observed headways from continuous BODS trip tracking — no sampling bias. The
+    // SAMPLED (v1) figure stays alongside while the two calibrate against TfL's QSI
+    // (it is biased high — sparse Arrivals sampling under-observes short headways).
     var er=relEstimateOf(name, state.routeId);
-    if(er){
-      var isHF=(er.service_class==='high-frequency'), re='';
-      if(isHF && er.ewt_minutes!=null) re+=drow('~EWT', '~'+(+er.ewt_minutes).toFixed(1)+' min · experimental', 'var(--cyan)');
-      else if(!isHF && er.otd_percent!=null) re+=drow('~OTD', '~'+(+er.otd_percent).toFixed(0)+'% on time · experimental', 'var(--cyan)');
-      if(re) rc+=dsec('Reliability — Atlas estimate', (er.sample_count?er.sample_count+' samples':'experimental'))+re+
-        '<div class="dempty">Our own live-sampled estimate — biased high; not comparable to TfL’s QSI.</div>';
+    var tk=trackedEstimateOf(name, state.routeId);
+    if(er || tk){
+      var isHF=((tk&&tk.service_class)||(er&&er.service_class))==='high-frequency', re='';
+      if(tk){
+        if(isHF && tk.ewt_minutes!=null) re+=drow('~EWT tracked', '~'+(+tk.ewt_minutes).toFixed(1)+' min · '+(tk.confidence||'experimental'), 'var(--cyan)');
+        else if(!isHF && tk.otd_percent!=null) re+=drow('~OTD tracked', '~'+(+tk.otd_percent).toFixed(0)+'% on time · '+(tk.confidence||'experimental'), 'var(--cyan)');
+      }
+      if(er){
+        if(isHF && er.ewt_minutes!=null) re+=drow('~EWT sampled', '~'+(+er.ewt_minutes).toFixed(1)+' min · biased high');
+        else if(!isHF && er.otd_percent!=null) re+=drow('~OTD sampled', '~'+(+er.otd_percent).toFixed(0)+'% on time');
+      }
+      if(re) rc+=dsec('Reliability — Atlas estimate', 'experimental')+re+
+        '<div class="dempty">'+(tk?'Tracked = complete observed headways (continuous BODS tracking); sampled = legacy Arrivals sampling, biased high. ':'Our own live-sampled estimate — biased high. ')+'Not comparable to TfL’s QSI.</div>';
     }
 
     // Lost mileage — Atlas estimate (EXPERIMENTAL, cyan): gross % of scheduled trips our

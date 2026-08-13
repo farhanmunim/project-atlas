@@ -74,6 +74,10 @@ Numeric routes ("25") coincide across all three.
   trips our continuous BODS trip-tracking never saw run (lost_pct; feed outages excluded as
   unmeasured, never lost; confidence high|medium|low). No in-/out-of-control split — never
   comparable to TfL's contractual lost-mileage deductions.
+- history/reliability-tracked is Atlas's TRACKED EWT/OTD (v2) — EXPERIMENTAL: complete
+  observed headways from the same continuous tracking (EWT = AWT − SWT, Σh²/2Σh; OTD
+  −2…+5 min, non-arrivals counted). Prefer it over reliability-daily's sampled figures
+  once populated; both are estimates — TfL's official numbers stay route-performance.
 - accidents/crowding history fall back to filtering the static snapshot if the warehouse
   is unreachable (the response's `source` says so).
 

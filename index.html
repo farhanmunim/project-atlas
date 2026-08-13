@@ -854,6 +854,21 @@ async function loadReliabilityLatest(){
     for(const row of (d&&d.rows)||[]){ const k=row.route_id; if(k==null) continue; if(!(k in latest)) latest[k]=row; }
     store.lostLatest=latest;
   }catch(e){ store.lostLatest=store.lostLatest||{}; }
+  // TRACKED reliability (EWT/OTD v2) — complete observed headways from the same
+  // continuous tracking; supersedes the sampled estimate once calibrated.
+  try{
+    const r=await fetch(`/api/v1/history/reliability-tracked?limit=1000`,{cache:"no-cache"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d=await r.json(); const latest={};
+    for(const row of (d&&d.rows)||[]){ const k=row.route_id; if(k==null) continue; if(!(k in latest)) latest[k]=row; }
+    store.trackedLatest=latest;
+  }catch(e){ store.trackedLatest=store.trackedLatest||{}; }
+}
+// latest TRACKED-reliability row for a route (same tolerant keying as reliabilityOf)
+function trackedOf(r){
+  const m=store.trackedLatest; if(!m||!r) return null;
+  for(const k of [r.name, String(r.name||"").toUpperCase(), r.id, String(r.id||"").toLowerCase()]){ if(k!=null && m[k]) return m[k]; }
+  return null;
 }
 // latest lost-mileage row for a route (same tolerant keying as reliabilityOf)
 function lostOf(r){
@@ -2157,6 +2172,8 @@ function routesTableHTML(){
     const rel = pf ? (pf.serviceClass==="high-frequency"&&pf.ewtMinutes!=null ? `${pf.ewtMinutes.toFixed(1)}<span class="u">EWT</span>` : pf.onTimePercent!=null ? `${Math.round(pf.onTimePercent)}<span class="u">%OTP</span>` : "—") : "—";
     const er = reliabilityOf(r);
     const erCell = er ? (er.service_class==="high-frequency"&&er.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — biased high">~${(+er.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : er.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental">~${Math.round(+er.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
+    const tk = trackedOf(r);
+    const tkCell = tk ? (tk.service_class==="high-frequency"&&tk.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (complete observed headways, ${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${(+tk.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : tk.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${Math.round(+tk.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
     const lm = lostOf(r);
     const lmCell = lm&&lm.lost_pct!=null ? `<span style="color:var(--cyan)" title="experimental — gross, from continuous BODS tracking (${esc(lm.confidence||"")} confidence, ${esc(lm.day||"")})">~${(+lm.lost_pct).toFixed(1)}<span class="u">%</span></span>` : "—";
     const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?esc(fmtDate(m.contractDate)):"—");
@@ -2175,6 +2192,7 @@ function routesTableHTML(){
       <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
+      <td class="num">${tkCell}</td>
       <td class="num">${erCell}</td>
       <td class="num">${lmCell}</td>
       <td class="num" title="${cw?esc(CROWD_LABEL[cw.band]+" · peak "+Math.round(cw.peakVC*100)+"% V/C "+cw.dayType+" "+String(cw.time).slice(0,5)):"no BUSTO data"}">${cwCell}</td>
@@ -2184,8 +2202,8 @@ function routesTableHTML(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own daily GROSS lost-mileage estimate: every scheduled trip vs continuously-observed BODS trips; feed outages count as unmeasured, never lost. Not TfL's contractual figure.">Lost mi <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="18" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's TRACKED reliability estimate (EWT/OTD v2): complete observed headways from continuous BODS trip tracking, feed outages unmeasured. Calibrating against TfL's QSI; indicative only.">Trk rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own daily GROSS lost-mileage estimate: every scheduled trip vs continuously-observed BODS trips; feed outages count as unmeasured, never lost. Not TfL's contractual figure.">Lost mi <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="19" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2932,29 +2950,36 @@ function renderContext(){
   // warehouse has no row for this route yet (graceful — it lights up as samples accrue).
   const liveEstimateBlock = (()=>{
     const e = reliabilityOf(r);
-    if(!e) return "";
-    const isHF = e.service_class==="high-frequency";
-    // EXPERIMENTAL. Only the headline wait metric — EWT (high-freq) / OTD (low-freq). NOT
-    // lost-mileage: operated_km is a sliver of sampled vehicle-trips, so mileage_operated_percent
-    // reads ~2–10% (sampling-coverage artifact, not real lost mileage). The EWT estimate is
-    // currently biased HIGH (sampling predicted arrivals every ~30 min under-observes short
-    // headways → inflated AWT), so it's labelled experimental and must NOT be read as TfL's EWT.
+    const tk = trackedOf(r);
+    if(!e && !tk) return "";
+    const isHF = (tk&&tk.service_class ? tk.service_class : e&&e.service_class)==="high-frequency";
     const cards=[];
-    if(isHF && e.ewt_minutes!=null) cards.push(mcard("Excess wait",`~${(+e.ewt_minutes).toFixed(1)}<span class="u">min</span>`,"experimental","color:var(--cyan)"));
-    else if(!isHF && e.otd_percent!=null) cards.push(mcard("On time",`~${(+e.otd_percent).toFixed(0)}<span class="u">%</span>`,"experimental","color:var(--cyan)"));
-    // gross lost mileage — the CONTINUOUS tracker's estimate (unlike the sampled figures
-    // above, this one observes the whole day, so it is shown; feed outages read unmeasured)
+    // TRACKED estimate first (v2): complete observed headways from the continuous BODS
+    // tracker — no sampling bias by construction. Shown alongside the sampled figure
+    // while the two calibrate against TfL's QSI.
+    if(tk){
+      if(isHF && tk.ewt_minutes!=null) cards.push(mcard("Excess wait (tracked)",`~${(+tk.ewt_minutes).toFixed(1)}<span class="u">min</span>`,`${tk.observed_headways||0} headways · ${tk.confidence||""}`,"color:var(--cyan)"));
+      else if(!isHF && tk.otd_percent!=null) cards.push(mcard("On time (tracked)",`~${(+tk.otd_percent).toFixed(0)}<span class="u">%</span>`,`${tk.deps_measured||0} deps · ${tk.confidence||""}`,"color:var(--cyan)"));
+    }
+    // Sampled estimate (v1) — EXPERIMENTAL and biased HIGH (the ~30-min Arrivals sampling
+    // under-observes short headways → inflated AWT). Kept visible for calibration. NOT
+    // lost-mileage: its operated_km is a sampling-coverage sliver; the tracker's gross
+    // figure below is the real estimate (whole-day observation, outages = unmeasured).
+    if(e){
+      if(isHF && e.ewt_minutes!=null) cards.push(mcard("Excess wait (sampled)",`~${(+e.ewt_minutes).toFixed(1)}<span class="u">min</span>`,"biased high","color:var(--paper-2)"));
+      else if(!isHF && e.otd_percent!=null) cards.push(mcard("On time (sampled)",`~${(+e.otd_percent).toFixed(0)}<span class="u">%</span>`,"biased low","color:var(--paper-2)"));
+    }
     const lm = lostOf(r);
     if(lm && lm.lost_pct!=null) cards.push(mcard("Lost mileage",`~${(+lm.lost_pct).toFixed(1)}<span class="u">%</span>`,`${lm.lost_trips||0} trips · ${lm.confidence||""}`,"color:var(--cyan)"));
     if(!cards.length) return "";
-    const when = e.day ? esc(fmtDate(e.day)) : "";
-    const caveat = isHF
-      ? "rough live-sampled estimate, currently biased high (under-observes short headways)"
-      : "rough live-sampled estimate";
+    const when = (tk&&tk.day) ? esc(fmtDate(tk.day)) : (e&&e.day) ? esc(fmtDate(e.day)) : "";
+    const caveat = tk
+      ? "tracked = complete observed headways (continuous BODS tracking); sampled = legacy Arrivals sampling"
+      : (isHF ? "rough live-sampled estimate, currently biased high (under-observes short headways)" : "rough live-sampled estimate");
     return metricBlock(`Reliability — Atlas estimate <span class="mono" style="color:var(--amber)">experimental</span>`,
       metrics(cards)+
-      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} · ${caveat} — not comparable to TfL's QSI above${e.sample_count?` · ${e.sample_count} samples`:""}${when?` · ${when}`:""}</div>`+
-      crossLink("Experimental Atlas estimate from live TfL Arrivals sampling — methodology being refined; indicative only, not TfL's measured EWT/OTP."));
+      `<div class="mnote">${isHF?"high-frequency":"low-frequency"} · ${caveat} — not comparable to TfL's QSI above${(e&&e.sample_count)?` · ${e.sample_count} samples`:""}${when?` · ${when}`:""}</div>`+
+      crossLink("Experimental Atlas estimates — methodology being refined; indicative only, not TfL's measured EWT/OTP."));
   })();
   const servicePatternsBlock = sections.length?metricBlock(`Service patterns <span class="mono">${sections.length}</span>`,
        sections.map(s=>kv(`<span style="text-transform:capitalize">${esc(s.direction)}</span>`,`<span class="vc">${esc(trunc(s.origin+" → "+s.destination,30))}</span>`,s.origin+" → "+s.destination)).join("")+
@@ -3064,11 +3089,12 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk=trackedOf(r);
         return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
+          (tk&&tk.ewt_minutes!=null)?(+tk.ewt_minutes).toFixed(2):"", (tk&&tk.otd_percent!=null)?Math.round(+tk.otd_percent):"", tk?(tk.confidence||""):"", (tk&&tk.day)?tk.day:"",
           (er&&er.ewt_minutes!=null)?(+er.ewt_minutes).toFixed(2):"", (er&&er.otd_percent!=null)?Math.round(+er.otd_percent):"", (er&&er.sample_count!=null)?er.sample_count:"", (er&&er.day)?er.day:"",
           (lm&&lm.lost_pct!=null)?(+lm.lost_pct).toFixed(1):"", (lm&&lm.lost_trips!=null)?lm.lost_trips:"", lm?(lm.confidence||""):"", (lm&&lm.day)?lm.day:"",
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",

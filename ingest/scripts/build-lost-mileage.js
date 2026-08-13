@@ -15,13 +15,11 @@
  *   node scripts/build-lost-mileage.js [--day=YYYY-MM-DD]
  */
 
-import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnv } from './_lib/env.js';
-import { userAgentHeaders, fetchWithTimeout } from './_lib/http.js';
-import { projectOnto } from './_lib/trip-tracker.js';
-import { computeLostMileage, estimatePassingMin, unhealthyWindows, median } from './_lib/lost-mileage.js';
+import { computeLostMileage, estimatePassingMin } from './_lib/lost-mileage.js';
+import { readJsonl, loadScheduleLatest, loadTimingContext, loadFeedWindows, routeOperators } from './_lib/tracking-day.js';
 
 loadEnv();
 const SCRIPT = 'build-lost-mileage';
@@ -32,35 +30,12 @@ const ATLAS_API = (process.env.ATLAS_API_BASE ?? 'https://atlas.farhan.app/api/v
 const WAREHOUSE_URL = process.env.WAREHOUSE_URL ?? '';
 const WAREHOUSE_SERVICE_KEY = process.env.WAREHOUSE_SERVICE_KEY ?? '';
 const BATCH = 500;
-const PAGE = 1000;
 const MIN_DAY_TRIPS = 500;        // fewer network-wide = partial collector day → refuse to write garbage
-const MEDIAN_LOOKBACK_DAYS = 14;
 
 const argDay = process.argv.find((a) => a.startsWith('--day='))?.slice(6);
 const day = argDay || new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
 const day0 = Date.parse(day + 'T00:00:00Z');
 const dayType = (() => { const d = new Date(day0).getUTCDay(); return d === 0 ? 'sunday' : d === 6 ? 'saturday' : 'weekday'; })();
-
-const readJsonl = (p) => { try { return fs.readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return null; } };
-const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } };
-
-async function getJson(url) {
-  const r = await fetchWithTimeout(url, { headers: userAgentHeaders(SCRIPT) });
-  if (!r.ok) throw new Error(`GET ${url} → HTTP ${r.status}`);
-  return r.json();
-}
-
-async function selectAll(supabase, table, build, orderCols = []) {
-  const rows = [];
-  for (let from = 0; ; from += PAGE) {
-    let q = build(supabase.from(table).select('*'));
-    for (const c of orderCols) q = q.order(c, { ascending: true });
-    const { data, error } = await q.range(from, from + PAGE - 1);
-    if (error) throw new Error(`${table} select failed: ${error.message}`);
-    rows.push(...(data || []));
-    if (!data || data.length < PAGE) return rows;
-  }
-}
 
 async function main() {
   const trips = readJsonl(path.join(DIR, `trips-${day}.jsonl`));
@@ -71,48 +46,11 @@ async function main() {
   const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(WAREHOUSE_URL, WAREHOUSE_SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // ── scheduled side: latest route_schedule row per route ────────────────────
-  const schedRows = await selectAll(supabase, 'route_schedule', (q) => q, ['route_id', 'snapshot_date']);
-  const sched = new Map();
-  for (const r of schedRows) sched.set(String(r.route_id).toUpperCase(), r);   // later snapshot wins (ordered)
-
-  // ── timing-point along-km per route (stop position projected on geometry) ──
-  const [stopsD, geoD] = await Promise.all([getJson(`${ATLAS_API}/route-stops`), getJson(`${ATLAS_API}/routes-overview`)]);
-  const geoByName = {};
-  for (const f of geoD.features || []) {
-    if (String(f.properties?.direction) !== '1') continue;
-    geoByName[String(f.properties.name).toUpperCase()] = f.geometry.coordinates;
-  }
-  const stopsById = {};   // routeNAME → { stopId → [lng,lat] }
-  for (const [rid, dirs] of Object.entries(stopsD.routes || {})) {
-    const m = {};
-    for (const s of dirs.outbound || []) m[s.id] = [s.lng, s.lat];
-    stopsById[rid.toUpperCase()] = m;
-  }
-  const timingKmOf = (name, schedRow, lenKm) => {
-    const line = geoByName[name];
-    const pos = stopsById[name]?.[schedRow?.timing_point_stop_id];
-    if (line && pos) return projectOnto(line, pos[0], pos[1]).alongKm;
-    return (lenKm || 0) / 2;   // fallback: mid-route
-  };
-
-  // ── feed health: today's counts vs 14-day medians, per operator ───────────
-  const todayHealth = readJson(path.join(DIR, `feedhealth-${day}.json`)) || {};
-  const histByOp = {};   // op → hour → [counts…]
-  for (let i = 1; i <= MEDIAN_LOOKBACK_DAYS; i++) {
-    const h = readJson(path.join(DIR, `feedhealth-${new Date(day0 - i * 86_400_000).toISOString().slice(0, 10)}.json`));
-    if (!h) continue;
-    for (const [op, hours] of Object.entries(h)) for (const [hr, n] of Object.entries(hours)) ((histByOp[op] ||= {})[hr] ||= []).push(n);
-  }
-  const windowsByOp = {};
-  for (const op of Object.keys(todayHealth)) {
-    const medBy = Object.fromEntries(Object.entries(histByOp[op] || {}).map(([h, xs]) => [h, median(xs)]));
-    windowsByOp[op] = unhealthyWindows(todayHealth[op], medBy);
-  }
-  // route → operatorRef, from the day's own trips (majority vote)
-  const opOf = {};
-  for (const t of trips) { if (!t.operatorRef) continue; ((opOf[t.route] ||= {})[t.operatorRef] ??= 0); opOf[t.route][t.operatorRef]++; }
-  const routeOp = Object.fromEntries(Object.entries(opOf).map(([r, ops]) => [r, Object.entries(ops).sort((a, b) => b[1] - a[1])[0][0]]));
+  // shared day inputs (see _lib/tracking-day.js — also feeds build-reliability-tracked)
+  const sched = await loadScheduleLatest(supabase);
+  const { timingKmOf } = await loadTimingContext(ATLAS_API, SCRIPT);
+  const windowsByOp = loadFeedWindows(DIR, day, day0);
+  const routeOp = routeOperators(trips);
 
   // ── per-route computation (outbound trips vs timing-point departures) ─────
   const byRoute = {};
