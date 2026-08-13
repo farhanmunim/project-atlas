@@ -49,7 +49,8 @@ The API has **three groups**, all listed in the discovery index:
 | `GET /api/v1/route-meta` | Per-route metadata keyed by route name — operator, company, propulsion, garage (+ name), PVR, vehicle spec, route length, contract date |
 | `GET /api/v1/route-classifications` | Route type classification keyed by route name |
 | `GET /api/v1/route-stops` | Ordered stop sequences per route and direction — `{ routes: { "25": { outbound: [{ id, name, lat, lng, lines }], inbound: […] } } }` |
-| `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection`; feature properties: `routeId`, `name`, `direction` (`"1"` outbound, `"2"` inbound), `routeType`, `lengthKm`, `stops` |
+| `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection`; feature properties: `routeId`, `name`, `direction` (`"1"` outbound, `"2"` inbound), `routeType`, `lengthKm`, `stops`. **Simplified** (~11 m RDP tolerance) for the whole-network layer — for one route's road-faithful line use `route-geometry/<id>` |
+| `GET /api/v1/route-geometry/<id>` | **Full-fidelity geometry for one route** — `{ routeId, generatedAt, directions: { "1": { coordinates: [[lng,lat],…], lengthKm }, "2": {…} } }`. TfL's raw Route/Sequence ring (5 dp ≈ 1 m), diversion-freeze-aware (a route whose sequence TfL has structurally altered keeps its last-good canonical file; absent file → `404` with a `fallback` pointer — use the `routes-overview` feature) |
 | `GET /api/v1/line-status` | Latest line-status snapshot — per-route service status + a network summary (`capturedAt`) |
 | `GET /api/v1/garages` | Bus garages — `{ garages: [{ code, name, operator, company, postcode, lat, lng, pvr, capacity, utilisation, routes }] }` |
 | `GET /api/v1/fleet` | Fleet profile per route — `{ byRoute: { "25": { regs, count, avgAgeYears, propulsion, makes } } }` (DVLA-enriched) |

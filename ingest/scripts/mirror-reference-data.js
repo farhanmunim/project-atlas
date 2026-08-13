@@ -89,6 +89,25 @@ async function mirrorGeometry() {
       length_km: num(p.lengthKm), n_stops: num(p.stops), route_type: p.routeType ?? null,
     };
   });
+  // Upgrade to the FULL-FIDELITY per-route rings where published (route-geometry/<id>
+  // — TfL's raw line, freeze-aware). Missing files (freeze bootstrap) keep the
+  // overview coordinates, so the table always holds the best line we can serve.
+  const CONC = 8;
+  const ids = [...new Set(rows.map((r) => r.route_id))];
+  let detailed = 0;
+  for (let i = 0; i < ids.length; i += CONC) {
+    await Promise.all(ids.slice(i, i + CONC).map(async (id) => {
+      try {
+        const det = await getJson(`route-geometry/${encodeURIComponent(id)}`);
+        for (const [dir, g] of Object.entries(det?.directions || {})) {
+          if (!Array.isArray(g?.coordinates) || g.coordinates.length < 2) continue;
+          const row = rows.find((r) => r.route_id === id && r.direction === dir);
+          if (row) { row.coordinates = g.coordinates; row.length_km = num(g.lengthKm) ?? row.length_km; detailed++; }
+        }
+      } catch { /* 404 = no detail file — overview coords stand */ }
+    }));
+  }
+  console.log(`  route_geometry: full-fidelity rings for ${detailed} route-directions`);
   await upsert('route_geometry', rows, 'route_id,direction');
 }
 

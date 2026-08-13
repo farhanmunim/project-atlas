@@ -1125,7 +1125,7 @@ function cmpRoute(a,b){ const na=parseInt(a,10),nb=parseInt(b,10); if(!isNaN(na)
    warehouse lands, only this loader changes. Falls back silently to live TfL +
    sample if the store can't be read (e.g. opened as a file:// page).
    =========================================================================== */
-const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null, reliabilityLatest:null, diversions:null };
+const store = { loaded:false, via:null, routes:null, manifest:null, overviewByRoute:new Map(), geoDetail:new Map(), stops:null, meta:null, tenders:null, garages:null, crowding:null, crowdingProfile:null, reliabilityLatest:null, diversions:null };
 async function loadStore(){
   if(!CONFIG.preferStore) return false;
   // Read our own public API first (/api/v1/* — the versioned, CORS-open surface served
@@ -1184,6 +1184,24 @@ async function loadStore(){
 // coords for a route in a given direction code ("1"=outbound, "2"=inbound), with fallback
 function storeCoordsFor(id, dirCode="1"){ const o = store.overviewByRoute.get(id); if(!o) return null; return o[dirCode] || o["1"] || o["2"] || null; }
 function storeStopsFor(id, dir){ return store.stops && store.stops[id] && store.stops[id][dir] || null; }
+// FULL-FIDELITY per-route geometry (route-geometry/<id> — TfL's raw ring, freeze-aware).
+// Lazy-loaded on selection so the drawn line follows the real road path; the simplified
+// overview stays the whole-network layer. 404 (freeze bootstrap / unknown) caches null →
+// callers fall back to the overview coords. Same api-then-files order as loadStore.
+async function loadGeoDetail(id){
+  if(store.geoDetail.has(id)) return store.geoDetail.get(id);
+  let det=null;
+  for(const url of [`/api/v1/route-geometry/${id}`, `${CONFIG.storeBase}/route-geometry/${id}.json`]){
+    try{ const r=await fetch(url,{cache:"no-cache"}); if(r.ok){ det=await r.json(); break; } }catch(e){}
+  }
+  const dirs = det && det.directions;
+  const val = dirs ? {
+    "1": dirs["1"] && Array.isArray(dirs["1"].coordinates) ? dirs["1"].coordinates.map(c=>[c[1],c[0]]) : null,
+    "2": dirs["2"] && Array.isArray(dirs["2"].coordinates) ? dirs["2"].coordinates.map(c=>[c[1],c[0]]) : null,
+  } : null;
+  store.geoDetail.set(id, val);
+  return val;
+}
 
 /* ===========================================================================
    STATE
@@ -1942,7 +1960,11 @@ async function ensureSeq(r){
   const dirCode = direction==="inbound" ? "2" : "1";
   // store-first: our own geometry + stops, no live dependency (works even if the
   // live API is blocked, which is why a selected route was showing 0 stops).
-  const sc = storeCoordsFor(r.id, dirCode), ss = storeStopsFor(r.id, direction);
+  // Full-fidelity per-route file first (road-faithful, freeze-aware), then the
+  // simplified overview line as fallback.
+  const det = await loadGeoDetail(r.id).catch(()=>null);
+  const sc = (det && (det[dirCode] || det["1"] || det["2"])) || storeCoordsFor(r.id, dirCode);
+  const ss = storeStopsFor(r.id, direction);
   if(sc && ss && ss.length){ r._seq={ name:r.name, coords:sc, stops:ss }; seqCache.set(key,r._seq); return r._seq; }
   try{
     const seq=await dataSource.fetchRouteSequence(r.id,direction);

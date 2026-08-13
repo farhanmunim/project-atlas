@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-08-13 — Route lines faithful to TfL (full-fidelity geometry end-to-end)
+
+Farhan compared route 175 side-by-side with the old london-buses site and the
+Atlas line looked angular. Diagnosis (verified, not assumed): the data was
+correct — termini/stops/extent identical to TfL — but Atlas drew its
+deliberately simplified overview (0.0005° RDP ≈ 31-pt median vs TfL's ~247)
+for selected routes too. Fix, end-to-end:
+
+- Pipeline: build/routes.js now emits data/route-geometry/<id>.json per route
+  — TfL's RAW Route/Sequence ring, 5 dp, both directions + lengthKm, no
+  simplification. Overview tightened 0.0005°/4dp → 0.0001°/5dp (empirically
+  ~31% of raw points; median 62/feature; 1.8 MB raw / 425 KB gz).
+- Freeze, smarter than the overview's blanket keep: the just-run diversion
+  diff decides — structurally unchanged flagged routes (no missed/added
+  stops, no published redraw) safely get their canonical ring written in
+  full fidelity (119 of 147 frozen routes recovered at bootstrap, incl.
+  175); structurally-changed ones withhold the file (last-good persists,
+  absent → overview fallback). Stale files pruned on full runs.
+- API: /api/v1/route-geometry/<id> in the prod Function + serve.js mirror
+  (validated id, JSON 404 with fallback pointer, discovery entry).
+- Apps: / ensureSeq and /v2 geometryFor are now detail-first — selected
+  routes draw the road-faithful ring (175: 267 pts vs 28 before), network
+  layer keeps the (now 5× finer) overview. Diversion overlay unchanged —
+  separate, dashed, on top of the canonical line.
+- Warehouse: mirror-reference-data upgrades route_geometry rows to the
+  full-fidelity rings where published (overview coords stand elsewhere).
+- Verification: new pipeline/verify-geometry.mjs cross-checks stored rings
+  vs TfL live (point counts equal, max dev <1 m on all sampled routes;
+  overview within stated tolerance) + 4 new validate-atlas checks (59
+  total). Headless: / draws 267-pt 175 line, /v2 fetches route-geometry/175
+  and renders — zero JS errors. Docs: /docs new dataset section +
+  routes-overview corrections, API.md, README, llms.txt, CLAUDE.md.
+
 ## 2026-08-10 — EWT/OTD v2 groundwork: waypoint trails + tracked-reliability core
 
 Preparation for replacing the biased sampled reliability estimate with one

@@ -133,6 +133,7 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
     <li><a href="#route-classifications"><span class="mono">route-classifications</span></a></li>
     <li><a href="#route-stops"><span class="mono">route-stops</span></a></li>
     <li><a href="#routes-overview"><span class="mono">routes-overview</span></a></li>
+    <li><a href="#route-geometry"><span class="mono">route-geometry/&lt;id&gt;</span></a></li>
     <li><a href="#line-status"><span class="mono">line-status</span></a></li>
     <li><a href="#route-diversions"><span class="mono">route-diversions</span></a></li>
     <li><a href="#garages"><span class="mono">garages</span></a></li>
@@ -239,7 +240,7 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
 <div class="tw"><table>
 <thead><tr><th>Key</th><th>Example</th><th>Used by</th></tr></thead>
 <tbody>
-<tr><td class="f">route id <span class="pill">lowercase</span></td><td class="f">w12</td><td><code>routes[].id</code> · <code>route-stops.routes</code> keys · <code>routes-overview properties.routeId</code> · <code>route-classifications</code> keys · <code>route-diversions routes[*].id</code> + <code>upcomingFreeze[]</code> · TfL live URLs (<code>/Line/w12/…</code>)</td></tr>
+<tr><td class="f">route id <span class="pill">lowercase</span></td><td class="f">w12</td><td><code>routes[].id</code> · <code>route-stops.routes</code> keys · <code>routes-overview properties.routeId</code> · <code>route-geometry/&lt;id&gt;</code> · <code>route-classifications</code> keys · <code>route-diversions routes[*].id</code> + <code>upcomingFreeze[]</code> · TfL live URLs (<code>/Line/w12/…</code>)</td></tr>
 <tr><td class="f">route name <span class="pill">as published</span></td><td class="f">W12</td><td><code>routes[].name</code> · keys of <code>route-meta.routes</code>, <code>fleet.byRoute</code>, <code>tenders.byRoute</code>, <code>crowding.routes</code>, <code>crowding-profile.routes</code>, <code>route-diversions.routes</code> · live <code>publishedLine</code> · history <code>route_id</code> columns (yes — the warehouse's <code>route_id</code> holds the <em>name</em>)</td></tr>
 <tr><td class="f">route name <span class="pill">UPPERCASED</span></td><td class="f">W12 / N136</td><td><code>route-performance.routes</code> keys only. For numeric routes all three conventions coincide (<code>"25"</code>); for lettered routes always normalise — safest: match case-insensitively</td></tr>
 <tr><td class="f">NaPTAN stop id</td><td class="f">490011979N</td><td><code>route-stops</code> stop <code>id</code> ↔ live <code>arrivals naptanId</code> ↔ diversion <code>missedStops/addedStops id</code> ↔ history <code>schedule qsi_point_stop_ids / timing_point_stop_id</code>. Nationally unique — also joins to any NaPTAN/BODS dataset</td></tr>
@@ -343,7 +344,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <div class="tw"><table>
 <thead><tr><th>Dataset</th><th>Upstream publishes</th><th>We refresh</th><th>Skip logic (politeness)</th></tr></thead>
 <tbody>
-<tr><td class="f">routes · route-stops · routes-overview · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
+<tr><td class="f">routes · route-stops · routes-overview · route-geometry · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
 <tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>every run (daily)</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed</td></tr>
 <tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net)</td><td>daily</td><td>geocodes cached; overrides pinned</td></tr>
 <tr><td class="f">fleet · vehicles</td><td>continuous (live arrivals) · DVLA static</td><td>daily sample</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
@@ -431,14 +432,14 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
   <div class="mg"><div class="k">Format</div><div class="v">GeoJSON FeatureCollection</div></div>
   <div class="mg"><div class="k">Features</div><div class="v">~1,270–1,350 (validated floor 800)</div></div>
 </div>
-<p>Route line geometry for the whole network — one <code>LineString</code> feature per route per direction. Geometry is simplified (Ramer–Douglas–Peucker, tolerance 0.0005° ≈ ≤55&nbsp;m) and coordinate-rounded to 4&nbsp;dp (~11&nbsp;m) so the entire network renders instantly; the un-simplified length is computed <em>before</em> simplification. The same <strong>diversion freeze</strong> as <code>route-stops</code> applies. An independent cross-check against TfL's iBus scheduling geometry is part of the source health sweep.</p>
+<p>Route line geometry for the whole network — one <code>LineString</code> feature per route per direction. Geometry is simplified (Ramer–Douglas–Peucker, tolerance 0.0001° ≈ ≤11&nbsp;m — fidelity chosen empirically so the network layer still follows roads) and coordinate-rounded to 5&nbsp;dp (~1&nbsp;m) so the entire network renders instantly; the un-simplified length is computed <em>before</em> simplification. For the <strong>road-faithful line of one route</strong> use <a href="#route-geometry"><code>route-geometry/&lt;id&gt;</code></a> — the apps do exactly that on selection. The same <strong>diversion freeze</strong> as <code>route-stops</code> applies. An independent cross-check against TfL's iBus scheduling geometry is part of the source health sweep.</p>
 <div class="tw"><table>
 <thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
 <tbody>
 <tr><td class="f">metadata.generatedAt</td><td class="t">ISO datetime</td><td>Build timestamp</td><td>pipeline</td></tr>
 <tr><td class="f">metadata.routeCount / featureCount</td><td class="t">number</td><td>Routes attempted / features written</td><td>pipeline; a run where &gt;30% of routes lose geometry is refused as an upstream outage</td></tr>
 <tr><td class="f">metadata.partial</td><td class="t">boolean</td><td><code>true</code> only for capped dev builds — always <code>false</code> in production</td><td>pipeline</td></tr>
-<tr><td class="f">metadata.simplificationTolerance / coordinatePrecision</td><td class="t">number</td><td>The exact simplification parameters (0.0005° / 4&nbsp;dp) so consumers can reason about positional error</td><td>pipeline constants</td></tr>
+<tr><td class="f">metadata.simplificationTolerance / coordinatePrecision</td><td class="t">number</td><td>The exact simplification parameters (0.0001° / 5&nbsp;dp) so consumers can reason about positional error</td><td>pipeline constants</td></tr>
 <tr><td class="f">properties.routeId / name</td><td class="t">string</td><td>Line id (lowercase) / public route number</td><td>TfL</td></tr>
 <tr><td class="f">properties.direction</td><td class="t">string</td><td><code>"1"</code> outbound · <code>"2"</code> inbound</td><td>TfL direction encoding, validated to exactly {1,2}</td></tr>
 <tr><td class="f">properties.routeType</td><td class="t">string</td><td>Route type</td><td>as <code>routes.type</code></td></tr>
@@ -446,6 +447,26 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td class="f">properties.stops</td><td class="t">number</td><td>Stop count for this direction</td><td>same sequence call</td></tr>
 <tr><td class="f">geometry.coordinates</td><td class="t">[lng,lat][]</td><td>The simplified line</td><td>RDP + rounding as above</td></tr>
 </tbody></table></div>
+
+<h2 class="sec" id="route-geometry">route-geometry/&lt;id&gt; <span class="pill green">reference</span> <span class="pill">daily</span> <span class="pill amber">diversion-frozen</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-geometry/&lt;id&gt; (e.g. /route-geometry/w12)</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL · Route/Sequence lineStrings (raw)</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ routeId, generatedAt, directions: { "1": { coordinates, lengthKm }, "2": {…} } }</div></div>
+  <div class="mg"><div class="k">Files</div><div class="v">one per route (validated floor 400)</div></div>
+</div>
+<p><strong>Full-fidelity geometry for one route</strong> — TfL's raw Route/Sequence ring, un-simplified, coordinate-rounded to 5&nbsp;dp (~1&nbsp;m), per direction (<code>"1"</code> outbound, <code>"2"</code> inbound). This is the road-faithful line: the apps draw it whenever a route is selected (the simplified <a href="#routes-overview"><code>routes-overview</code></a> stays the whole-network layer), and it's what the warehouse's <code>route_geometry</code> table mirrors. Verified reproducibly against TfL live (<code>verify-geometry</code>: point counts equal, max deviation &lt;3&nbsp;m on sampled non-diverted routes).</p>
+<p><strong>Diversion behaviour</strong>: a smarter freeze than the overview's. When a route is flagged diverted, the just-computed diversion diff decides — if TfL's current sequence shows <em>no structural change</em> (no missed/added stops, no published redraw), the current ring is canonical and the file is written in full fidelity; if TfL <em>has</em> altered the sequence, the file is withheld so the last-good canonical ring persists. A route with no file at all (diversion started before the first detailed build) returns <code>404</code> with a <code>fallback</code> pointer — consume the <code>routes-overview</code> feature instead, which is always present and equally canonical (just simplified). Self-heals to full fidelity on the first run after the episode ends.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">routeId</td><td class="t">string</td><td>Line id (lowercase) — matches the request path</td><td>TfL</td></tr>
+<tr><td class="f">generatedAt</td><td class="t">ISO datetime</td><td>When this route's ring was last written (frozen routes keep older timestamps — that's the freeze working)</td><td>pipeline</td></tr>
+<tr><td class="f">directions."1" / "2"</td><td class="t">object</td><td>Outbound / inbound ring — either may be absent (one-directional loops)</td><td>TfL direction encoding</td></tr>
+<tr><td class="f">directions.*.coordinates</td><td class="t">[lng,lat][]</td><td>The full ring — typically 150–400 points (~40&nbsp;m spacing, TfL's own fidelity)</td><td>TfL raw, 5&nbsp;dp rounding only — no simplification</td></tr>
+<tr><td class="f">directions.*.lengthKm</td><td class="t">number</td><td>Haversine length of this ring, 0.1&nbsp;km precision</td><td>computed (unit-tested vs an independent implementation)</td></tr>
+</tbody></table></div>
+<p class="small">Validation: ≥400 files on a full run; sampled files checked for shape, Greater London bounds, and point count ≥ the overview's. Fallbacks: unknown/absent id → JSON 404 with <code>fallback</code>; malformed id → 400 with usage.</p>
 
 <h2 class="sec" id="line-status">line-status <span class="pill cyan">snapshot</span> <span class="pill">every run</span></h2>
 <div class="meta-grid">

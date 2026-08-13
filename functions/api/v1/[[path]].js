@@ -18,7 +18,7 @@ const DATASETS = {
   "route-classifications": { file: "route-classifications.json", desc: "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered)." },
   "route-stops":       { file: "route-stops.json",        desc: "Ordered stop sequences per route and direction." },
   "line-status":       { file: "line-status.json",        desc: "Most recent line-status snapshot — per-route service status + a network summary (capturedAt)." },
-  "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection.", type: "application/geo+json" },
+  "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection — simplified (~11 m tolerance) for the whole-network layer. For the road-faithful line of one route use route-geometry/<id>.", type: "application/geo+json" },
   "garages":           { file: "garages.json",            desc: "Bus garages — code, name, operator, lat/lng, PVR, routes served." },
   "fleet":             { file: "fleet.json",              desc: "Fleet profile per route — vehicle count, average age, propulsion mix, makes." },
   "vehicles":          { file: "vehicles.json",           desc: "Vehicle register keyed by registration — routes, operator, make, year, fuel." },
@@ -73,8 +73,26 @@ export async function onRequest(context) {
         history: { path: "/api/v1/history", url: `${origin}/api/v1/history`, note: "Time-series from the Supabase warehouse — daily reliability, performance history, schedule, tender programme, vehicle sightings." },
         live: { path: "/api/v1/live", url: `${origin}/api/v1/live`, note: "Live bus + road feeds proxied from TfL — status, arrivals, disruptions, road incidents." },
       },
-      endpoints: Object.entries(DATASETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
+      endpoints: [
+        ...Object.entries(DATASETS).map(([k, v]) => ({ name: k, path: `/api/v1/${k}`, url: `${origin}/api/v1/${k}`, description: v.desc })),
+        { name: "route-geometry", path: "/api/v1/route-geometry/<id>", url: `${origin}/api/v1/route-geometry/w12`, description: "Full-fidelity geometry for ONE route (TfL's raw ring, 5 dp, both directions + lengthKm) — the road-faithful line the apps draw on selection. 404 when no detailed file exists (fall back to routes-overview)." },
+      ],
     });
+  }
+
+  // ── per-route full-fidelity geometry: /api/v1/route-geometry/<id> ────────
+  // One small file per route (TfL's raw ring, 5 dp, both directions), written by
+  // the pipeline with the same diversion freeze as the overview. A route with no
+  // file (freeze bootstrap, or unknown id) 404s — callers fall back to the
+  // routes-overview feature, which is always present.
+  if (name === "route-geometry") {
+    const id = (segs[1] || "").toLowerCase();
+    if (!/^[a-z0-9-]{1,12}$/.test(id)) return jsonResponse({ error: "usage: /api/v1/route-geometry/<route id>, e.g. /api/v1/route-geometry/w12" }, { status: 400 });
+    let up;
+    try { up = await fetch(new URL(`/data/route-geometry/${id}.json`, request.url), { cf: { cacheTtl: 300, cacheEverything: true } }); }
+    catch { return jsonResponse({ error: "dataset temporarily unavailable: route-geometry" }, { status: 502 }); }
+    if (!up.ok) return jsonResponse({ error: `no detailed geometry for route: ${id}`, fallback: "/api/v1/routes-overview" }, { status: 404 });
+    return new Response(up.body, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300, s-maxage=600", ...CORS } });
   }
 
   // ── a dataset ────────────────────────────────────────────────────────────

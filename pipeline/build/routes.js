@@ -1,14 +1,20 @@
 /**
  * build/routes.js — the route datasets that feed Atlas (and Cohort/Mandate later).
  *
- * Produces three normalised store datasets from TfL:
+ * Produces four normalised store datasets from TfL:
  *   routes                  → [{ id, name, type }]                 (left-rail list)
  *   route-classifications   → { [id]: { type, ... } }              (filter metadata)
  *   routes-overview         → GeoJSON FeatureCollection, simplified (the whole-
  *                             network map layer — both directions per route)
+ *   route-geometry/<id>     → per-route FULL-FIDELITY geometry (TfL's raw ring,
+ *                             5-dp rounded, both directions) — what the apps draw
+ *                             when a route is selected, so the line is faithful
+ *                             to the road path, not the overview simplification
  *
- * Geometry is fetched per route+direction with bounded concurrency, simplified
- * (Ramer–Douglas–Peucker) and coordinate-rounded for the overview, then cached.
+ * Geometry is fetched per route+direction with bounded concurrency; the raw ring
+ * feeds the per-route detailed file, and a Ramer–Douglas–Peucker–simplified,
+ * coordinate-rounded copy feeds the overview (0.0001° ≈ 11 m — keeps ~31% of
+ * points; fidelity chosen empirically so the network layer still follows roads).
  * `--limit N` (dev) caps how many routes fetch geometry; production runs all.
  *
  * Shapes here MUST match what the tools' dataSource seam returns, so flipping a
@@ -70,6 +76,7 @@ export async function build(ctx) {
 
   const features = [];
   const routeStops = {};                 // { [routeId]: { outbound:[…], inbound:[…] } }
+  const detailByRoute = {};              // { [routeId]: { "1": {coordinates, lengthKm}, "2": … } } — raw rings
   let geomOk = 0, geomFail = 0, doneCount = 0;
   const total = subset.length;
   await mapLimit(subset, 10, async (r) => {
@@ -80,10 +87,13 @@ export async function build(ctx) {
         if (stops.length) { (routeStops[r.id] ||= {})[dir] = stops; }   // same call → free
         const ring = parseLineStrings(res.data);
         if (ring.length < 2) continue;
-        const simplified = roundRing(simplify(ring, 0.0005), 4);
+        const km = Math.round(lengthKm(ring) * 10) / 10;
+        // full fidelity for the per-route file (5 dp ≈ 1 m); simplified for the overview
+        (detailByRoute[r.id] ||= {})[code] = { coordinates: roundRing(ring, 5), lengthKm: km };
+        const simplified = roundRing(simplify(ring, 0.0001), 5);
         features.push({
           type: "Feature",
-          properties: { routeId: r.id, name: r.name, direction: code, routeType: r.type, lengthKm: Math.round(lengthKm(ring) * 10) / 10, stops: stops.length },
+          properties: { routeId: r.id, name: r.name, direction: code, routeType: r.type, lengthKm: km, stops: stops.length },
           geometry: { type: "LineString", coordinates: simplified },
         });
         geomOk++;
@@ -120,7 +130,25 @@ export async function build(ctx) {
         keptGeom++;
       }
     }
-    log.info(`  diversion freeze: ${frozen.size} routes flagged — kept last-good stops for ${keptStops}, geometry for ${keptGeom}`);
+    // Detailed geometry freeze — but smarter than the overview's blanket keep: the
+    // diversions builder just diffed TfL's current sequence against the canonical
+    // baseline. If it found NO structural change (no missed/added stops, no published
+    // redraw), TfL's current ring IS the canonical line and is safe to write in full
+    // fidelity. Only routes where TfL has actually altered the sequence — or that sit
+    // in the upcoming-freeze window (TfL redraws early) — withhold their detail file
+    // (existing files stay last-good; absent files fall back to the frozen overview).
+    const dvData = await sink.readDataset("route-diversions");
+    const structurallyChanged = new Set(dvData?.upcomingFreeze || []);
+    for (const e of Object.values(dvData?.routes || {})) {
+      const touched = ["missedStops", "addedStops"].some((k) => Object.values(e[k] || {}).some((a) => a && a.length));
+      if (touched || e.geometryStatus === "published") structurallyChanged.add(e.id);
+    }
+    let detailKept = 0, detailHeld = 0;
+    for (const id of frozen) {
+      if (structurallyChanged.has(id)) { delete detailByRoute[id]; detailHeld++; }
+      else if (detailByRoute[id]) detailKept++;
+    }
+    log.info(`  diversion freeze: ${frozen.size} routes flagged — kept last-good stops for ${keptStops}, geometry for ${keptGeom}; detail written for ${detailKept} unchanged, withheld for ${detailHeld} structurally-changed`);
   }
 
   notAllNull(features, "geometry", "overview features");
@@ -137,7 +165,7 @@ export async function build(ctx) {
 
   const overview = {
     type: "FeatureCollection",
-    metadata: { generatedAt: new Date().toISOString(), routeCount: subset.length, featureCount: features.length, partial: limit < routes.length, simplificationTolerance: 0.0005, coordinatePrecision: 4 },
+    metadata: { generatedAt: new Date().toISOString(), routeCount: subset.length, featureCount: features.length, partial: limit < routes.length, simplificationTolerance: 0.0001, coordinatePrecision: 5 },
     features,
   };
 
@@ -145,16 +173,39 @@ export async function build(ctx) {
   await sink.writeDataset("routes", routes);
   await sink.writeDataset("route-classifications", classifications);
   await sink.writeDataset("routes-overview", overview, { ext: "geojson" });
+  // per-route full-fidelity geometry (one small file per route, lazy-loaded by the
+  // apps on selection). Frozen routes were removed above so last-good files persist.
+  let detailWritten = 0;
+  for (const [id, dirs] of Object.entries(detailByRoute)) {
+    if (!dirs["1"] && !dirs["2"]) continue;
+    await sink.writeDataset(`route-geometry/${id}`, { generatedAt: new Date().toISOString(), routeId: id, directions: dirs });
+    detailWritten++;
+  }
+  if (limit >= routes.length) {
+    rowsWithin(Object.keys(detailByRoute), 400, undefined, "route-geometry files");
+    // prune per-route files for routes TfL no longer registers (full runs only,
+    // and never while that id sits in the freeze set)
+    const keep = new Set(routes.map((r) => r.id));
+    const { readdirSync, unlinkSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { DATA_DIR } = await import("../lib/store.js");
+    try {
+      for (const f of readdirSync(join(DATA_DIR, "route-geometry"))) {
+        const id = f.replace(/\.json$/, "");
+        if (f.endsWith(".json") && !keep.has(id) && !frozen.has(id)) unlinkSync(join(DATA_DIR, "route-geometry", f));
+      }
+    } catch {}
+  }
   // floor on route-stops too — a near-empty stops map means the sequence calls
   // failed wholesale; don't overwrite a good stops file (skip when --limit in dev).
   if (limit >= routes.length) rowsWithin(Object.keys(routeStops), 400, undefined, "route-stops routes");
   await sink.writeDataset("route-stops", { generatedAt: new Date().toISOString(), routes: routeStops });
 
-  log.info(`routes: ${routes.length} · overview features: ${features.length} (ok ${geomOk}, failed ${geomFail}) · stops for ${Object.keys(routeStops).length} routes`);
+  log.info(`routes: ${routes.length} · overview features: ${features.length} (ok ${geomOk}, failed ${geomFail}) · detailed geometry files: ${detailWritten} · stops for ${Object.keys(routeStops).length} routes`);
   return {
     source: "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
     rows: routes.length,
-    files: ["data/routes.json", "data/route-classifications.json", "data/routes-overview.geojson", "data/route-stops.json"],
-    note: limit < routes.length ? `partial geometry (${limit}/${routes.length})` : undefined,
+    files: ["data/routes.json", "data/route-classifications.json", "data/routes-overview.geojson", "data/route-geometry/<id>.json", "data/route-stops.json"],
+    note: limit < routes.length ? `partial geometry (${limit}/${routes.length})` : `detailed geometry for ${detailWritten} routes`,
   };
 }

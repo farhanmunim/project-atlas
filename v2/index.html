@@ -644,6 +644,7 @@ var state = {
   atlasAll:null,         // cached full STATS19 set (filtered to the corridor on use)
   bridges:null,          // cached full bridge set
   overview:null,         // cached routes-overview.geojson (DB-backed route geometry)
+  geoDetail:{},          // per-route FULL-FIDELITY geometry (route-geometry/<id>), lazy; null = no detail file
   stopsAll:null,         // cached route-stops.json (DB-backed ordered stops per route/dir)
   netStops:null,         // deduped whole-network stop set (built once from stopsAll for the no-route view)
   meta:null, perf:null, tenders:null, fleet:null, garages:null,   // cached datasets (Atlas API)
@@ -1209,8 +1210,31 @@ function dirWantFor(dirs){
   }
   return (state.dir==='inbound' && dirs.length>1) ? dirs[dirs.length-1] : dirs[0];
 }
+// FULL-FIDELITY per-route geometry (/api/v1/route-geometry/<id> — TfL's raw ring,
+// freeze-aware). Lazy-loaded per selection; 404 caches null → overview fallback.
+function ensureGeoDetail(sel){
+  return Promise.all(sel.map(function(r){
+    var id=String(r.id||'').toLowerCase();
+    if(!id || state.geoDetail[id]!==undefined) return Promise.resolve();
+    return getJSON(atlasBase()+'/route-geometry/'+id)
+      .then(function(d){ state.geoDetail[id]=(d&&d.directions)||null; })
+      .catch(function(){ state.geoDetail[id]=null; });
+  }));
+}
 // geometry + stops for one route in the current direction.
 function geometryFor(routeObj){
+  // detailed ring first — the road-faithful line; overview only as fallback
+  var det=state.geoDetail[String(routeObj.id||'').toLowerCase()];
+  if(det){
+    var dd=dirWantFor(Object.keys(det));
+    var dc=det[dd] && det[dd].coordinates;
+    if(dc && dc.length>1){
+      var sd0=state.stopsAll && state.stopsAll[routeObj.name];
+      var sl0=sd0 ? (sd0[state.dir] || sd0.outbound || sd0.inbound || []) : [];
+      var st0=[]; sl0.forEach(function(s){ if(s.lat!=null && s.lng!=null) st0.push({lat:s.lat, lon:s.lng, name:s.name}); });
+      return {segs:[dc.map(function(p){return [p[1],p[0]];})], stops:st0};
+    }
+  }
   var feats=(state.overview.features||[]).filter(function(f){
     var p=f.properties||{}; return String(p.routeId)===String(routeObj.id) || String(p.name)===String(routeObj.name);
   });
@@ -1239,7 +1263,7 @@ function fetchRoute(){
   var tok = sel.map(function(r){return r.id;}).join(',')+'|'+state.dir;   // snapshot the selection
   var label = sel.length>1 ? (sel.length+' routes') : ('route '+state.routeName);
   status('Loading '+label+' ('+state.dir+')…');
-  ensureRouteData().then(function(){
+  Promise.all([ensureRouteData(), ensureGeoDetail(sel)]).then(function(){
     if(tok !== (selectedLineParam()+'|'+state.dir)) return;   // selection changed mid-load — drop stale draw
     var segs=[], stops=[], detail=[];
     sel.forEach(function(r){ var g=geometryFor(r); segs=segs.concat(g.segs); stops=stops.concat(g.stops);
