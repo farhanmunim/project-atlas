@@ -103,7 +103,7 @@ function apiData(name) {
 // build-time fixes (e.g. garage dedup) that CDC wouldn't tombstone from the DB.
 const V1_SETS = {
   "routes":            { file: "routes.json",             desc: "All London bus routes — [{ id, name }]." },
-  "route-meta":        { file: "route-meta.json",         desc: "Per-route metadata keyed by route name (operator, propulsion, garage, type, PVR)." },
+  "route-meta":        { file: "route-meta.json",         desc: "Per-route metadata keyed by route name (operator, propulsion, garage, type, PVR, TVR = floor(PVR × 1.13))." },
   "route-classifications": { file: "route-classifications.json", desc: "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered)." },
   "route-stops":       { file: "route-stops.json",        desc: "Ordered stop sequences per route and direction." },
   "line-status":       { file: "line-status.json",        desc: "Most recent line-status snapshot — per-route service status + a network summary (capturedAt)." },
