@@ -89,6 +89,9 @@ export async function build(ctx) {
       garage: d.garage || g.garageCode || null,
       garageName: g.garageName || null,
       pvr: d.pvr ?? null,
+      // TVR (Total Vehicle Requirement) — derived: PVR × 1.13, rounded down (the
+      // conventional peak→total uplift covering engineering spare/maintenance float).
+      tvr: d.pvr != null ? Math.floor(d.pvr * 1.13) : null,
       fleet: d.vehicleType || null,
       lengthKm: d.lengthKm ?? null,
       contractDate: d.contractDate || null,
@@ -98,6 +101,7 @@ export async function build(ctx) {
     };
     // manual overrides win over every source (operator/garage/fleet/pvr/… corrections)
     for (const [k, v] of Object.entries(ov)) if (k !== "type") meta[rt][k] = v;
+    if (ov.pvr != null) meta[rt].tvr = Math.floor(ov.pvr * 1.13);   // derived field follows its base
     if (meta[rt].operator) withOperator++;
     if (meta[rt].fleet) withFleet++;
   }

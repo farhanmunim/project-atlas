@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-08-13 — UI polish batch: garage codes, clean-map defaults, colour hierarchy, TVR
+
+Five requested changes, verified headless (termini counts, marker labels,
+palette order, TVR maths) with zero JS errors:
+
+- Garage badges now use the requested operator codes: SCL Stagecoach ·
+  ARL Arriva · GAL Go-Ahead · TUK Transport UK · FRG First · MLN Metroline ·
+  UNO Uno · FAL Falcon (OP_INITIALS map; unknown operators keep derived
+  initials).
+- Clean-map defaults on route search: stop markers now show TERMINI ONLY
+  (start + finish anchor the route); the full stop sequence is behind the
+  Stops layer toggle (default off, persisted opt-in). Live buses switch OFF
+  on every fresh search — re-enable per selection. Legend updated.
+- Operating garage: the permanent "Operating from here" label is gone; the
+  marker now carries an amber accent ring + glow (.gm-hl), with the meaning
+  kept discoverable on hover.
+- Multi-route colour hierarchy: replaced the near-clashing palette with a
+  deterministic ordered set — amber, cyan, violet, green, pink, azure,
+  lime, purple — hues spaced for hard adjacent contrast at matched
+  luminance; alert-red stays reserved.
+- TVR (Total Vehicle Requirement) = floor(PVR × 1.13), full lockstep:
+  derived in build/route-meta.js (recomputed when overrides change PVR;
+  637 routes, zero formula violations on regen), served via route-meta,
+  shown in the / dossier + table (new TVR column, colspan 20) + both CSV
+  exports and the /v2 Route card (client fallback computes it until the
+  API refresh lands), documented in /docs + API.md. metaOf() now passes
+  tvr through.
+
 ## 2026-08-13 — EWT/OTD v2: tracked reliability estimator (phase 1, end-to-end)
 
 The estimated-MPS revisit. Method: the observed side moves from ~30-min

@@ -46,7 +46,7 @@ The API has **three groups**, all listed in the discovery index:
 |---|---|
 | `GET /api/v1` | Discovery index — service info + every endpoint |
 | `GET /api/v1/routes` | All London bus routes — `[{ id, name, type }]` (`type`: `regular` \| `night` \| `twentyfour` \| `school`) |
-| `GET /api/v1/route-meta` | Per-route metadata keyed by route name — operator, company, propulsion, garage (+ name), PVR, vehicle spec, route length, contract date |
+| `GET /api/v1/route-meta` | Per-route metadata keyed by route name — operator, company, propulsion, garage (+ name), PVR, TVR (derived: `floor(pvr × 1.13)` — total incl. engineering float), vehicle spec, route length, contract date |
 | `GET /api/v1/route-classifications` | Route type classification keyed by route name |
 | `GET /api/v1/route-stops` | Ordered stop sequences per route and direction — `{ routes: { "25": { outbound: [{ id, name, lat, lng, lines }], inbound: […] } } }` |
 | `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection`; feature properties: `routeId`, `name`, `direction` (`"1"` outbound, `"2"` inbound), `routeType`, `lengthKm`, `stops`. **Simplified** (~11 m RDP tolerance) for the whole-network layer — for one route's road-faithful line use `route-geometry/<id>` |
