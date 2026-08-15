@@ -72,7 +72,7 @@ The API has **three groups**, all listed in the discovery index:
 { "routes": { "25": {
     "type": "twentyfour", "operator": "Stagecoach London",
     "propulsion": "hybrid", "garage": "BW", "garageName": "Bow",
-    "pvr": 31, "fleet": "E40H 10.2m/Enviro400H MMC 2D",
+    "pvr": 31, "tvr": 35, "fleet": "E40H 10.2m/Enviro400H MMC 2D",
     "lengthKm": 18, "contractDate": "24/05/25" } } }
 
 // GET /api/v1/accidents    (one collision shown)
