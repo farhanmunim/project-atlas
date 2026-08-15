@@ -313,7 +313,8 @@ svg:not([width]){width:1em;height:1em;flex:none}
   padding:2px 7px;font-family:var(--mono);font-size:10px;font-weight:700;line-height:1.35;white-space:nowrap;
   box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:pointer;transition:box-shadow .12s var(--ease),transform .12s var(--ease)}
 .garage-pin .gm:hover{box-shadow:0 0 0 2px var(--ink),0 2px 9px rgba(0,0,0,.55);transform:translateY(-1px);z-index:5}
-.garage-pin.gm-hl .gm{box-shadow:0 0 0 2px var(--paper),0 2px 9px rgba(0,0,0,.55)}   /* operating garage: bright ring */
+/* operating garage of the selected route — no text label; the accent ring + glow says it */
+.garage-pin.gm-hl .gm{border:2px solid var(--amber);box-shadow:0 0 0 2px color-mix(in srgb,var(--amber) 35%,transparent),0 0 14px color-mix(in srgb,var(--amber) 60%,transparent),0 2px 9px rgba(0,0,0,.55)}
 /* "Routes here" / stop / garage popups — clickable route pills */
 .rh-pop{min-width:150px}
 .rh-pop .rh-h{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--paper-3);font-weight:600;margin-bottom:8px}
@@ -802,7 +803,7 @@ const CONFIG = {
    SHARED SETTINGS (same key as the hub)
    =========================================================================== */
 const SETTINGS_KEY = "transit-instruments:settings";
-const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:true, showLive:false, showAccidents:false };
+const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:false, showLive:false, showAccidents:false };
 /* Operator colours (distinct hues; used for colour-by-operator + garage markers). */
 // operator primary brand colours (approx) — also used for colour-by-operator + garage badges
 const OP_COLORS = {
@@ -923,10 +924,14 @@ function corridorGradientLayer(coords, vcs, weight){
 }
 function colorLabel(){ return colorMode==="crowding" ? "crowding" : colorMode==="operator" ? "operator" : "type"; }
 const OP_INITIALS = {
-  "Arriva London":"AR", "Go-Ahead London":"GA", "Metroline":"ML", "Stagecoach London":"SC",
-  "First Bus London":"FB", "Transport UK London Bus (RATP)":"TUK", "Uno":"UN",
+  "Arriva London":"ARL", "Go-Ahead London":"GAL", "Metroline":"MLN", "Stagecoach London":"SCL",
+  "First Bus London":"FRG", "Transport UK London Bus (RATP)":"TUK", "Uno":"UNO",
+  "Falcon Coaches":"FAL",
 };
 function opInitials(op){ return OP_INITIALS[op] || (op ? op.split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase() : "?"); }
+// TVR (Total Vehicle Requirement) = PVR × 1.13 rounded down — served by route-meta
+// (pipeline-derived); client fallback keeps it present until the next data refresh.
+function tvrOf(m){ if(!m) return null; if(m.tvr!=null) return m.tvr; return m.pvr!=null?Math.floor(m.pvr*1.13):null; }
 let settings = { ...DEFAULT_SETTINGS };
 let memOnlyStore = null;
 function loadSettings(){ try{ const r=localStorage.getItem(SETTINGS_KEY); if(r) settings={...DEFAULT_SETTINGS,...JSON.parse(r)}; }catch(e){ settings={...DEFAULT_SETTINGS,...(memOnlyStore||{})}; } }
@@ -1234,14 +1239,18 @@ const statusCache=new Map();     // id -> {data, at}  (live status, 60s TTL)
 const fleetCache=new Map();      // id -> {data, at}  (live vehicles on route, 45s TTL)
 const disruptCache=new Map();    // id -> {data, at}  (live disruptions/diversions, 5-min TTL)
 const filters={ type:new Set(), operator:new Set(), propulsion:new Set(), garageOperator:new Set() };
-const MULTI_PALETTE=["#f5a524","#37c5c5","#8b7bf0","#3fb87a","#e58fb8","#7aa2f7","#e0b341","#5fd0a0"];
+// Multi-compare colour hierarchy — a deterministic, ORDERED palette: route 1 is always
+// amber (the primary accent), route 2 cyan, and so on. Hues are spaced around the wheel
+// so every adjacent pair contrasts hard, all tuned to similar luminance on the dark map;
+// alert-red stays reserved for genuine alerts (never a route colour).
+const MULTI_PALETTE=["#f5a524","#37c5c5","#8b7bf0","#3fb87a","#ef6fbc","#4f8ff7","#b3cf3f","#c06ae8"];
 const MAX_DRAW=50;               // cap network geometries drawn at once (free-API budget)
 let networkToken=0;              // guards against overlapping network draws on rapid filtering
 
 /* Leaflet */
 const DEFAULT_CENTER=[51.5074,-0.1278], DEFAULT_ZOOM=11;   // default London view (init + Clear all reset)
 let map, routeLayer, stopLayer, pinMarker, radiusCircle, catchLayer, garageLayer, liveLayer, divLayer, accidentLayer, bridgeLayer, incidentLayer;
-let showRoutes=true, showPlaces=true, showGarages=false, showStops=true, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
+let showRoutes=true, showPlaces=true, showGarages=false, showStops=false, showLive=false, showAccidents=false, showBridges=false, showIncidents=false, colorMode="operator";   // hydrated from settings in init
 let roadIncidents=null;   // cached live road-incident list (fetched on demand when the layer is enabled)
 let riskRadius=250;       // metres — user-set alert proximity for the Risk & accidents panel (collisions + low bridges), hydrated from settings
 let riskRadiusTimer=null;
@@ -1427,9 +1436,11 @@ function drawRoutes(fit=true){
       else { const line=L.polyline(r._seq.coords,{color:col,weight:4,opacity:.9,interactive:false}); routeLayer.addLayer(line); allBounds.push(line.getBounds());
         if(colorMode==="crowding" && single) ensureCrowdingProfile(); }   // kick the lazy load → redraw with gradient
     }
-    if(showStops) r._seq.stops.forEach((s,si)=>{
+    // Default = clean line: only the TERMINI are drawn (start + finish anchor the route).
+    // The full stop sequence is behind the Stops layer toggle — an explicit opt-in.
+    r._seq.stops.forEach((s,si)=>{
       const term=(si===0||si===r._seq.stops.length-1);
-      if(!single && !term) return;     // in multi, only draw termini to keep the map legible
+      if(!term && !(showStops && single)) return;
       stopLayer.addLayer(L.circleMarker([s.lat,s.lng],{ radius:term?6:4, color:col, fillColor:term?col:"#0c111b", fillOpacity:term?1:.9, weight:2 })
         .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div>${routePillsHtml(s.lines)}</div>`));
     });
@@ -1629,7 +1640,7 @@ function updateLegend(){
   if(showLive && trackingOn()) sym.push(
     `<div class="lr"><span class="lc lc-tri" style="color:var(--cyan)"></span>Outbound bus · live</div>`,
     `<div class="lr"><span class="lc lc-tri" style="color:var(--amber)"></span>Inbound bus · live</div>`);
-  if(showStops && selected.length) sym.push(`<div class="lr"><span class="lc lc-dot" style="background:var(--paper)"></span>Bus stop</div>`);
+  if(selected.length) sym.push(`<div class="lr"><span class="lc lc-dot" style="background:var(--paper)"></span>Terminus${showStops&&selectMode==="single"?" + stops":""}</div>`);
   if(showAccidents) sym.push(
     `<div class="lr"><span class="lc lc-dot" style="background:#f5a524"></span>Collisions · fewer</div>`,
     `<div class="lr"><span class="lc lc-dot" style="background:#ff2d55"></span>Collisions · more <span style="color:var(--paper-3)">(size ∝ count)</span></div>`);
@@ -1876,7 +1887,9 @@ function drawGarages(){
     if(!hl && opf.size && !opf.has(g.operator)) return;
     const m = L.marker(dispLatLng(g),{ icon:garageIcon(operatorColor(g.operator), g.code, g.operator, hl), zIndexOffset:hl?1000:0 })
       .bindPopup(garagePopupHtml(g));
-    if(hl) m.bindTooltip("Operating from here",{ permanent:true, direction:"top", className:"gtip", offset:[0,-14] });
+    // operating garage: NO permanent label — the amber accent ring + glow (.gm-hl) marks
+    // it; a hover tooltip keeps the meaning discoverable without map clutter.
+    if(hl) m.bindTooltip("Operating from here",{ direction:"top", className:"gtip", offset:[0,-14] });
     m.addTo(garageLayer);   // no hover tooltip on normal markers — the chip shows the code already and the marker reacts on hover (CSS)
   });
 }
@@ -2040,7 +2053,7 @@ async function loadNear(fit=true){
 function metaOf(r){
   const s = store.meta && store.meta[r.name];   // pipeline store first (londonbusroutes.net)
   if(s) return { op:s.operator, company:s.company, prop:s.propulsion, garage:s.garage, garageName:s.garageName,
-    pvr:s.pvr, fleet:s.fleet, lengthKm:s.lengthKm, contractDate:s.contractDate, contractStart:s.contractStart, contractEnd:s.contractEnd, _src:"londonbusroutes.net" };
+    pvr:s.pvr, tvr:s.tvr, fleet:s.fleet, lengthKm:s.lengthKm, contractDate:s.contractDate, contractStart:s.contractStart, contractEnd:s.contractEnd, _src:"londonbusroutes.net" };
   return { ...(ROUTE_META[r.name]||{}), ...(COMMERCIAL_SAMPLE[r.name]||{}), _src:"sample" };   // in-file fallback
 }
 function applyFilters(list){
@@ -2189,7 +2202,7 @@ function routesTableHTML(){
       <td><span class="tdot" style="background:${d.color}"></span>${d.label}</td>
       <td title="${dvE?esc((dvE.disruptions[0]||{}).reason||"").slice(0,180):"no active diversion"}">${dvCell}</td>
       <td>${esc(m.op?shortOp(m.op):"—")}</td><td>${esc(m.garage||"—")}</td>
-      <td class="num">${m.pvr||"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
+      <td class="num">${m.pvr||"—"}</td><td class="num">${tvrOf(m)??"—"}</td><td class="num">${m.lengthKm?fmtDist(m.lengthKm):"—"}</td>
       <td>${prop?`<span class="tdot" style="background:${PCOL[m.prop]}"></span>${prop}`:"—"}</td>
       <td class="num">${rel}</td>
       <td class="num">${tkCell}</td>
@@ -2202,8 +2215,8 @@ function routesTableHTML(){
       <td title="${esc(veh||"")}" style="font-size:10px">${veh?esc(veh):"—"}</td>
       <td class="num">${tr!=null?tr:"—"}</td>
       <td title="${esc(m.fleet||"")}">${esc(m.fleet||"—")}</td></tr>`; }).join("");
-  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's TRACKED reliability estimate (EWT/OTD v2): complete observed headways from continuous BODS trip tracking, feed outages unmeasured. Calibrating against TfL's QSI; indicative only.">Trk rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own daily GROSS lost-mileage estimate: every scheduled trip vs continuously-observed BODS trips; feed outages count as unmeasured, never lost. Not TfL's contractual figure.">Lost mi <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
-     <tbody>${rows||'<tr><td colspan="19" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
+  return `<table><thead><tr><th>Route</th><th>Type</th><th title="active TfL diversion (route-diversions dataset, refreshed daily)">Diverted</th><th>Operator</th><th>Garage</th><th class="num">PVR</th><th class="num" title="Total Vehicle Requirement — PVR × 1.13 rounded down (peak buses + engineering/maintenance float)">TVR</th><th class="num">Length</th><th>Propulsion</th><th class="num" title="TfL published quarterly QSI — EWT (high-freq) / OTP (low-freq)">Reliability</th><th class="num" title="EXPERIMENTAL — Atlas's TRACKED reliability estimate (EWT/OTD v2): complete observed headways from continuous BODS trip tracking, feed outages unmeasured. Calibrating against TfL's QSI; indicative only.">Trk rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own rough estimate from live TfL Arrivals sampling (EWT high-freq / OTD low-freq), currently biased high. Indicative only; not comparable to TfL's QSI.">Est. rel. <span class="u">(exp)</span></th><th class="num" title="EXPERIMENTAL — Atlas's own daily GROSS lost-mileage estimate: every scheduled trip vs continuously-observed BODS trips; feed outages count as unmeasured, never lost. Not TfL's contractual figure.">Lost mi <span class="u">(exp)</span></th><th class="num" title="TfL BUSTO peak volume-to-capacity (load ÷ capacity at the busiest hour)">Crowding</th><th class="num">Contract</th><th class="num" title="latest award cost per live mile">£/mi</th><th title="latest award — joint or sole bid">Bid</th><th title="vehicle the latest contract was awarded on">Awarded on</th><th class="num" title="LBSL tendering tranche of the latest award">Tranche</th><th>Fleet</th></tr></thead>
+     <tbody>${rows||'<tr><td colspan="20" style="padding:24px;text-align:center;color:var(--paper-3)">No routes match the current filters.</td></tr>'}</tbody></table>`;
 }
 function setLeftTab(tab){
   document.getElementById("ltab-routes").setAttribute("aria-selected", String(tab==="routes"));
@@ -2329,6 +2342,9 @@ async function selectFromSearch(raw){
   const matched=[]; const misses=[];
   for(const tok of tokens){ const r=resolveRoute(tok); if(r){ if(!matched.some(m=>m.id===r.id)) matched.push(r); } else misses.push(tok); }
   if(!matched.length){ toast(`No route matches “${esc(raw.trim())}”`); return; }
+  // A fresh search starts from a clean map: live buses switch OFF (re-enable per
+  // selection via the Layers panel) — same reset-on-load philosophy, per search.
+  if(showLive){ showLive=false; settings.showLive=false; saveSettings(); syncMapCtl(); }
   const sb=document.getElementById("routeSearch"); if(sb) sb.value="";
   // Auto-detect: a single token → single view; comma-separated (2+) → multi view.
   // The Single/Multi toggle is just a manual override; the search infers the intent.
@@ -2993,6 +3009,7 @@ function renderContext(){
          kv("Operator",opName?`<button type="button" class="vlink" data-operator="${esc(opName)}">${esc(shortOp(opName))} ›</button>`:"—")+
          kv("Garage",meta.garage?(garageByCode(meta.garage)?`<button type="button" class="vlink" data-garage="${esc(meta.garage)}">${esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))} ›</button>`:esc(meta.garage+(meta.garageName?` · ${meta.garageName}`:""))):"—")+
          kv("PVR",meta.pvr||"—")+
+         kv("TVR",tvrOf(meta)??"—","Total Vehicle Requirement — PVR × 1.13 rounded down (peak buses + engineering/maintenance float)")+
          (meta.lengthKm?kv("Route length",distVU(meta.lengthKm)):"")+
          kv("Contract",meta.contractStart?`${fmtMonth(meta.contractStart)} → ${meta.contractEnd?fmtMonth(meta.contractEnd):"?"}`:(meta.contractDate?esc(fmtDate(meta.contractDate)):"—"))+
          kv("Propulsion",prop||"—")+
@@ -3063,12 +3080,12 @@ function exportCurrent(){
     fname=`atlas_catchment_${pin.lat.toFixed(4)}_${pin.lng.toFixed(4)}_r${radius}m_${todayStamp()}.csv`;
   }else if(selected.length){
     // current SELECTION → each selected route's stops
-    rows=[["Route","Type","Operator","Propulsion","Garage","PVR","Seq","Stop ID","Stop name","Lat","Lng","Lines","Diversion"]];
+    rows=[["Route","Type","Operator","Propulsion","Garage","PVR","TVR","Seq","Stop ID","Stop name","Lat","Lng","Lines","Diversion"]];
     selected.forEach(r=>{ const seq=r._seq||{stops:[]}; const m=metaOf(r); const ty=TYPE_DEFS[typeOf(r)].label;
       const dvE=divOf(r.name); const missedIds=new Set(divStopsAll(dvE,"missedStops").map(s=>s.id)); const addedIds=new Set(divStopsAll(dvE,"addedStops").map(s=>s.id));
-      seq.stops.forEach((s,i)=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",i+1,s.id,s.name,s.lat,s.lng,(s.lines||[]).join(" "),missedIds.has(s.id)?"not served":addedIds.has(s.id)?"temporary":""]));
+      seq.stops.forEach((s,i)=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",tvrOf(m)??"",i+1,s.id,s.name,s.lat,s.lng,(s.lines||[]).join(" "),missedIds.has(s.id)?"not served":addedIds.has(s.id)?"temporary":""]));
       // missed stops are absent from the current (diverted) sequence — append them so the export carries the full picture
-      divStopsAll(dvE,"missedStops").forEach(s=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"","",s.id,s.name,s.lat,s.lng,"","not served (diversion)"])); });
+      divStopsAll(dvE,"missedStops").forEach(s=>rows.push([r.name,ty,m.op||"",m.prop?PROP_DEFS[m.prop]:"",m.garage||"",m.pvr||"",tvrOf(m)??"","",s.id,s.name,s.lat,s.lng,"","not served (diversion)"])); });
     fname= selected.length===1 ? `atlas_route-${selected[0].name}_${direction}_${todayStamp()}.csv` : `atlas_routes-${selected.length}_${direction}_${todayStamp()}.csv`;
     // also export the nearby bus collisions the dossier's Risk & accidents readout shows
     // (single route) — same geometry + alert-proximity, incl. the decoded STATS19 context.
@@ -3089,10 +3106,10 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
         const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk=trackedOf(r);
-        return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", m.prop?PROP_DEFS[m.prop]:"",
+        return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", tvrOf(m)??"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
           (tk&&tk.ewt_minutes!=null)?(+tk.ewt_minutes).toFixed(2):"", (tk&&tk.otd_percent!=null)?Math.round(+tk.otd_percent):"", tk?(tk.confidence||""):"", (tk&&tk.day)?tk.day:"",
           (er&&er.ewt_minutes!=null)?(+er.ewt_minutes).toFixed(2):"", (er&&er.otd_percent!=null)?Math.round(+er.otd_percent):"", (er&&er.sample_count!=null)?er.sample_count:"", (er&&er.day)?er.day:"",
@@ -3171,7 +3188,7 @@ function init(){
   // hydrate map display prefs + wire the control bar
   // Live vehicles + collisions are noisy overlays — always start OFF each session; the user
   // turns them on explicitly (not persisted as "on" across reloads). Other layers persist.
-  showRoutes = settings.showRoutes!==false; showPlaces = settings.showPlaces!==false; showGarages = !!settings.showGarages; showStops = settings.showStops!==false; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; riskRadius = +settings.riskRadius || 250; colorMode = settings.colorMode || "type"; syncMapCtl();
+  showRoutes = settings.showRoutes!==false; showPlaces = settings.showPlaces!==false; showGarages = !!settings.showGarages; showStops = !!settings.showStops; showLive = false; showAccidents = false; showBridges = false; showIncidents = false; riskRadius = +settings.riskRadius || 250; colorMode = settings.colorMode || "type"; syncMapCtl();
   document.getElementById("mapCtl").addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return;
     const k=b.dataset.k; if(!k) return;   // e.g. the Layers button itself — has its own handler
     // display toggles are global overrides — they re-paint in place and must NOT

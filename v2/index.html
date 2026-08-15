@@ -1439,6 +1439,8 @@ function renderDossier(){
     rc+=drow('Propulsion', m.propulsion?PROP_LBL[m.propulsion]:'—', m.propulsion?PROP_TXT[m.propulsion]:dash);
     rc+=drow('Garage', m.garageName?(m.garageName+(m.garage?' ('+m.garage+')':'')):(m.garage||'—'), (m.garageName||m.garage)?null:dash);
     rc+=drow('PVR', m.pvr!=null?m.pvr:'—', m.pvr!=null?null:dash);
+    var _tvr = m.tvr!=null?m.tvr:(m.pvr!=null?Math.floor(m.pvr*1.13):null);   // TVR = PVR × 1.13 rounded down
+    rc+=drow('TVR', _tvr!=null?_tvr:'—', _tvr!=null?null:dash);
     rc+=drow('Spec', m.fleet);   // the contracted/rostered vehicle type (route-meta)
     rc+=drow('Contract', m.contractStart?(m.contractStart+' → '+(m.contractEnd||'?')):(m.contractDate||null));
 
