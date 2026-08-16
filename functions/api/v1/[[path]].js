@@ -17,6 +17,7 @@ const DATASETS = {
   "route-meta":        { file: "route-meta.json",         desc: "Per-route metadata keyed by route name (operator, propulsion, garage, type, PVR, TVR = floor(PVR × 1.13))." },
   "route-classifications": { file: "route-classifications.json", desc: "Route type classification keyed by route name (day, night, 24-hour, school, prefix/lettered)." },
   "route-stops":       { file: "route-stops.json",        desc: "Ordered stop sequences per route and direction." },
+  "route-destinations":{ file: "route-destinations.json", desc: "Termini per route and direction — { routes: { [id]: { name, outbound:{origin,destination}, inbound:{…} } } }. Derived from each direction's canonical (diversion-frozen) stop sequence; built for cheap 'A → B' list labels." },
   "line-status":       { file: "line-status.json",        desc: "Most recent line-status snapshot — per-route service status + a network summary (capturedAt)." },
   "routes-overview":   { file: "routes-overview.geojson", desc: "Route line geometry as a GeoJSON FeatureCollection — simplified (~11 m tolerance) for the whole-network layer. For the road-faithful line of one route use route-geometry/<id>.", type: "application/geo+json" },
   "garages":           { file: "garages.json",            desc: "Bus garages — code, name, operator, lat/lng, PVR, routes served." },

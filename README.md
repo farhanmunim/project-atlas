@@ -76,6 +76,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/route-meta` | Per-route metadata by name (operator, propulsion, garage, type, PVR) |
 | `GET /api/v1/route-classifications` | Route type by name (day, night, 24-hour, school, prefix/lettered) |
 | `GET /api/v1/route-stops` | Ordered stop sequences per route and direction |
+| `GET /api/v1/route-destinations` | Termini per route/direction — lightweight "A → B" labels (canonical, diversion-frozen) |
 | `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection` (simplified ~11 m for the network layer) |
 | `GET /api/v1/route-geometry/<id>` | Full-fidelity geometry for one route — TfL's raw ring, both directions, freeze-aware (404 → fall back to `routes-overview`) |
 | `GET /api/v1/line-status` | Latest line-status snapshot — per-route status + network summary |

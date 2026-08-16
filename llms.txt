@@ -20,8 +20,9 @@
 
 ## Route keys — the #1 integration rule
 Three conventions, carried verbatim from upstreams. From GET /api/v1/routes take BOTH:
-- id (lowercase, e.g. "w12"): keys route-stops, route-classifications, routes-overview
-  properties.routeId, route-geometry/<id>, route-diversions routes[*].id, TfL live URLs.
+- id (lowercase, e.g. "w12"): keys route-stops, route-destinations, route-classifications,
+  routes-overview properties.routeId, route-geometry/<id>, route-diversions routes[*].id,
+  TfL live URLs.
 - name (as published, e.g. "W12"): keys route-meta, fleet.byRoute, tenders.byRoute,
   crowding, crowding-profile, route-diversions.routes, live publishedLine, and the
   history group's route_id columns.

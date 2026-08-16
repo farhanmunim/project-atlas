@@ -307,7 +307,9 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   zoom (`drawAccidents`).
 - **Responsive**: ≤820px → simple single-column, page-scrolling layout (route list →
   map → analysis all reachable); map `invalidateSize` on resize.
-- **Atlas data files** (seam-read): routes, route-meta, route-stops, garages, fleet,
+- **Atlas data files** (seam-read): routes, route-meta, route-stops, **route-destinations**
+  (termini per direction, derived from the canonical frozen sequences — the "A → B" label
+  dataset), garages, fleet,
   vehicles, tenders, routes-overview.geojson (simplified ~11 m — the network layer) +
   **route-geometry/<id>.json** (full-fidelity per-route rings, lazy-loaded on selection
   by both apps so drawn lines are road-faithful to TfL; freeze-aware — structurally

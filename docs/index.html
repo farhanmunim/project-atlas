@@ -133,6 +133,7 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
     <li><a href="#route-classifications"><span class="mono">route-classifications</span></a></li>
     <li><a href="#route-stops"><span class="mono">route-stops</span></a></li>
     <li><a href="#routes-overview"><span class="mono">routes-overview</span></a></li>
+    <li><a href="#route-destinations"><span class="mono">route-destinations</span></a></li>
     <li><a href="#route-geometry"><span class="mono">route-geometry/&lt;id&gt;</span></a></li>
     <li><a href="#line-status"><span class="mono">line-status</span></a></li>
     <li><a href="#route-diversions"><span class="mono">route-diversions</span></a></li>
@@ -449,6 +450,22 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td class="f">properties.stops</td><td class="t">number</td><td>Stop count for this direction</td><td>same sequence call</td></tr>
 <tr><td class="f">geometry.coordinates</td><td class="t">[lng,lat][]</td><td>The simplified line</td><td>RDP + rounding as above</td></tr>
 </tbody></table></div>
+
+<h2 class="sec" id="route-destinations">route-destinations <span class="pill green">reference</span> <span class="pill">daily</span> <span class="pill amber">diversion-frozen</span></h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/route-destinations</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">derived — first/last stop of each direction's canonical sequence</div></div>
+  <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, routes: { [id]: { name, outbound:{origin,destination}, inbound:{…} } } }</div></div>
+  <div class="mg"><div class="k">Keyed by</div><div class="v">route id (lowercase, e.g. "w12")</div></div>
+</div>
+<p>The termini per route and direction — built so consumers can render cheap <em>"Beckton Station → East Ham"</em> labels in list views without downloading the full ~2.5&nbsp;MB <code>route-stops</code> dataset. Derived at build time from the <strong>final, diversion-frozen</strong> stop sequences, so a temporary diversion never changes a route's advertised termini; either direction may be absent (one-directional loop workings). Zero additional upstream fetches — it rides the same Route/Sequence calls as <code>route-stops</code>.</p>
+<div class="tw"><table>
+<thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
+<tbody>
+<tr><td class="f">routes[id].name</td><td class="t">string</td><td>Public route number, e.g. <code>W12</code></td><td>routes list</td></tr>
+<tr><td class="f">routes[id].outbound / inbound</td><td class="t">object|absent</td><td><code>{ origin, destination }</code> stop names for that direction</td><td>first/last stop of the canonical sequence; absent when the direction has &lt;2 stops</td></tr>
+</tbody></table></div>
+<p class="small">Validation: ≥400 routes on a full run. The richer passenger-facing destination blinds (with londonbusroutes fallback) accrue separately in the warehouse's ingest pipeline; this dataset is deliberately the lightweight canonical-termini view.</p>
 
 <h2 class="sec" id="route-geometry">route-geometry/&lt;id&gt; <span class="pill green">reference</span> <span class="pill">daily</span> <span class="pill amber">diversion-frozen</span></h2>
 <div class="meta-grid">
