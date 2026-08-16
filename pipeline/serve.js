@@ -162,7 +162,7 @@ const LIVE_EP = {
   "arrivals":        { ttl: 30, url: (p) => { const r = (p.get("route") || "").trim(), s = (p.get("stop") || "").trim(); return s ? `/StopPoint/${encodeURIComponent(s)}/Arrivals` : r ? `/Line/${encodeURIComponent(r)}/Arrivals` : null; }, desc: "Live arrivals. ?stop=<naptan> or ?route=<id>." },
   "road-disruptions":{ ttl: 60, url: () => `/Road/all/Disruption`, desc: "Live London road incidents / closures (TfL control centre, ~5 min)." },
   "national-highways":{ ttl: 86400, retired: true, desc: "RETIRED — National Highways withdrew the keyless RSS feed this endpoint proxied (every legacy URL now 404s; the replacement API requires a registered key). Returns 410 Gone. Use /api/v1/live/road-disruptions for London road incidents." },
-  "vehicles":        { ttl: 10, custom: true, desc: "Live bus GPS positions (BODS SIRI-VM), Greater London. ?line=25 or ?route=25 filters to a route; omit for the whole network." },
+  "vehicles":        { ttl: 10, custom: true, desc: "Live bus GPS positions (BODS SIRI-VM), Greater London. ?line=25 or ?route=25 filters to a route; ?reg=LX58CWU finds a specific vehicle (comma-separable); omit both for the whole network." },
 };
 // ── History API (Supabase proxy) — mirrors functions/api/v1/history/[[path]].js.
 const HIST_EP = {
@@ -196,7 +196,8 @@ async function serveLive(req, res, name) {
     if (!hasBodsKey()) return jsonCors(res, 200, { feed: name, live: false, count: 0, data: [], note: "no BODS key — live positions unavailable" });
     const sp = new URL(req.url, "http://x").searchParams;
     const lines = new Set((sp.get("line") || sp.get("route") || "").split(",").map((s) => s.trim()).filter(Boolean));
-    const filt = (v) => !lines.size || lines.has(String(v.publishedLine));
+    const regs = new Set((sp.get("reg") || "").split(",").map((s) => s.replace(/\s+/g, "").toUpperCase()).filter(Boolean));   // vehicle-finder filter
+    const filt = (v) => (!lines.size || lines.has(String(v.publishedLine))) && (!regs.size || regs.has(String(v.reg || "").replace(/\s+/g, "").toUpperCase()));
     const reply = (rec, cached) => { const data = rec.vehicles.filter(filt); return jsonCors(res, 200, { feed: name, live: true, cached, capturedAt: rec.at, count: data.length, data }); };
     const hit = liveCache.get("_london"); if (hit && Date.now() - hit.at < LIVE_TTL_MS) return reply(hit, true);
     try { const rec = { at: Date.now(), vehicles: await fetchVehicleActivity({}) }; liveCache.set("_london", rec); return reply(rec, false); }
@@ -305,11 +306,14 @@ http.createServer(async (req, res) => {
   //    id (≠ the public route), so we filter by PublishedLineName (?line=<route>). ────
   if (urlPath === "/api/live/vehicles") {
     if (!hasBodsKey()) return json(res, 200, { live: false, vehicles: [], note: "no BODS key — live positions unavailable" });
-    // ?line=25 or ?line=25,86 — filter the cached London snapshot by PublishedLineName(s)
-    const lines = new Set((new URL(req.url, "http://x").searchParams.get("line") || "").split(",").map(s => s.trim()).filter(Boolean));
+    // ?line=25 (or 25,86) filters by PublishedLineName; ?reg=LX58CWU is the
+    // vehicle-finder filter (comma-separable, case/space-insensitive; AND with line)
+    const spv = new URL(req.url, "http://x").searchParams;
+    const lines = new Set((spv.get("line") || "").split(",").map(s => s.trim()).filter(Boolean));
+    const regs = new Set((spv.get("reg") || "").split(",").map(s => s.replace(/\s+/g, "").toUpperCase()).filter(Boolean));
     const hit = liveCache.get("_london");
     const fresh = hit && Date.now() - hit.at < LIVE_TTL_MS;
-    const reply = (rec, cached) => { const vehicles = lines.size ? rec.vehicles.filter(v => lines.has(String(v.publishedLine))) : rec.vehicles;
+    const reply = (rec, cached) => { const vehicles = rec.vehicles.filter(v => (!lines.size || lines.has(String(v.publishedLine))) && (!regs.size || regs.has(String(v.reg || "").replace(/\s+/g, "").toUpperCase())));
       return json(res, 200, { live: true, cached, capturedAt: rec.at, vehicles }); };
     if (fresh) return reply(hit, true);
     try {

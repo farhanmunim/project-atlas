@@ -81,6 +81,10 @@ Numeric routes ("25") coincide across all three.
   once populated; both are estimates — TfL's official numbers stay route-performance.
 - accidents/crowding history fall back to filtering the static snapshot if the warehouse
   is unreachable (the response's `source` says so).
+- VEHICLE-FINDER recipe (an LVF-style lookup, no key): live position now =
+  /api/live/vehicles?reg=<REG>; identity (make/body/deck/fleet code) = vehicles.byReg;
+  route worked per day incl. mid-day reallocations = history/vehicle-assignments?reg=;
+  long sampled history = history/vehicle-sightings?reg=.
 
 ## Provenance & licences
 TfL Open Data (Unified API, iBus, BUSTO, EPOWR, QSI) · DfT OGL (BODS SIRI-VM, STATS19) ·

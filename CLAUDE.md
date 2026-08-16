@@ -808,7 +808,9 @@ gated, PDF-only) — see the note.
   `data/vehicle-body-cache.json`. https://bustimes.org/
 - **LVF (London Vehicle Finder)** ⚪ 🔴 — login-gated vehicle *finder* built on TfL location data
   (where a vehicle is / route history); NO make/body register, and the finder capability is
-  native to Atlas (`vehicles` + `history/vehicle-sightings`). Not a source; contact
+  native to Atlas (`/api/live/vehicles?reg=` + `vehicles` + `history/vehicle-assignments` +
+  `history/vehicle-sightings` — Atlas's API is the data backbone for building our own
+  finder). Not a source; contact
   lvf_help@hotmail.com if an arrangement is ever wanted. https://lvf.io/
 
 #### Route-type classification (night / school / 24h / express)

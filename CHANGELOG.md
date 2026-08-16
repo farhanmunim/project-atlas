@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-08-16 — Vehicle-finder filter: ?reg= on the live GPS endpoint
+
+Direction confirmed: Atlas's API is the data backbone for eventually
+building our own LVF-style vehicle finder. The data was already complete
+(identity = vehicles.byReg; per-day route history incl. mid-day moves =
+history/vehicle-assignments; long sampled history = vehicle-sightings);
+the one ergonomic gap was live position by registration — consumers had
+to pull the whole-London feed and filter client-side.
+
+- /api/live/vehicles (+ the /api/v1/live/vehicles mirror in serve.js)
+  now takes ?reg=LX58CWU — comma-separable, case/space-insensitive,
+  ANDs with ?line=. Filtering happens on the shared 10-s-cached snapshot,
+  so upstream BODS load is unchanged.
+- Docs: /docs live tables, API.md example, llms.txt gains the four-line
+  VEHICLE-FINDER recipe, CLAUDE.md LVF note updated (finder capability
+  fully native).
+
 ## 2026-08-16 — Per-vehicle daily route assignments (intra-day reallocations)
 
 Farhan asked whether we capture a bus working route A in the morning and

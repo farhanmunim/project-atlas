@@ -8,6 +8,10 @@
  *
  *   GET /api/live/vehicles?line=25        → { live, cached, capturedAt, vehicles }
  *   GET /api/live/vehicles?line=25,86     → filter by multiple PublishedLineName
+ *   GET /api/live/vehicles?reg=LX58CWU    → the vehicle-finder filter: where is
+ *                                           this bus right now (comma-separable,
+ *                                           case/space-insensitive; combines with
+ *                                           line as AND)
  *
  * Key handling: BODS_API_KEY is a Cloudflare project SECRET (context.env), never
  * shipped to the browser — same guarantee as the server-side .env locally.
@@ -94,21 +98,24 @@ export async function onRequestGet(context) {
   const key = env.BODS_API_KEY;
   if (!key) return json(200, { live: false, vehicles: [], note: "no BODS key — live positions unavailable" });
 
-  const lines = new Set(
-    (new URL(request.url).searchParams.get("line") || "").split(",").map((s) => s.trim()).filter(Boolean)
-  );
+  const params = new URL(request.url).searchParams;
+  const lines = new Set((params.get("line") || "").split(",").map((s) => s.trim()).filter(Boolean));
+  // reg filter — the vehicle-finder path ("where is LX58CWU right now").
+  // SIRI VehicleRefs are uppercase without spaces; normalise the query the same way.
+  const regs = new Set((params.get("reg") || "").split(",").map((s) => s.replace(/\s+/g, "").toUpperCase()).filter(Boolean));
+  const applyFilters = (vs) => vs.filter((v) =>
+    (!lines.size || lines.has(String(v.publishedLine))) &&
+    (!regs.size || regs.has(String(v.reg || "").replace(/\s+/g, "").toUpperCase())));
   const cache = caches.default;
   try {
     const { rec, cached } = await getSnapshot(key, cache);
-    const vehicles = lines.size ? rec.vehicles.filter((v) => lines.has(String(v.publishedLine))) : rec.vehicles;
-    return json(200, { live: true, cached, capturedAt: rec.at, vehicles });
+    return json(200, { live: true, cached, capturedAt: rec.at, vehicles: applyFilters(rec.vehicles) });
   } catch (e) {
     // Last-good: if a stale snapshot is still in cache, serve it rather than blanking.
     const stale = await cache.match(SNAPSHOT_KEY);
     if (stale) {
       const rec = await stale.json();
-      const vehicles = lines.size ? rec.vehicles.filter((v) => lines.has(String(v.publishedLine))) : rec.vehicles;
-      return json(200, { live: true, cached: true, capturedAt: rec.at, vehicles });
+      return json(200, { live: true, cached: true, capturedAt: rec.at, vehicles: applyFilters(rec.vehicles) });
     }
     return json(502, { live: false, vehicles: [], error: String(e.message || e) });
   }

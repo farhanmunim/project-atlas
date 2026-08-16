@@ -155,6 +155,7 @@ Notes:
 curl https://atlas.farhan.app/api/v1                          # discover everything
 curl https://atlas.farhan.app/api/v1/route-meta               # operator/PVR/garage per route
 curl https://atlas.farhan.app/api/v1/live/status?route=25     # live status for route 25
+curl "https://atlas.farhan.app/api/live/vehicles?reg=LX58CWU" # vehicle finder: where is this bus now
 curl "https://atlas.farhan.app/api/v1/history/reliability-daily?route=25&limit=30"
 ```
 
