@@ -177,5 +177,25 @@ console.log('\nwaypoint trails (tracker capture → interpolation)');
   ok('pre-waypoint checkpoint state closes without wp', d3.length === 1 && !('wp' in d3[0]));
 }
 
+console.log('\ngroupAssignments (per-vehicle daily route allocation)');
+{
+  const { groupAssignments } = await import('./_lib/tracking-day.js');
+  const t = (reg, route, s, e, km) => ({ reg, route, dir: '1', startAt: s, endAt: e, kmObserved: km });
+  // bus X: route A morning (2 trips), route B evening (1 trip); bus Y: route A only
+  const rows = groupAssignments([
+    t('X1', 'A', '2026-08-15T06:00:00Z', '2026-08-15T07:00:00Z', 10),
+    t('X1', 'A', '2026-08-15T07:30:00Z', '2026-08-15T08:30:00Z', 10.5),
+    t('X1', 'B', '2026-08-15T18:00:00Z', '2026-08-15T19:00:00Z', 8),
+    t('Y1', 'A', '2026-08-15T09:00:00Z', '2026-08-15T10:00:00Z', 9),
+  ], '2026-08-15');
+  ok('mid-day reallocation → one row per route worked', rows.length === 3, `${rows.length} rows`);
+  const xa = rows.find((r) => r.registration === 'X1' && r.route_id === 'A');
+  ok('trips + km aggregate per assignment', xa.trips === 2 && xa.km_observed === 20.5, JSON.stringify(xa));
+  ok('first/last-seen span the assignment window', xa.first_seen === '2026-08-15T06:00:00Z' && xa.last_seen === '2026-08-15T08:30:00Z');
+  const xb = rows.find((r) => r.registration === 'X1' && r.route_id === 'B');
+  ok('evening reallocation kept separate', xb.trips === 1 && xb.first_seen === '2026-08-15T18:00:00Z');
+  ok('junk trips (no reg/route) dropped', groupAssignments([{ route: 'A' }, { reg: 'Z' }], 'd').length === 0);
+}
+
 console.log(`\n${'='.repeat(48)}\ntest-lost-mileage: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

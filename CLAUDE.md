@@ -432,8 +432,12 @@ can never block the Cloudflare site.
     trip log through the pure QSI core `_lib/reliability-tracked.js` →
     `route_reliability_tracked_daily`, migration `0032`; complete observed
     headways, so no sampling bias; coexists with the sampled v1 for calibration
-    against TfL's QSI before promotion). All three share `_lib/tracking-day.js`
-    loaders and soft-skip when the trip log, warehouse env or table is missing.
+    against TfL's QSI before promotion) and `build-vehicle-assignments.js`
+    (per-vehicle DAILY route assignments — one row per (reg, route, day) with
+    first/last-seen + trips + km → `vehicle_route_assignments_daily`, migration
+    `0033`; catches mid-day reallocations the 08:37 sample can't). All four share
+    `_lib/tracking-day.js` loaders and soft-skip when the trip log, warehouse env
+    or table is missing.
   - `npm run track-vehicles` — the continuous BODS SIRI-VM collector daemon
     (`track-vehicles.js`): polls the whole-London feed every 25 s, runs each
     vehicle through the trip state machine (`_lib/trip-tracker.js`), appends

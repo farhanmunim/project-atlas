@@ -89,6 +89,25 @@ export function loadFeedWindows(dir, day, day0, lookbackDays = 14) {
   return windowsByOp;
 }
 
+/** Group a day's trips into per-vehicle route assignments: one record per
+ *  (registration, route) with the first/last-seen window, trip count and
+ *  observed km — both directions. A bus reallocated mid-day yields one
+ *  record per route it worked. Pure; unit-tested. */
+export function groupAssignments(trips, day) {
+  const by = new Map();   // reg|ROUTE → agg
+  for (const t of trips || []) {
+    if (!t.reg || !t.route) continue;
+    const k = `${t.reg}|${t.route}`;
+    let a = by.get(k);
+    if (!a) { a = { registration: t.reg, route_id: t.route, day, trips: 0, first_seen: t.startAt, last_seen: t.endAt, km_observed: 0 }; by.set(k, a); }
+    a.trips++;
+    if (t.startAt < a.first_seen) a.first_seen = t.startAt;
+    if (t.endAt > a.last_seen) a.last_seen = t.endAt;
+    a.km_observed = +(a.km_observed + (t.kmObserved || 0)).toFixed(1);
+  }
+  return [...by.values()];
+}
+
 /** route → operatorRef by majority vote from the day's own trips. */
 export function routeOperators(trips) {
   const opOf = {};

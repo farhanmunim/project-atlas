@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-08-16 — Per-vehicle daily route assignments (intra-day reallocations)
+
+Farhan asked whether we capture a bus working route A in the morning and
+route B at night. Honest answer: the 08:37 fleet sample structurally
+can't (one observation per bus per day) — but the continuous tracker
+already SEES every trip; it just wasn't persisted before the 16-day log
+rotation. Now it is:
+
+- Migration 0033 vehicle_route_assignments_daily — one row per
+  (registration, route, day): trips, first_seen/last_seen window,
+  km_observed; anon-read RLS; bundle regenerated (33 migrations).
+- build-vehicle-assignments.js chained fourth on the 00:37 task; pure
+  grouping in _lib/tracking-day.js (groupAssignments), unit-tested
+  (43-check suite now) incl. the exact morning-A/evening-B case; same
+  guards as the sibling builders.
+- API: /api/v1/history/vehicle-assignments (both mirrors), filters
+  reg/route/from/to; documented in /docs (endpoint + columns + the
+  sightings-vs-assignments distinction), API.md, README, CLAUDE.md.
+- Backfillable for logged days (trip logs keep 16 days):
+  npm run build-vehicle-assignments -- --day=YYYY-MM-DD.
+
+Coolify: needs migration 0033 pasted (batch with 0032) + the atlas-ingest
+redeploy already outstanding.
+
 ## 2026-08-16 — route-destinations dataset (API-consumer request)
 
 External feedback asked for a lightweight termini dataset ("Beckton
