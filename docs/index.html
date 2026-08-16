@@ -320,6 +320,7 @@ curl -s "https://atlas.farhan.app/api/v1/history/route-snapshots?route=W12&amp;l
 <h2 class="sec" id="lifecycle">How data flows — Fetch → Clean → Validate → Store → Serve</h2>
 <p>Nothing is served straight from a scrape or a live pull. Every dataset moves through the same five-stage pipeline, run unattended every night:</p>
 <pre>
+every ~4h  <span class="a">diversions-only refresh</span> (07:17/11:17/15:17/19:17/23:17 UTC) — new/ended diversions land intraday
 03:17 UTC  <span class="a">atlas-refresh</span> (VPS scheduled task) clones main and runs the pipeline:
            <span class="c">for each dataset:</span> fetch upstream → clean/normalise → <span class="a">validate (hard gate)</span> → write store JSON
            diversions builder runs FIRST and freezes the canonical baselines of diverted routes
@@ -345,7 +346,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <thead><tr><th>Dataset</th><th>Upstream publishes</th><th>We refresh</th><th>Skip logic (politeness)</th></tr></thead>
 <tbody>
 <tr><td class="f">routes · route-stops · routes-overview · route-geometry · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
-<tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>every run (daily)</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed</td></tr>
+<tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>daily full build + intraday diversions-only refresh every ~4&nbsp;h</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed; a no-change intraday run commits (and deploys) nothing</td></tr>
 <tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net)</td><td>daily</td><td>geocodes cached; overrides pinned</td></tr>
 <tr><td class="f">fleet · vehicles</td><td>continuous (live arrivals) · DVLA static</td><td>daily sample</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
 <tr><td class="f">tenders</td><td>event-driven awards</td><td>daily incremental</td><td>append-only by tender id — only NEW ids fetched</td></tr>

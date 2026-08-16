@@ -206,10 +206,20 @@ pattern as atlas-ingest:
   validator cache warm between runs).
 - **Env vars**: `GIT_PUSH_TOKEN` (GitHub fine-grained PAT, ONLY this repo,
   Contents: Read and write), `TFL_APP_KEY`, `DVLA_API_KEY`.
-- **Scheduled Task**: `sh /usr/local/bin/vps-refresh-task.sh` @ `17 3 * * *` (daily
-  03:17 UTC — same as the old Action). The -task wrapper detaches vps-refresh.sh so
-  Coolify's task-job timeout can't kill the ~7–15 min run; log at
-  `/tmp/static-store-refresh.log`.
+- **Scheduled Tasks** (the -task wrapper detaches vps-refresh.sh so Coolify's
+  task-job timeout can't kill the run; log at `/tmp/static-store-refresh.log`):
+
+| Name | Command | Cron |
+|---|---|---|
+| static-store-refresh | `sh /usr/local/bin/vps-refresh-task.sh` | `17 3 * * *` |
+| diversions-refresh | `env REFRESH_ARGS="--only=diversions" sh /usr/local/bin/vps-refresh-task.sh` | `17 7,11,15,19,23 * * *` |
+
+  The intraday `diversions-refresh` re-runs ONLY the diversions builder (live TfL
+  status + sequence diffs, ~2 min) so new/ended diversions reach the API within
+  ~4 h instead of next-morning; a no-change run exits before the commit, so it
+  costs a Cloudflare Pages build only when the data actually moved (worst case
+  ~186 builds/month vs the free tier's 500). vps-refresh.sh's lock serialises it
+  against the daily full run.
 
 Each run: fresh shallow clone of main → `npm ci --omit=dev` → `pipeline/run.js` →
 `validate-atlas.js` (hard gate — aborts before commit) → commits `data/` as
