@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-08-16 — Contracted tender mileage stored (derived), collector confirmed live
+
+- Tender mileage: TfL does NOT publish annual mileage on award pages, but
+  publishes both terms of the division — accepted bid (£/yr) and cost per
+  live mile. The app derived it client-side only; now deriveAward()
+  computes contractedMilesPA = round(acceptedBid ÷ costPerMile) at build
+  time (null when either term missing or £/mile failed its sanity clamp),
+  so the API serves it too. App prefers the stored value (client fallback
+  kept for older data); CSV gains "Contracted miles/yr"; documented in
+  /docs (Derived, with formula) + API.md. Unit-verified incl. clamp/null
+  paths. Local tenders rebuild blocked (TfL 403s the sandbox proxy) —
+  field populates on the nightly VPS refresh, which reaches TfL fine.
+- Coolify audit vs prod evidence: collector IS live (lost-mileage rows for
+  Aug 14+15; BODS key, 0031, redeploy, track-vehicles task all done).
+  Early lost_pct reads high (mean ~30%) — expected burn-in: the feed-
+  health medians need ~14 days before outage windows can be excluded, and
+  confidence filtering applies. Outstanding: migration 0032 paste
+  (reliability-tracked 404s) and the diversions-refresh task on
+  atlas-refresh; one more atlas-ingest redeploy recommended to guarantee
+  the tracked builder + geometry-mirror upgrade are in the container.
+
 ## 2026-08-15 — Tender bid spread: verified, semantics documented, CSV completed
 
 Farhan asked whether TfL publishes highest/lowest/winning bids and whether

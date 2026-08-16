@@ -139,5 +139,11 @@ export function deriveAward(award) {
   const tranche = (award.tranche != null && Number.isFinite(Number(award.tranche)))
     ? Number(award.tranche)
     : (fromText.length ? fromText[0] : null);
-  return { ...award, jb, vehicle, tranche };
+  // Contracted annual live miles — TfL does not publish mileage on the award page,
+  // but it publishes both terms of the division: accepted bid (£/yr) and cost per
+  // live mile (£/mile). Derived here (like the app's dossier readout) so the API
+  // serves it too; null when either term is missing or the £/mile cell was junk.
+  const contractedMilesPA = (award.acceptedBid > 0 && award.costPerMile > 0 && award.costPerMile <= 200)
+    ? Math.round(award.acceptedBid / award.costPerMile) : null;
+  return { ...award, jb, vehicle, tranche, contractedMilesPA };
 }
