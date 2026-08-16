@@ -234,7 +234,9 @@ prod as follows — keep both in sync:
     **reliability-tracked** (EWT/OTD v2 from the same tracking — complete observed headways,
     EXPERIMENTAL, calibrating vs TfL QSI) ·
     performance-history · schedule · **route-snapshots** · **garage-snapshots** ·
-    tender-programme · vehicle-sightings · accidents · crowding)
+    tender-programme · vehicle-sightings · **vehicle-assignments** (per-vehicle daily
+    route allocations from continuous tracking — catches mid-day reallocations) ·
+    accidents · crowding)
     ([`functions/api/v1/history/[[path]].js`]). Strict per-endpoint whitelist (table +
     filters + capped page size); `WAREHOUSE_URL` + `WAREHOUSE_ANON_KEY` (anon-role JWT +
     RLS read policies) are server-side Cloudflare secrets, never shipped. See README

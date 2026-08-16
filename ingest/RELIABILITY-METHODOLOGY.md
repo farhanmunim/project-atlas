@@ -139,3 +139,34 @@ route 1 = 27.5 min vs TfL's ~1–2. Causes, mapped to the methodology above:
 > cross-hour sampling holes; coverage tightens (thin-sample routes now read null rather than a wrong
 > number) and improves as denser history accrues. Items 1 (true passing detection), 2 (full QSI
 > points) and 5 (per-trip OTD) remain to reach QSI-comparable accuracy.
+
+## 8. Tracked v2 — build-reliability-tracked.js (continuous BODS observation)
+
+The sampled estimator above is bounded by its observation method (~30-min Arrivals
+sweeps under-observe short headways → EWT biased high; audited Aug 2026: mean ~2.6 min
+vs TfL ~1.1). **v2** replaces the observed side entirely: the continuous SIRI-VM
+collector (`track-vehicles.js`, 25 s sweeps) logs every completed trip with a waypoint
+trail; `build-reliability-tracked.js` interpolates each outbound trip's **passing time
+at the route's timing point** and feeds complete passing sequences through the pure QSI
+core (`_lib/reliability-tracked.js`) → `route_reliability_tracked_daily` (migration
+0032). Served at `/api/v1/history/reliability-tracked`; coexists with v1 for
+calibration.
+
+Mapping to the TfL spec — deliberate simplifications, to close during calibration:
+
+| TfL spec | v2 today |
+|---|---|
+| Per-hour, per QSI point (≈5), per direction | Whole-day, ONE timing point, outbound only |
+| First bus of each hour = headway 0 | No hourly reset — day-level headway chain |
+| In-control filtering via operator returns | None (gross); operator feed OUTAGES excluded as unmeasured (hour vs 14-day median) |
+| iBus AVL (complete by construction) | BODS SIRI-VM (coverage varies by operator — the burn-in artifact source) |
+
+Observed failure modes (first live days, Aug 2026): **under-observation** (missing
+trips → false gaps → EWT reads 10–20+ min — exactly the "double-digit EWT is a
+measurement artifact" case above) and **duplicate/split observations** (one physical
+trip logged twice → compressed headways → strongly negative EWT). Both sit outside a
+plausibility band; the day-2 plausible band (confidence=high, EWT −1…8 min) already
+read mean 2.79 / median 1.86 min. **The apps display only that band; the API serves
+every raw row as calibration material.** Promotion to headline estimate requires the
+band to converge on TfL's QSI per route as feed-health medians mature (~14 days) and a
+per-operator observation-rate correction lands.
