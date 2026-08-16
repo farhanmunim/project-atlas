@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-15T20:09:41.759Z",
+  "generatedAt": "2026-08-16T03:23:08.336Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-08-13T10:08:34.612Z",
+      "fetchedAt": "2026-08-16T03:20:22.333Z",
       "status": "ok",
-      "rows": 642,
+      "rows": 641,
       "files": [
         "data/routes.json",
         "data/route-classifications.json",
@@ -14,11 +14,11 @@
         "data/route-stops.json"
       ],
       "cadence": "daily",
-      "note": "detailed geometry for 614 routes"
+      "note": "detailed geometry for 615 routes"
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-13T03:18:01.738Z",
+      "fetchedAt": "2026-08-16T03:23:07.847Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -39,18 +39,18 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-13T03:18:02.173Z",
+      "fetchedAt": "2026-08-16T03:23:08.336Z",
       "status": "ok",
-      "rows": 7807,
+      "rows": 7816,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 642 (642△); route_meta 642 (642△); route_stops 642 (642△); tender 2521 (2521△); garage 86 (86△); fleet 642 (642△); vehicle 684 (684△); line_status 676 (676△); route_geometry 1272 (1272△)"
+      "note": "route 641 (641△); route_meta 639 (639△); route_stops 641 (641△); tender 2521 (2521△); garage 86 (86△); fleet 641 (641△); vehicle 700 (700△); line_status 676 (676△); route_geometry 1271 (1271△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
-      "fetchedAt": "2026-08-12T03:20:26.140Z",
+      "fetchedAt": "2026-08-16T03:20:22.647Z",
       "status": "ok",
       "rows": 86,
       "files": [
@@ -61,32 +61,32 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-08-12T03:21:37.642Z",
+      "fetchedAt": "2026-08-16T03:21:37.109Z",
       "status": "ok",
-      "rows": 642,
+      "rows": 641,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "183 routes with vehicles, DVLA-enriched"
+      "note": "157 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache + bustimes.org",
-      "fetchedAt": "2026-08-12T03:23:04.877Z",
+      "fetchedAt": "2026-08-16T03:23:04.691Z",
       "status": "ok",
-      "rows": 684,
+      "rows": 700,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · fleet (inverted) + bustimes.org body enrichment (capped)",
-      "note": "2 multi-route · 373 with body"
+      "note": "0 multi-route · 510 with body"
     },
     "tenders": {
       "status": "ok",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-07-03T06:42:25.017Z",
       "source": "TfL tender award results (13923/13796.aspx)",
-      "fetchedAt": "2026-08-12T03:23:05.314Z",
+      "fetchedAt": "2026-08-16T03:23:05.073Z",
       "rows": 2521,
       "files": [
         "data/tenders.json"
@@ -96,7 +96,7 @@
     },
     "performance": {
       "source": "TfL Bus Performance (QSI) + per-route MPS PDFs",
-      "fetchedAt": "2026-08-12T03:23:05.513Z",
+      "fetchedAt": "2026-08-16T03:23:05.327Z",
       "status": "ok",
       "rows": 738,
       "files": [
@@ -151,14 +151,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-13T10:05:46.213Z",
+      "fetchedAt": "2026-08-16T03:17:44.311Z",
       "status": "ok",
-      "rows": 147,
+      "rows": 152,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "20 published geometry · 127 unpublished"
+      "note": "17 published geometry · 135 unpublished"
     }
   }
 }
