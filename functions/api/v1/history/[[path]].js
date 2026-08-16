@@ -72,6 +72,12 @@ const ENDPOINTS = {
     defaultOrder: "day.desc",
     desc: "Atlas's own daily GROSS lost-mileage estimate per route — EXPERIMENTAL. Scheduled trips (route_schedule) matched against continuously-observed BODS trips; hours with an unhealthy operator feed count as unmeasured, never lost. Gross: cause split (in/out of operator control) is invisible externally — TfL's contractual figure will differ. Filter by route, from/to day, day_type, confidence.",
   },
+  "vehicle-assignments": {
+    table: "vehicle_route_assignments_daily",
+    filters: { reg: ["registration", "eq"], route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"] },
+    defaultOrder: "day.desc",
+    desc: "Per-vehicle DAILY route assignments from continuous BODS trip tracking — one row per (registration, route, day) with first/last-seen, trip count and observed km, so a bus reallocated mid-day (route A morning, route B evening) shows one row per route. Complements vehicle-sightings (the once-daily sample). Filter by reg, route, from/to day.",
+  },
   "reliability-tracked": {
     table: "route_reliability_tracked_daily",
     filters: { route: ["route_id", "eq"], from: ["day", "gte"], to: ["day", "lte"], day_type: ["day_type", "eq"], confidence: ["confidence", "eq"] },

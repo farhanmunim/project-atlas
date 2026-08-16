@@ -133,7 +133,8 @@ size). Common query params: `route`, `from`, `to`, `reg`, `year`,
 | `GET /api/v1/history/tender-programme?route=25&year=2026-2027` | TfL's forward LBSL tendering programme — issue/return/award/start dates, vehicle type |
 | `GET /api/v1/history/route-snapshots?route=25` *(filters: `route`, `from`/`to`, `operator`, `propulsion`, `garage`)* | Per-route CDC snapshots over time — PVR, propulsion, deck, vehicle type, operator, garage, fleet size/age, MPS benchmarks. Powers fleet-move / propulsion-change / PVR-change trend analysis |
 | `GET /api/v1/history/garage-snapshots?garage=BW` *(filters: `garage`, `operator`, `from`/`to`)* | Per-garage snapshots over time — total PVR, route count, routes served |
-| `GET /api/v1/history/vehicle-sightings?route=25` *(or `?reg=LX58CWU`)* | Vehicle-on-route observations over time (reg ↔ route ↔ timestamp) |
+| `GET /api/v1/history/vehicle-sightings?route=25` *(or `?reg=LX58CWU`)* | Vehicle-on-route observations over time (reg ↔ route ↔ timestamp) — once-daily sample |
+| `GET /api/v1/history/vehicle-assignments?reg=LX58CWU` *(filters: `reg`, `route`, `from`/`to`)* | Per-vehicle **daily route assignments** from continuous BODS tracking — one row per (reg, route, day) with `first_seen`/`last_seen`, `trips`, `km_observed`; a bus reallocated mid-day shows one row per route it worked |
 | `GET /api/v1/history/crowding?route=25` | Bus crowding per route per year (TfL BUSTO) — filters: `route`, `band`, `year`, `day_type` |
 | `GET /api/v1/history/accidents?from=2024-01-01&to=2024-12-31` | STATS19 collisions over time — filters: `from`/`to`, `severity`, `borough`, `road_type`, `speed_limit`, `day`, `time_band` |
 
