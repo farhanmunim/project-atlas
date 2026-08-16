@@ -3108,7 +3108,7 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Accepted bid £/yr","Lowest compliant bid £/yr","Highest compliant bid £/yr","Tenderers","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
         const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk=trackedOf(r);
         return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", tvrOf(m)??"", m.prop?PROP_DEFS[m.prop]:"",
@@ -3119,6 +3119,7 @@ function exportCurrent(){
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",
+          (lt&&lt.acceptedBid)?lt.acceptedBid:"", (lt&&lt.lowestBid)?lt.lowestBid:"", (lt&&lt.highestBid)?lt.highestBid:"", (lt&&lt.numberOfTenderers!=null)?lt.numberOfTenderers:"",
           lt?(isJointBid(lt)?"joint":"sole"):"",
           (lt&&lt.jb&&lt.jb.partners)?lt.jb.partners.join(" "):"",
           (lt&&lt.jb&&lt.jb.total)?lt.jb.total:"",
