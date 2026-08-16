@@ -803,7 +803,7 @@ const CONFIG = {
    SHARED SETTINGS (same key as the hub)
    =========================================================================== */
 const SETTINGS_KEY = "transit-instruments:settings";
-const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:15, colorMode:"operator", showRoutes:true, showGarages:true, showStops:false, showLive:false, showAccidents:false };
+const DEFAULT_SETTINGS = { theme:null, units:"km", clock:"24h", home:"atlas", recents:[], dataMode:"cached", liveSec:10, colorMode:"operator", showRoutes:true, showGarages:true, showStops:false, showLive:false, showAccidents:false };
 /* Operator colours (distinct hues; used for colour-by-operator + garage markers). */
 // operator primary brand colours (approx) — also used for colour-by-operator + garage badges
 const OP_COLORS = {
@@ -2008,18 +2008,20 @@ async function ensureDetail(r){
   // route sections (reference)
   if(secCache.has(r.id)){ r._sections=secCache.get(r.id); }
   else { try{ const sec=await dataSource.fetchRouteSections(r.id); secCache.set(r.id,sec); r._sections=sec; }catch(e){ r._sections=null; } }
-  // live status (60s TTL)
+  // live status (30s TTL — TfL caches Status upstream ~30 s, so this is the real floor;
+  // a shorter TTL would just refetch identical bytes)
   const cached=statusCache.get(r.id);
-  if(cached && Date.now()-cached.at < 60_000){ r._status=cached.data; }
+  if(cached && Date.now()-cached.at < 30_000){ r._status=cached.data; }
   else { try{ const s=await dataSource.fetchLineStatus(r.id); statusCache.set(r.id,{data:s,at:Date.now()}); r._status=s;
     ingest("line_status",[{ id:r.name, data:{ route:r.name, status:s.description, reason:s.reason, severity:s.severity } }]); }catch(e){ r._status=null; } }
-  // live fleet — vehicles currently on the route (45s TTL)
+  // live fleet — vehicles currently on the route (30s TTL — Arrivals is 30 s-cached upstream)
   const fc=fleetCache.get(r.id);
-  if(fc && Date.now()-fc.at < 45_000){ r._fleet=fc.data; }
+  if(fc && Date.now()-fc.at < 30_000){ r._fleet=fc.data; }
   else { try{ const v=await dataSource.fetchLineVehicles(r.id); fleetCache.set(r.id,{data:v,at:Date.now()}); r._fleet=v; }catch(e){ r._fleet=null; } }
-  // live disruptions / diversions (5-min TTL — TfL updates these on the order of minutes)
+  // live disruptions / diversions (60s TTL — fresh enough to catch a new diversion within
+  // a minute of selection, still well inside the feed's own cadence)
   const dc=disruptCache.get(r.id);
-  if(dc && Date.now()-dc.at < 5*60_000){ r._disrupt=dc.data; }
+  if(dc && Date.now()-dc.at < 60_000){ r._disrupt=dc.data; }
   else { try{ const ds=await dataSource.fetchDisruptions(r.id); disruptCache.set(r.id,{data:ds,at:Date.now()}); r._disrupt=ds; }catch(e){ r._disrupt=r._disrupt||[]; } }
   return r;
 }

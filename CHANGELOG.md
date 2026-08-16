@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-08-15 — Fresher data everywhere it can be, within free limits
+
+Farhan asked for the most current data possible. Audit finding: every live
+feed was already at or near its upstream floor — the wins were the client
+TTLs sitting above those floors, and diversions only rebuilding nightly.
+
+- Live buses: default poll interval 15 s → 10 s (the BODS cadence + our
+  10 s edge cache — the true floor; faster returns identical bytes).
+- Selected-route live status 60 s → 30 s and live fleet 45 s → 30 s (TfL
+  caches Status and Arrivals upstream at 30 s — the real floor).
+- Live disruptions per selection 5 min → 60 s (a new diversion now shows
+  in the dossier within a minute of selecting the route).
+- Diversions dataset: new intraday diversions-only VPS refresh
+  (REFRESH_ARGS="--only=diversions", cron 17 7,11,15,19,23 UTC) — the
+  structured diff (missed stops/geometry) now lands within ~4 h instead of
+  next morning. No script change needed (vps-refresh.sh already takes
+  REFRESH_ARGS and skips empty commits); worst case ~186 Cloudflare Pages
+  builds/month vs the 500 free.
+- Deliberately unchanged: routes/stops (TfL revises at most daily — daily
+  build is the right cadence), road incidents (upstream ~5 min),
+  /api/live/vehicles edge cache (10 s = BODS's politeness floor), v2 bus
+  poll (12 s). Free-limit headroom after changes: TfL ~500 req/min keyed
+  (route-scoped calls, edge-shared), BODS one upstream hit per 10 s max.
+
 ## 2026-08-13 — UI polish batch: garage codes, clean-map defaults, colour hierarchy, TVR
 
 Five requested changes, verified headless (termini counts, marker labels,

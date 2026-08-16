@@ -239,9 +239,10 @@ prod as follows — keep both in sync:
     filters + capped page size); `WAREHOUSE_URL` + `WAREHOUSE_ANON_KEY` (anon-role JWT +
     RLS read policies) are server-side Cloudflare secrets, never shipped. See README
     "Historical API setup". Returns 503 (not 502) when unconfigured; live + current still work.
-- **Data refresh = a Coolify Scheduled Task on the VPS** (`atlas-refresh` resource:
-  `pipeline/refresh.Dockerfile` + `pipeline/vps-refresh.sh`, daily 03:17 UTC — see
-  `ingest/SELF-HOSTING.md`). Each run clones main, runs the pipeline, hard-validates
+- **Data refresh = Coolify Scheduled Tasks on the VPS** (`atlas-refresh` resource:
+  `pipeline/refresh.Dockerfile` + `pipeline/vps-refresh.sh`, daily full run 03:17 UTC
+  plus an intraday `REFRESH_ARGS="--only=diversions"` run every 4 h so diversions
+  stay fresh between full builds — see `ingest/SELF-HOSTING.md`). Each run clones main, runs the pipeline, hard-validates
   (`validate-atlas.js` gates the commit), commits refreshed `data/*.json`, and the
   push auto-triggers the Cloudflare Pages rebuild. That commit is the bot's
   (`transit-instruments-bot`) — the "commit as Farhan" rule above is for _our_
