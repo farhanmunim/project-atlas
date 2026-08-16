@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T03:23:08.336Z",
+  "generatedAt": "2026-08-16T12:12:39.389Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -82,9 +82,9 @@
       "note": "0 multi-route · 510 with body"
     },
     "tenders": {
-      "status": "ok",
+      "status": "failed",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
-      "lastAttempt": "2026-07-03T06:42:25.017Z",
+      "lastAttempt": "2026-08-16T12:12:39.389Z",
       "source": "TfL tender award results (13923/13796.aspx)",
       "fetchedAt": "2026-08-16T03:23:05.073Z",
       "rows": 2521,
