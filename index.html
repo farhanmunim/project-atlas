@@ -871,6 +871,11 @@ function trackedOf(r){
   for(const k of [r.name, String(r.name||"").toUpperCase(), r.id, String(r.id||"").toLowerCase()]){ if(k!=null && m[k]) return m[k]; }
   return null;
 }
+// termini for the current direction (route-destinations dataset; canonical/diversion-frozen)
+function destOf(r){
+  const d=store.dest && store.dest[r.id]; if(!d) return null;
+  return d[direction] || d.outbound || d.inbound || null;
+}
 // latest lost-mileage row for a route (same tolerant keying as reliabilityOf)
 function lostOf(r){
   const m=store.lostLatest; if(!m||!r) return null;
@@ -1182,6 +1187,8 @@ async function loadStore(){
     if(localities && Array.isArray(localities.localities)) store.localities = localities.localities;   // [{name,lat,lng,kind:town|suburb}] — the place-name label layer
     const crowding = await fetchData("crowding","crowding.json");
     if(crowding && crowding.routes){ store.crowding = crowding.routes; store.crowdingMeta = { year:crowding.year, bands:crowding.bands, source:crowding.source }; }   // BUSTO: { [routeName]: { peakVC, band, load, capacity, stopname, time, dayType, byDay } }
+    const dest = await fetchData("route-destinations","route-destinations.json");
+    if(dest && dest.routes) store.dest = dest.routes;   // { [id]: { name, outbound:{origin,destination}, inbound:{…} } }
     const diversions = await fetchData("route-diversions","route-diversions.json");
     if(diversions && diversions.routes) store.diversions = diversions.routes;   // { [routeName]: { status, disruptions, until, missedStops, addedStops, diversionSegments, bypassedSegments, geometryStatus } }
     // Our own estimated reliability — fire-and-forget (history API / Supabase, not a static file):
@@ -3005,7 +3012,9 @@ function renderContext(){
        (sections[0]&&sections[0].validFrom?kv("Valid from",esc(fmtDate(sections[0].validFrom))):"")):"";
   const connectionsBlock = interchange.length?metricBlock(`Connections <span class="mono">${interchange.length}</span>`,
        `<div style="font-size:11px;color:var(--paper-3);margin-bottom:8px">Routes you can interchange to along this line</div>`+routePillsHtml(interchange.map(c=>c.l))):"";
+  const termini = destOf(r);
   const stopsBlock = `<div class="metric"><div class="metric-h">Stops <span class="mono">${stops.length}</span></div>
+       ${termini?`<div style="font-size:11px;color:var(--paper-2);font-family:var(--mono);margin-bottom:6px" title="termini (canonical route)">${esc(termini.origin)} → ${esc(termini.destination)}</div>`:""}
        <ul class="stoplist">${stops.map((s,i)=>`<li><span class="n">${i+1}</span><span class="nm" title="${esc(s.name)}">${esc(s.name)}</span></li>`).join("")||'<li class="empty">No stop data.</li>'}</ul></div>`;
   const commercialBlock = metricBlock(`Commercial &amp; fleet <span class="mono" style="color:var(--paper-4)">${meta._src==="londonbusroutes.net"?"LBR":"sample"}</span>`,
        (hasCommercial?
@@ -3109,7 +3118,7 @@ function exportCurrent(){
     // current VIEW → the filtered route list with its metadata (what's shown)
     const filtered=applyFilters(routes);
     if(!filtered.length){ toast("No routes in the current view."); return; }
-    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Latest £/mile","Accepted bid £/yr","Lowest compliant bid £/yr","Highest compliant bid £/yr","Contracted miles/yr","Tenderers","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
+    rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Termini","Latest £/mile","Accepted bid £/yr","Lowest compliant bid £/yr","Highest compliant bid £/yr","Contracted miles/yr","Tenderers","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
         const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk=trackedOf(r);
         return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", tvrOf(m)??"", m.prop?PROP_DEFS[m.prop]:"",
@@ -3119,6 +3128,7 @@ function exportCurrent(){
           (lm&&lm.lost_pct!=null)?(+lm.lost_pct).toFixed(1):"", (lm&&lm.lost_trips!=null)?lm.lost_trips:"", lm?(lm.confidence||""):"", (lm&&lm.day)?lm.day:"",
           cw?cw.peakVC:"", cw?cw.band:"", cw?cw.stopname:"", cw?`${cw.dayType} ${String(cw.time).slice(0,5)}`:"",
           m.lengthKm||"", m.fleet||"", m.contractStart?`${m.contractStart}→${m.contractEnd||""}`:(m.contractDate||""),
+          (()=>{const t=destOf(r); return t?`${t.origin} → ${t.destination}`:"";})(),
           (lt&&lt.costPerMile>0&&lt.costPerMile<=200)?lt.costPerMile:"",
           (lt&&lt.acceptedBid)?lt.acceptedBid:"", (lt&&lt.lowestBid)?lt.lowestBid:"", (lt&&lt.highestBid)?lt.highestBid:"", (lt&&contractedMiles(lt))?contractedMiles(lt):"", (lt&&lt.numberOfTenderers!=null)?lt.numberOfTenderers:"",
           lt?(isJointBid(lt)?"joint":"sole"):"",

@@ -169,9 +169,22 @@ export async function build(ctx) {
     features,
   };
 
+  // route-destinations — the termini per route/direction ("Beckton Station → East
+  // Ham" list labels), derived from the FINAL (post-freeze) stop sequences so
+  // diverted routes keep their canonical termini. Zero extra fetches.
+  const destinations = {};
+  for (const [id, dirs] of Object.entries(routeStops)) {
+    const name = routes.find((r) => r.id === id)?.name ?? id.toUpperCase();
+    const ends = (list) => (list && list.length >= 2 ? { origin: list[0].name, destination: list[list.length - 1].name } : null);
+    const o = ends(dirs.outbound), i = ends(dirs.inbound);
+    if (o || i) destinations[id] = { name, ...(o ? { outbound: o } : {}), ...(i ? { inbound: i } : {}) };
+  }
+  if (limit >= routes.length) rowsWithin(Object.keys(destinations), 400, undefined, "route-destinations routes");
+
   // 4) write ---------------------------------------------------------------
   await sink.writeDataset("routes", routes);
   await sink.writeDataset("route-classifications", classifications);
+  await sink.writeDataset("route-destinations", { generatedAt: new Date().toISOString(), source: "derived — first/last stop of each direction's canonical sequence", routes: destinations });
   await sink.writeDataset("routes-overview", overview, { ext: "geojson" });
   // per-route full-fidelity geometry (one small file per route, lazy-loaded by the
   // apps on selection). Frozen routes were removed above so last-good files persist.
@@ -205,7 +218,7 @@ export async function build(ctx) {
   return {
     source: "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
     rows: routes.length,
-    files: ["data/routes.json", "data/route-classifications.json", "data/routes-overview.geojson", "data/route-geometry/<id>.json", "data/route-stops.json"],
+    files: ["data/routes.json", "data/route-classifications.json", "data/route-destinations.json", "data/routes-overview.geojson", "data/route-geometry/<id>.json", "data/route-stops.json"],
     note: limit < routes.length ? `partial geometry (${limit}/${routes.length})` : `detailed geometry for ${detailWritten} routes`,
   };
 }

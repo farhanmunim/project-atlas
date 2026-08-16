@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-08-16 — route-destinations dataset (API-consumer request)
+
+External feedback asked for a lightweight termini dataset ("Beckton
+Station → East Ham" list labels) rather than downloading the ~2.5 MB
+route-stops. Shipped end-to-end at zero upstream cost:
+
+- build/routes.js derives route-destinations.json from the FINAL
+  (post-freeze) stop sequences — canonical termini, never diverted ones;
+  either direction may be absent (loop workings); validated ≥400 routes.
+- /api/v1/route-destinations in prod Function + serve.js mirror +
+  discovery; documented in /docs (own section), API.md, README, llms.txt.
+- App: dossier Stops block now heads with "origin → destination" from the
+  store; route-list CSV gains a Termini column.
+- Other feedback triaged: network-pulse tile (queued — needs 0032 +
+  lost-mileage burn-in), live vehicle position (already possible:
+  /api/live/vehicles reg join), fleet-move detection (already possible:
+  route-snapshots diffs; a derived endpoint is a candidate later).
+
 ## 2026-08-16 — Contracted tender mileage stored (derived), collector confirmed live
 
 - Tender mileage: TfL does NOT publish annual mileage on award pages, but
