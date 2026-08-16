@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-08-15 — Tender bid spread: verified, semantics documented, CSV completed
+
+Farhan asked whether TfL publishes highest/lowest/winning bids and whether
+we should scrape them. Verified: we already do, since the Mandate era —
+TfL's per-award pages publish "Accepted Bid", "Lowest Individual Compliant
+Bid", "Highest Individual Compliant Bid" (+ tenderers, £/mile, joint-bid
+note) and tfl-tenders.js parses all of them into the append-only byId
+cache; coverage today 99%/99%/95% across 3,014 awards on 856 routes. They
+flow to the API (tenders.byRoute), the dossier (bid range + winner +
+premium calc), and the warehouse (tenders table).
+
+New this pass:
+- Semantics documented after an empirical check: acceptedBid < lowestBid
+  in ~2/3 of records — NOT an anomaly; the low/high columns are the range
+  of INDIVIDUAL compliant bids, while the accepted bid can be a cheaper
+  package/joint award apportioned per route. /docs and API.md now state
+  this with TfL's verbatim column names.
+- CSV lockstep gap closed: route-list export gains Accepted/Lowest/Highest
+  bid £/yr + Tenderers columns (they were in the API and dossier but not
+  the export).
+- Stale /docs freshness row updated for the intraday diversions refresh.
+
 ## 2026-08-15 — Fresher data everywhere it can be, within free limits
 
 Farhan asked for the most current data possible. Audit finding: every live
