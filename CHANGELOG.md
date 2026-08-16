@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-08-16 — First tracked data landed; display gates for the calibration window
+
+Farhan completed the Coolify backlog (migrations 0032/0033 + PostgREST
+restart — NOTIFY alone didn't reload the schema cache) and backfilled
+Aug 14–15. First real results:
+
+- vehicle-assignments: WORKING AS DESIGNED — 9,306 assignments / 7,260
+  vehicles on the 14th, 1,817 (~25%) worked >1 route in a day (e.g.
+  LV73FFH: route 86 daytime + N86 overnight). The intra-day allocation
+  story is now permanent.
+- reliability-tracked: two-sided burn-in artifacts confirmed — under-
+  observed routes read wildly high EWT, duplicate/split observations read
+  negative (route 100: −35 min). BUT the plausible band is already
+  strong: 136 high-confidence high-freq routes on day 2 read mean EWT
+  2.79 / median 1.86 min (TfL ~1.1). Responses:
+  - builder log now reports class-consistent means + the plausible-band
+    share (the old log mixed HF/LF and read far worse than reality);
+  - apps gate the tracked display to confidence=high AND EWT −1…8 min
+    (dossier, table, CSV in /; dossier in /v2) — the API deliberately
+    keeps serving every raw row as calibration material, and /docs says
+    so with filter guidance.
+
+Still pending on Coolify: the diversions-refresh task hasn't fired
+(dataset timestamp unmoved through two slots) — next check 23:17 UTC.
+
 ## 2026-08-16 — Vehicle-finder filter: ?reg= on the live GPS endpoint
 
 Direction confirmed: Atlas's API is the data backbone for eventually

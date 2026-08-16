@@ -871,6 +871,15 @@ function trackedOf(r){
   for(const k of [r.name, String(r.name||"").toUpperCase(), r.id, String(r.id||"").toLowerCase()]){ if(k!=null && m[k]) return m[k]; }
   return null;
 }
+// Display gate for tracked figures during calibration: the API serves EVERY row (that's the
+// calibration raw material), but the apps show only high-confidence rows whose EWT sits where
+// a real London EWT can live (−1…8 min) — under-observed routes read wildly high, duplicate
+// observations read negative; both are collection artifacts, not service quality.
+function trackedShow(tk){
+  if(!tk || tk.confidence!=="high") return false;
+  if(tk.service_class==="high-frequency") return tk.ewt_minutes!=null && tk.ewt_minutes>=-1 && tk.ewt_minutes<=8;
+  return tk.otd_percent!=null;
+}
 // termini for the current direction (route-destinations dataset; canonical/diversion-frozen)
 function destOf(r){
   const d=store.dest && store.dest[r.id]; if(!d) return null;
@@ -2196,7 +2205,7 @@ function routesTableHTML(){
     const er = reliabilityOf(r);
     const erCell = er ? (er.service_class==="high-frequency"&&er.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — biased high">~${(+er.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : er.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental">~${Math.round(+er.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
     const tk = trackedOf(r);
-    const tkCell = tk ? (tk.service_class==="high-frequency"&&tk.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (complete observed headways, ${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${(+tk.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : tk.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${Math.round(+tk.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
+    const tkCell = (tk && trackedShow(tk)) ? (tk.service_class==="high-frequency"&&tk.ewt_minutes!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (complete observed headways, ${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${(+tk.ewt_minutes).toFixed(1)}<span class="u">EWT</span></span>` : tk.otd_percent!=null ? `<span style="color:var(--cyan)" title="experimental — tracked (${esc(tk.confidence||"")} confidence, ${esc(tk.day||"")})">~${Math.round(+tk.otd_percent)}<span class="u">%OTD</span></span>` : "—") : "—";
     const lm = lostOf(r);
     const lmCell = lm&&lm.lost_pct!=null ? `<span style="color:var(--cyan)" title="experimental — gross, from continuous BODS tracking (${esc(lm.confidence||"")} confidence, ${esc(lm.day||"")})">~${(+lm.lost_pct).toFixed(1)}<span class="u">%</span></span>` : "—";
     const contract = m.contractStart?`${fmtMonth(m.contractStart)}→${m.contractEnd?fmtMonth(m.contractEnd):"?"}`:(m.contractDate?esc(fmtDate(m.contractDate)):"—");
@@ -2983,7 +2992,7 @@ function renderContext(){
     // TRACKED estimate first (v2): complete observed headways from the continuous BODS
     // tracker — no sampling bias by construction. Shown alongside the sampled figure
     // while the two calibrate against TfL's QSI.
-    if(tk){
+    if(tk && trackedShow(tk)){
       if(isHF && tk.ewt_minutes!=null) cards.push(mcard("Excess wait (tracked)",`~${(+tk.ewt_minutes).toFixed(1)}<span class="u">min</span>`,`${tk.observed_headways||0} headways · ${tk.confidence||""}`,"color:var(--cyan)"));
       else if(!isHF && tk.otd_percent!=null) cards.push(mcard("On time (tracked)",`~${(+tk.otd_percent).toFixed(0)}<span class="u">%</span>`,`${tk.deps_measured||0} deps · ${tk.confidence||""}`,"color:var(--cyan)"));
     }
@@ -3120,7 +3129,7 @@ function exportCurrent(){
     if(!filtered.length){ toast("No routes in the current view."); return; }
     rows=[["Route","Type","Diverted","Diversion until","Diversion reason","Operator","Garage","PVR","TVR","Propulsion","EWT min","OTP %","Mileage %","Trk EWT min (exp)","Trk OTD % (exp)","Trk confidence","Trk day","Est EWT min (exp, biased high)","Est OTD % (exp)","Est samples","Est date","Est lost mileage % (exp, gross)","Est lost trips (exp)","Lost-mi confidence","Lost-mi day","Crowding peak V/C","Crowding band","Crowding busiest stop","Crowding peak time","Length km","Fleet","Contract","Termini","Latest £/mile","Accepted bid £/yr","Lowest compliant bid £/yr","Highest compliant bid £/yr","Contracted miles/yr","Tenderers","Latest bid type","Joint-bid partners","Joint-bid total £","Awarded vehicle","Awarded deck","Awarded propulsion","Vehicles basis","Tranche"],
       ...filtered.map(r=>{ const m=metaOf(r), lt=latestTender(r.name), v=lt&&awardedVehicle(lt);
-        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk=trackedOf(r);
+        const pf=store.perf&&(store.perf[r.name]||store.perf[String(r.name).toUpperCase()]); const cw=crowdingOf(r.name); const er=reliabilityOf(r); const dvE=divOf(r.name); const lm=lostOf(r); const tk0=trackedOf(r); const tk=(tk0&&trackedShow(tk0))?tk0:null;
         return [r.name, TYPE_DEFS[typeOf(r)].label, dvE?"yes":"", dvE&&dvE.until?dvE.until.slice(0,10):"", dvE?(dvE.disruptions||[]).map(x=>x.reason).join(" | ").slice(0,300):"", m.op||"", m.garage||"", m.pvr||"", tvrOf(m)??"", m.prop?PROP_DEFS[m.prop]:"",
           (pf&&pf.ewtMinutes!=null)?pf.ewtMinutes.toFixed(1):"", (pf&&pf.onTimePercent!=null)?Math.round(pf.onTimePercent):"", (pf&&pf.mileagePercent!=null)?pf.mileagePercent.toFixed(1):"",
           (tk&&tk.ewt_minutes!=null)?(+tk.ewt_minutes).toFixed(2):"", (tk&&tk.otd_percent!=null)?Math.round(+tk.otd_percent):"", tk?(tk.confidence||""):"", (tk&&tk.day)?tk.day:"",

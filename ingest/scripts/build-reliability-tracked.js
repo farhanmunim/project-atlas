@@ -92,10 +92,17 @@ async function main() {
       throw new Error(`route_reliability_tracked_daily upsert failed at row ${i}: ${error.message}`);
     }
   }
-  const hf = rows.filter((r) => r.ewt_minutes != null);
-  const lf = rows.filter((r) => r.otd_percent != null);
+  // class-consistent observability: EWT means over HIGH-FREQUENCY rows only, OTD over
+  // LOW-FREQUENCY only (mixing classes made early logs read far worse than the data).
+  // The plausible-band figure is the calibration headline — the share of high-confidence
+  // routes whose EWT lands where a real London EWT can live.
   const mean = (xs, k) => (xs.length ? (xs.reduce((a, r) => a + r[k], 0) / xs.length).toFixed(2) : '—');
-  console.log(`build-reliability-tracked ${day} (${dayType}): ${rows.length} routes · high-freq ${hf.length} (mean EWT ${mean(hf, 'ewt_minutes')} min · TfL network ~1.1) · low-freq ${lf.length} (mean OTD ${mean(lf, 'otd_percent')}% · TfL ~80+)`);
+  const hf = rows.filter((r) => r.service_class === 'high-frequency' && r.ewt_minutes != null);
+  const hfPlaus = hf.filter((r) => r.confidence === 'high' && r.ewt_minutes >= -1 && r.ewt_minutes <= 8);
+  const lf = rows.filter((r) => r.service_class === 'low-frequency' && r.otd_percent != null);
+  console.log(`build-reliability-tracked ${day} (${dayType}): ${rows.length} routes · ` +
+    `HF ${hf.length} (plausible-band ${hfPlaus.length}, band mean EWT ${mean(hfPlaus, 'ewt_minutes')} min · TfL ~1.1) · ` +
+    `LF ${lf.length} (mean OTD ${mean(lf, 'otd_percent')}% · TfL ~80+) · outside-band rows are observation artifacts to calibrate out`);
 }
 
 main().catch((err) => { console.warn('build-reliability-tracked soft-failed:', err.message); });

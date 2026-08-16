@@ -1462,7 +1462,10 @@ function renderDossier(){
     var tk=trackedEstimateOf(name, state.routeId);
     if(er || tk){
       var isHF=((tk&&tk.service_class)||(er&&er.service_class))==='high-frequency', re='';
-      if(tk){
+      // display gate during calibration: high confidence + a plausible EWT band only —
+      // the API serves every raw row; the UI won't parade collection artifacts
+      var tkShow = tk && tk.confidence==='high' && (tk.service_class!=='high-frequency' ? tk.otd_percent!=null : (tk.ewt_minutes!=null && tk.ewt_minutes>=-1 && tk.ewt_minutes<=8));
+      if(tkShow){
         if(isHF && tk.ewt_minutes!=null) re+=drow('~EWT tracked', '~'+(+tk.ewt_minutes).toFixed(1)+' min · '+(tk.confidence||'experimental'), 'var(--cyan)');
         else if(!isHF && tk.otd_percent!=null) re+=drow('~OTD tracked', '~'+(+tk.otd_percent).toFixed(0)+'% on time · '+(tk.confidence||'experimental'), 'var(--cyan)');
       }
