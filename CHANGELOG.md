@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-08-16 — Documentation audit sweep (all surfaces)
+
+Full stale-spot audit after the week's features. Fixed: CLAUDE.md history
+list gains vehicle-assignments; /docs lifecycle 00:37 line gains
+vehicle_route_assignments_daily; /docs cadence rows gain
+vehicle-assignments and route-destinations; /docs lost-mileage row gains
+the burn-in caveat (14-day feed-health medians; filter confidence=high);
+README tenders row now names the bid spread + contractedMilesPA;
+ingest/RELIABILITY-METHODOLOGY.md gains section 8 — the tracked-v2
+implementation mapped against the TfL spec (per-hour/QSI-point vs our
+day-level/one-point simplifications, the two observed artifact modes,
+the plausible-band display gate, and the promotion criteria).
+
 ## 2026-08-16 — First tracked data landed; display gates for the calibration window
 
 Farhan completed the Coolify backlog (migrations 0032/0033 + PostgREST
