@@ -42,13 +42,16 @@ export function parseLineStrings(raw) {
   } catch { return []; }
 }
 
-/** Ordered, de-duplicated stops for one sequence (same call as the geometry). */
+/** Ordered, de-duplicated stops for one sequence (same call as the geometry).
+ *  letter = the physical stop-flag letter (TfL stopLetter, e.g. "A") — what
+ *  disambiguates two same-named stops ("Upton Park Station → A" vs "→ B");
+ *  null where the flag carries no letter (many outer-London poles). */
 export function extractStops(raw) {
   const seen = new Set(), out = [];
   (raw.stopPointSequences || []).forEach((sps) =>
     (sps.stopPoint || []).forEach((p) => {
       if (seen.has(p.id)) return; seen.add(p.id);
-      out.push({ id: p.id, name: p.name, lat: p.lat, lng: p.lon, lines: (p.lines || []).map((l) => l.name) });
+      out.push({ id: p.id, name: p.name, lat: p.lat, lng: p.lon, letter: p.stopLetter || null, lines: (p.lines || []).map((l) => l.name) });
     }));
   return out;
 }

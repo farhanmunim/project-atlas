@@ -53,15 +53,25 @@ export async function build(ctx) {
 
   // Scope to the TfL network (routes.json — the authoritative /Line/Mode/bus set).
   // londonbusroutes.net also lists non-TfL services (Uno's UL*, tram-replacement,
-  // recently-withdrawn night/school variants); keeping them would inflate every
-  // downstream operator/route count. Falls back to the full union on a cold run.
+  // recently-withdrawn variants); keeping them would inflate every downstream
+  // operator/route count. EXEMPT the numeric school band (5xx–9xx): TfL's Line API
+  // delists school-day-only services outside term time (all 6xx vanish over the
+  // summer holidays), but their contracts/garages/PVR stay live in LBR — dropping
+  // them would lose ~37 real routes every August. Falls back to the full union on
+  // a cold run.
   try {
     const tfl = await sink.readDataset("routes");
     const names = new Set((Array.isArray(tfl) ? tfl : []).map((r) => String(r.name)));
     if (names.size >= 400) {
-      const dropped = [...allRoutes].filter((rt) => !names.has(rt));
-      allRoutes = new Set([...allRoutes].filter((rt) => names.has(rt)));
+      // school-band exemption only for routes LBR actually knows (an operator or a
+      // PVR) — placeholder rows (garage "?", no operator) stay out until LBR fills them
+      const known = (rt) => !!(garages[rt] && garages[rt].operator) || (detailByRoute[rt] && detailByRoute[rt].pvr != null);
+      const keep = (rt) => names.has(rt) || (/^[5-9]\d\d$/.test(rt) && known(rt));
+      const dropped = [...allRoutes].filter((rt) => !keep(rt));
+      const schoolKept = [...allRoutes].filter((rt) => !names.has(rt) && keep(rt));
+      allRoutes = new Set([...allRoutes].filter(keep));
       if (dropped.length) log.info(`route-meta: dropped ${dropped.length} non-TfL routes (${dropped.slice(0, 8).join(", ")}…)`);
+      if (schoolKept.length) log.info(`route-meta: kept ${schoolKept.length} school-band routes TfL currently delists (term-time services)`);
     }
   } catch { /* no routes.json yet — keep the union */ }
 

@@ -25,12 +25,24 @@ function loadJson(file, key) {
 }
 const loadPostcodeOverrides = () => loadJson("garage-postcodes.json", "postcodes");
 const loadCapacity = () => loadJson("garage-capacity.json", "capacity");
+const loadRouteFixes = () => loadJson("garage-route-fixes.json", "remove");
 
 export async function build(ctx) {
   const { sink, log } = ctx;
   const garages = await fetchGarages();
   const overrides = loadPostcodeOverrides();
   const capacity = loadCapacity();
+  // Curated allocation corrections — routes the CSV wrongly lists at a garage
+  // (verified against route-meta + vehicle-assignment cross-route history).
+  const routeFixes = loadRouteFixes();
+  for (const g of garages) {
+    const rm = routeFixes[g.code];
+    if (rm && rm.length) {
+      const before = g.routes.length;
+      g.routes = g.routes.filter((rt) => !rm.includes(rt));
+      if (g.routes.length < before) log.info(`garages: removed ${before - g.routes.length} mis-attributed route(s) from ${g.code} (${rm.join(", ")})`);
+    }
+  }
   // Geocode every candidate postcode at once: each garage's own (garage + company)
   // plus every curated override. Then resolve per-garage by precedence, so the
   // override also rescues a garage whose CSV postcode simply won't geocode.

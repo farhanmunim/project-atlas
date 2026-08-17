@@ -24,6 +24,9 @@ Three conventions, carried verbatim from upstreams. From GET /api/v1/routes take
 - id (lowercase, e.g. "w12"): keys route-stops, route-destinations, route-classifications,
   routes-overview properties.routeId, route-geometry/<id>, route-diversions routes[*].id,
   TfL live URLs.
+- route-meta is a SUPERSET of routes (~676 vs ~641): numeric school-band routes
+  (5xx-9xx) with live LBR contracts are kept even while TfL's API delists them
+  outside term time — they have meta but no routes/geometry/stops entry.
 - name (as published, e.g. "W12"): keys route-meta, fleet.byRoute, tenders.byRoute,
   crowding, crowding-profile, route-diversions.routes, live publishedLine, and the
   history group's route_id columns.
@@ -32,6 +35,8 @@ Numeric routes ("25") coincide across all three.
 
 ## Other join keys
 - NaPTAN stop id: route-stops <-> live arrivals naptanId <-> diversion missed/added stops <-> history schedule stops.
+- route-stops stops carry `letter` — the physical stop-flag letter ("A", "B"…, null
+  where unlettered); use it to label and disambiguate same-named stops.
 - Vehicle registration: fleet.regs <-> vehicles.byReg <-> live GPS reg <-> arrivals vehicleId <-> history vehicle-sightings.
 - Garage code: route-meta.garage <-> garages.code <-> history garage_code.
 - Direction: "1"=outbound, "2"=inbound; route-stops and diversion maps use the words outbound/inbound.

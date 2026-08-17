@@ -170,3 +170,29 @@ read mean 2.79 / median 1.86 min. **The apps display only that band; the API ser
 every raw row as calibration material.** Promotion to headline estimate requires the
 band to converge on TfL's QSI per route as feed-health medians mature (~14 days) and a
 per-operator observation-rate correction lands.
+
+### Two systematic faults found in external audit (fixed 2026-08-17)
+
+Route 25 weekday read SWT 24.6 / AWT 40.9 / OTD 5.9% with 143 of 306 departures
+non-arrival — implausible on its face. Root causes, both reproduced exactly:
+
+1. **Doubled scheduled departures.** TfL publishes "Monday to Thursday" AND
+   "Friday" as separate timetable schedules; both classify as `weekday`, and
+   `fetch-schedule.js` concatenated them — every departure twice (306 = 2×153).
+   Zero-gaps are skipped by the headway core so EWT survived, but OTD matched each
+   real passing to one twin and counted the other as a **non-arrival**, and
+   `scheduled_trips` doubled — inflating lost-mileage too. Fix: departures for a
+   day-type come from the **single most representative schedule** (widest day
+   coverage, then most journeys — `_lib/schedule-pick.js`, unit-tested). Corrects
+   route_schedule rows as they refresh (weekly TTL).
+2. **The overnight service break counted as a headway.** Route 25's 00:38→04:45
+   scheduled gap (247 min) entered Σh²/2Σh and alone pushed SWT from ~4.7 to 24.6.
+   Fix: a scheduled gap ≥ `SERVICE_BREAK_MIN` (90 min) now splits the day into
+   service segments for BOTH the scheduled and observed series — neither a
+   scheduled break nor an observed gap spanning it is a waiting headway (the
+   schedule defines the operating periods). Hourly low-frequency services (60-min
+   headways) are unaffected.
+
+Historical `route_reliability_tracked_daily` rows written before the fix can be
+recomputed with `node scripts/build-reliability-tracked.js --day=YYYY-MM-DD` once
+the schedule rows have refreshed.

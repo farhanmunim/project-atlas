@@ -1,0 +1,6 @@
+{
+  "_note": "Curated corrections to londonbusroutes.net garages.csv route allocations, applied by build/garages.js after fetch. 'remove' lists routes wrongly attributed to a garage in the CSV — verified against route-meta's primary allocation and vehicle_route_assignments_daily cross-route history before adding (e.g. route 86 is Romford NS only: 53 tracked vehicles, 107 cross-route assignment rows all on NS routes, zero on Lea Interchange routes).",
+  "remove": {
+    "LI": ["86"]
+  }
+}

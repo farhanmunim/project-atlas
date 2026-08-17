@@ -43,6 +43,13 @@ const GROUP_TO_OPERATOR = {
   "transport uk": "Transport UK London Bus", "first": "First Bus London",
   "abellio": "Abellio London", "uno": "Uno", "sullivan": "Sullivan Buses", "hct": "HCT Group",
 };
+/* LBR's CSV carries raw HTML entities in company names ("…&amp; Kent Bus Co.") —
+   decode at the boundary so no downstream surface ships them. */
+function decodeEnt(s) {
+  return s.replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"')
+          .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+}
+
 function normaliseOperator(group) {
   const g = (group || "").trim().toLowerCase();
   for (const k in GROUP_TO_OPERATOR) if (g.startsWith(k)) return GROUP_TO_OPERATOR[k];
@@ -77,8 +84,8 @@ export async function fetchGarages(opts = {}) {
     const pcCompany = (coAddr.match(pcRe) || [])[1];
     const routes = [...new Set(routeCols.flatMap((ci) => (row[ci] || "").split(/\s+/).map((s) => s.trim()).filter(Boolean)))];
     out.push({
-      code: (row[iLbr] || "").trim(), name: (row[iName] || "").trim() || null,
-      operator: normaliseOperator(row[iGroup]), company: (row[iCompany] || "").trim() || null,
+      code: (row[iLbr] || "").trim(), name: decodeEnt((row[iName] || "").trim()) || null,
+      operator: normaliseOperator(row[iGroup]), company: decodeEnt((row[iCompany] || "").trim()) || null,
       address: addr.trim() || null, postcode: pc ? pc.toUpperCase().replace(/\s+/g, " ") : null,
       postcodeCompany: pcCompany ? pcCompany.toUpperCase().replace(/\s+/g, " ") : null,
       pvr: parseInt(row[iPvr], 10) || null, routes,
@@ -108,8 +115,8 @@ export async function fetchGarageRouteMap(opts = {}) {
     // skip non-bus depots — Croydon Tramlink lists lines 1–4 which collide with bus route numbers
     if (/tram/i.test(row[iCompany] || "") || /tram|therapia/i.test(row[iName] || "")) continue;
     const operator = normaliseOperator(row[iGroup]);
-    const entry = { operator, group: (row[iGroup] || "").trim() || null, company: (row[iCompany] || "").trim() || null,
-      garageCode: (row[iLbr] || "").trim() || null, garageName: (row[iName] || "").trim() || null };
+    const entry = { operator, group: (row[iGroup] || "").trim() || null, company: decodeEnt((row[iCompany] || "").trim()) || null,
+      garageCode: (row[iLbr] || "").trim() || null, garageName: decodeEnt((row[iName] || "").trim()) || null };
     for (const ci of routeCols) {
       (row[ci] || "").split(/\s+/).map((s) => s.trim()).filter(Boolean).forEach((rt) => {
         if (!map[rt]) map[rt] = entry;   // first garage listing wins as primary

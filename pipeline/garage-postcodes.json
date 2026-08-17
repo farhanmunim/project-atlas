@@ -1,6 +1,7 @@
 {
   "_note": "Manual postcode overrides for garages whose londonbusroutes.net row carries no extractable postcode (so postcodes.io can't place them). Keyed by garage code. Postcodes are public, stable operating-centre locations; build/garages.js geocodes these via postcodes.io exactly like the CSV-derived ones, so coordinates stay accurate and sourced, not hardcoded.",
   "postcodes": {
+    "CP": "HA7 1QA",
     "DH": "UB3 1EF",
     "DS": "E16 2EJ",
     "DT": "DA1 5BG",
@@ -10,6 +11,7 @@
     "GW": "UB2 4SD",
     "HK": "E8 4RH",
     "KC": "N1C 4BE",
+    "NM": "AL9 7TS",
     "NX": "SE14 5UH",
     "RR": "IG11 0DA",
     "SH": "SL2 5AQ",

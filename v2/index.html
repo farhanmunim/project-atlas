@@ -1254,7 +1254,7 @@ function geometryFor(routeObj){
   var sd=state.stopsAll && state.stopsAll[routeObj.name];
   var slist = sd ? (sd[state.dir] || sd.outbound || sd.inbound || []) : [];
   var stops=[];
-  slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) stops.push({lat:s.lat, lon:s.lng, name:s.name}); });
+  slist.forEach(function(s){ if(s.lat!=null && s.lng!=null) stops.push({lat:s.lat, lon:s.lng, name:s.name, letter:s.letter||null}); });
   return {segs:segs, stops:stops};
 }
 function fetchRoute(){
@@ -1710,7 +1710,7 @@ function networkStops(){
       (d[dir]||[]).forEach(function(s){
         if(s.lat==null||s.lng==null) return;
         var k=s.lat.toFixed(4)+','+s.lng.toFixed(4); if(seen[k]) return; seen[k]=1;
-        out.push({lat:s.lat, lon:s.lng, name:s.name});
+        out.push({lat:s.lat, lon:s.lng, name:s.name, letter:s.letter||null});
       });
     });
   });
@@ -1727,7 +1727,7 @@ function renderStops(){
     : {radius:3, color:'#E7ECF1', weight:1, opacity:.55, fillColor:'#0A0C10', fillOpacity:1, renderer:ptRenderer};
   list.forEach(function(sp){
     L.circleMarker([sp.lat,sp.lon], stopStyle)
-      .bindTooltip(esc(sp.name), {direction:'top', className:'stop-tip'}).addTo(stopLayer);
+      .bindTooltip(esc(sp.name)+(sp.letter?' · Stop '+esc(sp.letter):''), {direction:'top', className:'stop-tip'}).addTo(stopLayer);
   });
 }
 // turn the stops layer on for whatever's in view — a route corridor, or (top-level) the whole network.

@@ -7,8 +7,9 @@
  * count as non-arrivals; perfect service reads EWT 0 / OTD 100; thin days
  * return null rather than noise.
  */
-import { computeTrackedReliability, OTD_MATCH_MIN, MIN_HEADWAYS } from './_lib/reliability-tracked.js';
+import { computeTrackedReliability, OTD_MATCH_MIN, MIN_HEADWAYS, SERVICE_BREAK_MIN } from './_lib/reliability-tracked.js';
 import { estimatePassingMin } from './_lib/lost-mileage.js';
+import { journeysFor, scheduleCoverage } from './_lib/schedule-pick.js';
 
 let pass = 0, fail = 0;
 const ok = (label, cond, detail = '') => {
@@ -119,6 +120,43 @@ console.log('\nend-to-end: trip log → passing times → EWT (the builder chain
   const gappy = passings.filter((_, i) => i % 5 !== 4);
   const r2 = computeTrackedReliability({ departuresMin: deps }, gappy, []);
   ok('every 5th trip missing → EWT ≈ 2.0', approx(r2.ewt_minutes, 2.0, 0.15), `${r2.ewt_minutes}`);
+}
+
+console.log('\nservice breaks — the overnight gap is not a headway (route-25 audit, 2026-08-17)');
+{
+  // day route with an overnight break: every 10 min 04:45–00:38 next day is
+  // modelled as 08→38 then 285→1438 (the real route 25 shape). The 247-min
+  // scheduled gap must be treated as a service break, not a waiting headway.
+  const deps = [...range(8, 38, 10), ...range(285, 1438, 10)];
+  const obs = deps.map((m) => m);                       // perfect service
+  const r = computeTrackedReliability({ departuresMin: deps }, obs, []);
+  ok('overnight break excluded → SWT is the uniform 5.0, not ~25', r.swt_minutes === 5, `${r.swt_minutes}`);
+  ok('perfect service across a break → EWT 0', r.ewt_minutes === 0, `${r.ewt_minutes}`);
+  // an observed gap spanning the break must not count either: bus at 00:38 then next at 04:45
+  ok(`break threshold is ${SERVICE_BREAK_MIN} min`, SERVICE_BREAK_MIN === 90);
+  const rLate = computeTrackedReliability({ departuresMin: deps }, obs.filter((m) => m !== 38), []);
+  ok('last-before-break bus missing → its headway loss stays local (EWT small)', rLate.ewt_minutes < 0.2, `${rLate.ewt_minutes}`);
+  // control: a legitimate 60-min low-frequency headway still counts
+  const hourly = range(360, 1200, 60);
+  const rHr = computeTrackedReliability({ departuresMin: hourly }, hourly, []);
+  ok('hourly service (60-min gaps) still yields SWT 30', rHr.swt_minutes === 30, `${rHr.swt_minutes}`);
+}
+
+console.log('\nschedule-pick — one representative schedule per day-type, never a concatenation');
+{
+  const j = (times) => times.map((m) => ({ hour: String(Math.floor(m / 60)), minute: String(m % 60) }));
+  const tt = { timetable: { routes: [{ schedules: [
+    { name: 'Monday to Thursday', knownJourneys: j([480, 490, 500]) },
+    { name: 'Friday',             knownJourneys: j([480, 490, 500]) },
+    { name: 'Saturday',           knownJourneys: j([485, 495]) },
+  ] }] } };
+  const wk = journeysFor(tt, 'weekday');
+  ok('Mon–Thu + Friday do NOT concatenate (3 deps, not 6)', wk.length === 3, `${wk.length}`);
+  ok('Mon–Thu (4-day coverage) beats Friday (1-day)', scheduleCoverage('Monday to Thursday') > scheduleCoverage('Friday'));
+  ok('saturday unaffected', journeysFor(tt, 'saturday').length === 2);
+  // after-midnight wrap: hour 24 → minute-of-day 0..59
+  const ttN = { timetable: { routes: [{ schedules: [{ name: 'Monday to Friday', knownJourneys: j([]).concat([{ hour: '24', minute: '15' }, { hour: '5', minute: '0' }]) }] }] } };
+  ok('hour 24 wraps to 15 past midnight', journeysFor(ttN, 'weekday')[0] === 15);
 }
 
 console.log(`\n${'='.repeat(48)}\ntest-reliability-tracked: ${pass} passed, ${fail} failed`);
