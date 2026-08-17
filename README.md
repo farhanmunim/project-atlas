@@ -73,9 +73,9 @@ itself consumes this API; you get exactly the same data.
 |---|---|
 | `GET /api/v1` | Discovery index — service info + all endpoints |
 | `GET /api/v1/routes` | All London bus routes — `[{ id, name }]` |
-| `GET /api/v1/route-meta` | Per-route metadata by name (operator, propulsion, garage, type, PVR) |
+| `GET /api/v1/route-meta` | Per-route metadata by name (operator, propulsion, garage, type, PVR) — a superset of `routes`: school-band routes keep their meta while TfL delists them out of term |
 | `GET /api/v1/route-classifications` | Route type by name (day, night, 24-hour, school, prefix/lettered) |
-| `GET /api/v1/route-stops` | Ordered stop sequences per route and direction |
+| `GET /api/v1/route-stops` | Ordered stop sequences per route and direction (each stop: id, name, lat/lng, stop-flag `letter`, lines) |
 | `GET /api/v1/route-destinations` | Termini per route/direction — lightweight "A → B" labels (canonical, diversion-frozen) |
 | `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection` (simplified ~11 m for the network layer) |
 | `GET /api/v1/route-geometry/<id>` | Full-fidelity geometry for one route — TfL's raw ring, both directions, freeze-aware (404 → fall back to `routes-overview`) |

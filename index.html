@@ -318,6 +318,7 @@ svg:not([width]){width:1em;height:1em;flex:none}
 /* "Routes here" / stop / garage popups — clickable route pills */
 .rh-pop{min-width:150px}
 .rh-pop .rh-h{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--paper-3);font-weight:600;margin-bottom:8px}
+.stop-flag{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:14px;padding:0 2px;margin-right:6px;border-radius:3px;background:var(--alert);color:#fff;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:0;vertical-align:-2px}
 .rh-sub{font-size:11px;color:var(--paper-2);margin-bottom:8px}
 .gstats{display:grid;grid-template-columns:1fr 1fr;gap:7px 12px;margin-bottom:9px;padding:8px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .gstats span{display:flex;flex-direction:column;gap:1px;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--paper-4)}
@@ -1087,13 +1088,13 @@ const dataSource = (() => {
       const ring=Array.isArray(ls[0][0])?ls[0]:ls; coords=ring.map(p=>[p[1],p[0]]); }catch(e){ coords=[]; }
     const seen=new Set(),stops=[];
     (raw.stopPointSequences||[]).forEach(sps=>(sps.stopPoint||[]).forEach(s=>{ if(seen.has(s.id))return; seen.add(s.id);
-      stops.push({id:s.id,name:s.name,lat:s.lat,lng:s.lon,lines:(s.lines||[]).map(l=>l.name)}); }));
+      stops.push({id:s.id,name:s.name,lat:s.lat,lng:s.lon,letter:s.stopLetter||null,lines:(s.lines||[]).map(l=>l.name)}); }));
     return { name:raw.lineName||raw.lineId, coords, stops };
   }
   function normaliseNear(raw){
     const arr=raw.stopPoints||raw||[];
     return { stops: arr.filter(s=>typeof s.lat==="number"&&typeof s.lon==="number").map(s=>({
-      id:s.id,name:s.commonName,lat:s.lat,lng:s.lon,lines:(s.lines||[]).map(l=>l.name) })) };
+      id:s.id,name:s.commonName,lat:s.lat,lng:s.lon,letter:s.stopLetter||null,lines:(s.lines||[]).map(l=>l.name) })) };
   }
   // Parse a TfL disruption into our shape. The API carries no geometry, so the
   // diverted-via roads and the not-served stop names are extracted from the prose.
@@ -1329,6 +1330,9 @@ function haversine(a,b){ const R=6371,toR=x=>x*Math.PI/180; const dLat=toR(b[0]-
 function polylineKm(c){ let d=0; for(let i=1;i<c.length;i++) d+=haversine(c[i-1],c[i]); return d; }
 
 /* ── "Routes here" — clickable route pills shared by map clicks, stops & garages ── */
+/* stop-flag letter roundel (TfL stopLetter — "A", "B" …) prepended to a stop
+   popup header; disambiguates same-named stops. Empty string when no letter. */
+function stopLetterHtml(s){ return s && s.letter ? `<span class="stop-flag">${esc(s.letter)}</span>` : ""; }
 function routePillsHtml(names){
   const uniq=[...new Set(names||[])].filter(Boolean).sort(cmpRoute);
   if(!uniq.length) return '<span style="opacity:.6">—</span>';
@@ -1459,7 +1463,7 @@ function drawRoutes(fit=true){
       const term=(si===0||si===r._seq.stops.length-1);
       if(!term && !(showStops && single)) return;
       stopLayer.addLayer(L.circleMarker([s.lat,s.lng],{ radius:term?6:4, color:col, fillColor:term?col:"#0c111b", fillOpacity:term?1:.9, weight:2 })
-        .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div>${routePillsHtml(s.lines)}</div>`));
+        .bindPopup(`<div class="rh-pop"><div class="rh-h">${stopLetterHtml(s)}${esc(s.name)}</div>${routePillsHtml(s.lines)}</div>`));
     });
   });
   // operating-garage(s) of a single selection feed the fit bounds; the marker itself
@@ -1966,7 +1970,7 @@ function drawCatch(fit=true){
   pinMarker.on("dragend",()=>loadNear(false));
   if(showStops && currentNear) currentNear.stops.forEach(s=> catchLayer.addLayer(
     L.circleMarker([s.lat,s.lng],{radius:4,color:"#37c5c5",fillColor:"#37c5c5",fillOpacity:.9,weight:1.5})
-     .bindPopup(`<div class="rh-pop"><div class="rh-h">${esc(s.name)}</div>${routePillsHtml(s.lines)}</div>`)));
+     .bindPopup(`<div class="rh-pop"><div class="rh-h">${stopLetterHtml(s)}${esc(s.name)}</div>${routePillsHtml(s.lines)}</div>`)));
   if(fit) map.setView([pin.lat,pin.lng],radiusToZoom(radius));
 }
 /* catchment view = the network underlay (route lines + garages, toggle-controlled,

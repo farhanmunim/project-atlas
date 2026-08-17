@@ -28,6 +28,10 @@ export const OTD_LATE_MIN = 5;     // dep more than 5 min late  = not on time
 export const OTD_MATCH_MIN = 20;   // beyond this a departure is a non-arrival
 export const MIN_HEADWAYS = 5;     // fewer observed headways → no EWT for the day
 export const MIN_DEPS = 5;         // fewer measured departures → no OTD for the day
+export const SERVICE_BREAK_MIN = 90; // a scheduled gap ≥ this is a service break (e.g. the
+                                     // overnight gap on a day route), NOT a waiting headway —
+                                     // audited 2026-08-17: route 25's 00:38→04:45 break entered
+                                     // Σh² as a 247-min headway and pushed SWT to 24.6 vs real ~4.7
 
 const inWindows = (min, windows) => (windows || []).some((w) => min >= w.fromMin && min < w.toMin);
 
@@ -68,9 +72,19 @@ export function computeTrackedReliability(scheduled, passings, unmeasured = []) 
   const deps = [...(scheduled.departuresMin || [])].sort((a, b) => a - b);
   const obs = [...(passings || [])].filter(Number.isFinite).sort((a, b) => a - b);
 
-  // ── high-frequency: waits from headways, unmeasured windows never spanned ──
-  const sw = excessWait(deps, unmeasured);
-  const aw = excessWait(obs, unmeasured);
+  // Service breaks — the SCHEDULE defines the operating periods. A scheduled gap
+  // ≥ SERVICE_BREAK_MIN splits the day into segments for BOTH series, so neither
+  // the scheduled overnight gap nor an observed gap spanning it counts as a
+  // waiting headway (a passenger doesn't wait 4 h at midnight — service stopped).
+  const breaks = [];
+  for (let i = 1; i < deps.length; i++)
+    if (deps[i] - deps[i - 1] >= SERVICE_BREAK_MIN) breaks.push({ fromMin: deps[i - 1] + 0.5, toMin: deps[i] - 0.5 });
+  const splitWindows = [...(unmeasured || []), ...breaks];
+
+  // ── high-frequency: waits from headways; unmeasured windows and service
+  //    breaks never spanned ──
+  const sw = excessWait(deps, splitWindows);
+  const aw = excessWait(obs, splitWindows);
   const enough = sw.n >= MIN_HEADWAYS && aw.n >= MIN_HEADWAYS;
   const swt = enough ? +sw.wait.toFixed(2) : null;
   const awt = enough ? +aw.wait.toFixed(2) : null;

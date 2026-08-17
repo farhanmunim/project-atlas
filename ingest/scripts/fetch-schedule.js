@@ -58,6 +58,7 @@ import { fileURLToPath } from 'url';
 import { loadEnv } from './_lib/env.js';
 import { fetchWithTimeout, userAgentHeaders } from './_lib/http.js';
 import { loadJsonCache, atomicWriteJson, installSignalFlush } from './_lib/cache.js';
+import { journeysFor } from './_lib/schedule-pick.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT      = path.resolve(__dirname, '..');
@@ -155,33 +156,9 @@ function qsiPointsFromStops(stops) {
 }
 
 // ── Scheduled headways + SWT at a timing point ──────────────────────────────
-// Map a TfL schedule day-type name to a bucket (mirrors fetch-frequencies).
-function classifyScheduleName(name) {
-  const n = (name ?? '').toLowerCase();
-  if (/mon/.test(n) && /fri/.test(n)) return 'weekday';
-  if (/mon/.test(n) && /thu/.test(n)) return 'weekday';
-  if (/weekday/.test(n))              return 'weekday';
-  if (/sat/.test(n))                  return 'saturday';
-  if (/sun/.test(n))                  return 'sunday';
-  if (/fri/.test(n))                  return 'weekday';
-  return null;
-}
-
-// Sorted minutes-after-midnight departures for a day-type. After-midnight
-// journeys are encoded hour ≥ 24 by TfL, so wrap via modulo 24.
-function journeysFor(timetable, dayType) {
-  const out = [];
-  for (const rt of (timetable?.timetable?.routes ?? [])) {
-    for (const sch of (rt.schedules ?? [])) {
-      if (dayType !== 'any' && classifyScheduleName(sch.name) !== dayType) continue;
-      for (const j of (sch.knownJourneys ?? [])) {
-        const h = Number(j.hour), m = Number(j.minute);
-        if (Number.isFinite(h) && Number.isFinite(m)) out.push((h % 24) * 60 + m);
-      }
-    }
-  }
-  return out.sort((a, b) => a - b);
-}
+// journeysFor picks the departures for a day-type from the SINGLE most
+// representative schedule (never a concatenation — the "Monday to Thursday" +
+// "Friday" doubling bug); pure logic in _lib/schedule-pick.js, unit-tested.
 
 // Consecutive headways (mins) within [startMin,endMin). Wrap-past-midnight aware.
 // Drops non-positive and >120-min gaps (cross-window noise / overnight breaks).

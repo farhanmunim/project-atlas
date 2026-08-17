@@ -2,6 +2,54 @@
 
 ---
 
+## 2026-08-17 — Audit batch 2: school routes restored, stop letters, garage corrections, tracked-reliability fixes
+
+Second external-audit batch. Each claim verified before fixing:
+
+- **37 school routes restored to route-meta** (676 routes, was 639). Cause was NOT
+  an LBR regression (the auditor's guess) but our own TfL-scoping filter colliding
+  with TfL's term-time behaviour: /Line/Mode/bus delists school-day-only services
+  over the summer holidays (all ~35 6xx routes 404 from the Line API right now),
+  and the filter dropped LBR's still-live contract records with them. The filter
+  now exempts numeric school-band routes (5xx–9xx) that LBR knows (operator or
+  PVR present — placeholder rows like brand-new 592 stay out). route-meta is
+  documented as a superset of routes (~676 vs ~641). LBR's raw HTML entities
+  (…&amp;amp;…) are now decoded at the source boundary too.
+- **Stop-flag letters** — route-stops stops gain `letter` (TfL stopLetter, from
+  the same Route/Sequence call — zero extra API cost): "Upton Park Station → A".
+  Flows warehouse (route_stops mirror carries it automatically) → data →
+  /api/v1/route-stops → both apps (/' stop popups show a letter roundel; /v2
+  tooltips append "· Stop A"; the TfL live fallback seam carries it too) → docs.
+- **Garage corrections**: route 86 removed from Lea Interchange's routes array
+  (verified with our own tracking: 53 route-86 vehicles, 107 cross-route
+  assignment rows, ALL on Romford NS routes, zero LI) via a new curated
+  garage-route-fixes.json; CP Canons Park placed at HA7 1QA (London Sovereign's
+  VOL operating centre, matching LBR's "Parr Road, HA7" — its licence match
+  also corrects from London United to London Sovereign PK0002250) and NM North
+  Mymms at AL9 7TS (Sullivan's Southern Cross garage, Swanland Road) — both
+  previously sat on registered-office addresses ~13 km away.
+- **Tracked reliability (v2) — two systematic faults fixed** (route 25 audit:
+  SWT 24.6, OTD 5.9%, 143/306 non-arrivals):
+  1. TfL publishes "Monday to Thursday" and "Friday" as separate schedules, both
+     classifying as weekday — fetch-schedule concatenated them, doubling every
+     departure (306 = 2×153). OTD then matched each real passing to one twin and
+     called the other a non-arrival; scheduled_trips doubled, inflating
+     lost-mileage. Departures now come from the single most representative
+     schedule per day-type (_lib/schedule-pick.js, unit-tested).
+  2. The overnight service break (25's 00:38→04:45, 247 min) entered Σh²/2Σh as
+     a headway and alone pushed SWT 4.7→24.6. Scheduled gaps ≥90 min now split
+     both series into service segments (SERVICE_BREAK_MIN, unit-tested; hourly
+     LF services unaffected). Verified against the real 306-dep schedule row:
+     SWT 24.6 → 3.99.
+  Schedule rows self-correct as the weekly TTL rolls; tracked rows recompute
+  nightly; pre-fix rows are recomputable via --day backfill.
+- Remaining night-route propulsion staleness (N18/N118/…) resolves via the now
+  fully-paginated assignments-union fleet roster + DVLA reconcile over the next
+  nightly runs; 365 correctly held back by the 75% supermajority guard (3 of 5
+  observed electric).
+
+test-reliability-tracked 31/31 (9 new: service breaks, schedule-pick).
+
 ## 2026-08-17 — External-audit fix batch: propulsion classifier, fleet roster union, RATP purge, history offset
 
 Fixes driven by Farhan's external audit feedback (Bromley TB staleness, registry

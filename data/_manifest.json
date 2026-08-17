@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-17T20:22:35.765Z",
+  "generatedAt": "2026-08-17T20:49:52.460Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-08-16T12:27:05.369Z",
+      "fetchedAt": "2026-08-17T20:45:23.209Z",
       "status": "ok",
       "rows": 641,
       "files": [
@@ -15,7 +15,7 @@
         "data/route-stops.json"
       ],
       "cadence": "daily",
-      "note": "detailed geometry for 615 routes"
+      "note": "detailed geometry for 616 routes"
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
@@ -29,14 +29,14 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-08-17T20:22:35.765Z",
+      "fetchedAt": "2026-08-17T20:47:56.853Z",
       "status": "ok",
-      "rows": 641,
+      "rows": 676,
       "files": [
         "data/route-meta.json"
       ],
       "cadence": "daily · londonbusroutes.net (garages.csv + details.htm)",
-      "note": "641 operators"
+      "note": "675 operators"
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
@@ -51,7 +51,7 @@
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io + DVSA VOL",
-      "fetchedAt": "2026-08-17T20:13:32.249Z",
+      "fetchedAt": "2026-08-17T20:34:04.410Z",
       "status": "ok",
       "rows": 86,
       "files": [
@@ -62,25 +62,25 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-08-17T20:16:40.228Z",
+      "fetchedAt": "2026-08-17T20:47:40.781Z",
       "status": "ok",
       "rows": 641,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "535 routes with vehicles, DVLA-enriched"
+      "note": "590 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache + bustimes.org",
-      "fetchedAt": "2026-08-16T03:23:04.691Z",
+      "fetchedAt": "2026-08-17T20:49:52.460Z",
       "status": "ok",
-      "rows": 700,
+      "rows": 6786,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · fleet (inverted) + bustimes.org body enrichment (capped)",
-      "note": "0 multi-route · 510 with body"
+      "note": "2301 multi-route · 1581 with body"
     },
     "tenders": {
       "status": "ok",
