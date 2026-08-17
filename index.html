@@ -2541,7 +2541,7 @@ function garagePopupHtml(g){
     <div class="rh-sub">${esc(shortOp(g.operator||"—"))} · ${esc(g.code)}</div>
     <div class="gstats">
       <span><b>${g.pvr||"—"}</b>PVR</span>
-      <span><b>${g.capacity||"—"}</b>capacity</span>
+      <span title="physical depot estimate${g.licence&&g.licence.authorisedVehicles?` · licence-wide authorised ${g.licence.authorisedVehicles} (${esc(g.licence.number)})`:""}"><b>${g.capacity||"—"}</b>capacity</span>
       <span><b style="color:${utilTone(g.utilisation)}">${util}</b>utilisation</span>
       <span><b style="color:${zev!=null?(zev>=66?"var(--green)":zev>=33?"var(--amber)":"var(--paper)"):"var(--paper)"}">${zev!=null?zev+"%":"—"}</b>ZEV</span>
       <span><b>${g.routes.length}</b>routes</span></div>
@@ -2596,9 +2596,14 @@ function garageDetailHtml(code){
        mcard("Routes operated",rs.length),
        mcard("PVR",g.pvr||"—"),
        mcard("Electrification",mix.zev!=null?`${mix.zev}<span class="u">% ZEV</span>`:"—","battery + hydrogen PVR",mix.zev!=null?`color:${mix.zev>=66?"var(--green)":mix.zev>=33?"var(--amber)":"var(--paper)"}`:""),
-       mcard("Capacity",g.capacity||"—","authorised vehicles"),
+       mcard("Capacity",g.capacity||"—","depot estimate"),
        mcard("Utilisation",g.utilisation!=null?Math.round(g.utilisation*100)+"%":"—","PVR ÷ capacity",`color:${utilTone(g.utilisation)}`),
      ])}${g.utilisation!=null?`<div class="pbar" style="margin-top:12px"><i style="width:${Math.min(100,Math.round(g.utilisation*100))}%;background:${utilTone(g.utilisation)}"></i></div>`:""}</div>`+
+    (g.licence?`<div class="metric"><div class="metric-h">Operator licence <span class="mono" style="color:var(--paper-4)">DVSA VOL</span></div>
+       ${kv("Licence",`<span class="vc">${esc(g.licence.number)}</span>`)}
+       ${kv("Holder",esc(trunc(g.licence.holder||"—",26)),g.licence.holder||"")}
+       ${g.licence.status?kv("Status",esc(g.licence.status)):""}
+       ${g.licence.authorisedVehicles?kv("Authorised fleet",`${g.licence.authorisedVehicles} <span style="color:var(--paper-4);font-size:9.5px">licence-wide</span>`,"the licence's total authorised vehicles across ALL its operating centres — a legal ceiling, not this garage's capacity"):""}</div>`:"")+
     (mix.knownPvr>0?`<div class="metric">${fleetMixHtml(mix.prop)}</div>`:"")+
     `<div class="metric"><div class="metric-h">Operator</div>
        <button type="button" class="drill" data-operator="${esc(g.operator||"")}"><span class="dl">${esc(shortOp(g.operator||"—"))}</span><span class="dv">view ›</span></button></div>

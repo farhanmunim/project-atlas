@@ -348,7 +348,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tbody>
 <tr><td class="f">routes · route-stops · route-destinations · routes-overview · route-geometry · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
 <tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>daily full build + intraday diversions-only refresh every ~4&nbsp;h</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed; a no-change intraday run commits (and deploys) nothing</td></tr>
-<tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net)</td><td>daily</td><td>geocodes cached; overrides pinned</td></tr>
+<tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net) · ~weekly (DVSA VOL licences)</td><td>daily</td><td>geocodes cached; overrides pinned; VOL is one bulk CSV per run</td></tr>
 <tr><td class="f">fleet · vehicles</td><td>continuous (live arrivals) · DVLA static</td><td>daily sample</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
 <tr><td class="f">tenders</td><td>event-driven awards</td><td>daily incremental</td><td>append-only by tender id — only NEW ids fetched</td></tr>
 <tr><td class="f">route-performance</td><td>~4-weekly (QSI) · quarterly (MPS)</td><td>daily check</td><td>Last-Modified skip makes the daily check ~free</td></tr>
@@ -545,7 +545,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <h2 class="sec" id="garages">garages <span class="pill green">reference</span> <span class="pill">daily</span></h2>
 <div class="meta-grid">
   <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/garages</div></div>
-  <div class="mg"><div class="k">Sources</div><div class="v">londonbusroutes.net + postcodes.io</div></div>
+  <div class="mg"><div class="k">Sources</div><div class="v">londonbusroutes.net + postcodes.io + DVSA VOL (OGL)</div></div>
   <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, garages: [...] }</div></div>
   <div class="mg"><div class="k">Rows</div><div class="v">~86 (validated floor 50)</div></div>
 </div>
@@ -560,7 +560,8 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td class="f">postcodeSource</td><td class="t">string|null</td><td><code>garage</code> · <code>override</code> · <code>company</code> — which address won</td><td>Precedence: garage address → curated per-code override → company/HQ address</td></tr>
 <tr><td class="f">lat / lng</td><td class="t">number|null</td><td>WGS84 position</td><td>postcodes.io bulk geocoder (one batched pass per run); validated not-all-null so a failed geocode run can't blank coordinates</td></tr>
 <tr><td class="f">pvr</td><td class="t">number|null</td><td>Total PVR allocated to this garage</td><td>garages.csv</td></tr>
-<tr><td class="f">capacity</td><td class="t">number|null</td><td>Approximate bus capacity</td><td>curated per-garage file (community-sourced)</td></tr>
+<tr><td class="f">capacity</td><td class="t">number|null</td><td>Approximate PHYSICAL bus capacity of the depot</td><td>curated per-garage file (community-sourced) — deliberately distinct from the licensed ceiling below</td></tr>
+<tr><td class="f">licence</td><td class="t">object|absent</td><td><code>{ number, holder, type, status, authorisedVehicles }</code> — the PSV operator licence at this operating centre, from the traffic commissioners' register</td><td><strong>DVSA VOL bulk records</strong> (data.gov.uk, OGL; upstream regenerates ~weekly, 0–14 days behind the live register). Postcode-matched operating centre → best valid PSV licence (largest authorised when several share a postcode). <strong>Semantics</strong>: <code>authorisedVehicles</code> is the LICENCE-wide legal ceiling across ALL that licence's operating centres — never a per-garage figure, never used for <code>utilisation</code>. ~63 of 86 garages matched (postcode drift between garage and registered OC addresses accounts for the rest). Fallback: a failed/thin VOL fetch carries the previous run's licence blocks forward</td></tr>
 <tr><td class="f">utilisation</td><td class="t">number|null</td><td><code>pvr ÷ capacity</code>, 3&nbsp;dp</td><td>computed only when both known</td></tr>
 <tr><td class="f">routes</td><td class="t">array[string]</td><td>Routes allocated here</td><td>garages.csv; first listing wins as a route's primary garage</td></tr>
 </tbody></table></div>

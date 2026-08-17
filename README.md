@@ -80,7 +80,7 @@ itself consumes this API; you get exactly the same data.
 | `GET /api/v1/routes-overview` | Route line geometry — GeoJSON `FeatureCollection` (simplified ~11 m for the network layer) |
 | `GET /api/v1/route-geometry/<id>` | Full-fidelity geometry for one route — TfL's raw ring, both directions, freeze-aware (404 → fall back to `routes-overview`) |
 | `GET /api/v1/line-status` | Latest line-status snapshot — per-route status + network summary |
-| `GET /api/v1/garages` | Garages — code, name, operator, lat/lng, PVR, routes |
+| `GET /api/v1/garages` | Garages — code, name, operator, lat/lng, PVR, capacity, routes, plus the PSV operator `licence` at the site (DVSA VOL register: number, holder, status, licence-wide authorised fleet) |
 | `GET /api/v1/fleet` | Fleet profile per route — count, avg age, propulsion mix, makes |
 | `GET /api/v1/vehicles` | Vehicle register by reg — routes, operator, make, year, fuel, plus community-tier enrichment: `body` (chassis + bodywork type), `deck`, `fleetCode`, and `propulsionSource` when DVLA's known hybrid/FCEV fuel misreport was corrected. Chain: DVLA first (never overwritten) → bustimes.org → londonbusroutes |
 | `GET /api/v1/tenders` | Tender/contract award history per route — the full published bid spread (`acceptedBid`/`lowestBid`/`highestBid`), tenderers, `costPerMile`, dates; each award also carries derived `contractedMilesPA` (= accepted ÷ £/mile), `jb` (joint-bid: partner routes + total £), `vehicle` (awarded deck/propulsion/basis), and `tranche` |
