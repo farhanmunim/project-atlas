@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-16T23:17:52.785Z",
+  "generatedAt": "2026-08-17T03:17:48.849Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -19,7 +19,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-16T03:23:07.847Z",
+      "fetchedAt": "2026-08-17T03:17:48.348Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -29,25 +29,25 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-08-15T20:09:41.759Z",
+      "fetchedAt": "2026-08-17T03:17:45.425Z",
       "status": "ok",
-      "rows": 639,
+      "rows": 641,
       "files": [
         "data/route-meta.json"
       ],
       "cadence": "daily · londonbusroutes.net (garages.csv + details.htm)",
-      "note": "639 operators"
+      "note": "641 operators"
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-16T03:23:08.336Z",
+      "fetchedAt": "2026-08-17T03:17:48.849Z",
       "status": "ok",
-      "rows": 7816,
+      "rows": 7818,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 641 (641△); route_meta 639 (639△); route_stops 641 (641△); tender 2521 (2521△); garage 86 (86△); fleet 641 (641△); vehicle 700 (700△); line_status 676 (676△); route_geometry 1271 (1271△)"
+      "note": "route 641 (641△); route_meta 641 (641△); route_stops 641 (641△); tender 2521 (2521△); garage 86 (86△); fleet 641 (641△); vehicle 700 (700△); line_status 676 (676△); route_geometry 1271 (1271△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io",
@@ -83,11 +83,11 @@
       "note": "0 multi-route · 510 with body"
     },
     "tenders": {
-      "status": "failed",
+      "status": "ok",
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-08-16T12:12:39.389Z",
       "source": "TfL tender award results (13923/13796.aspx)",
-      "fetchedAt": "2026-08-16T03:23:05.073Z",
+      "fetchedAt": "2026-08-17T03:17:45.796Z",
       "rows": 2521,
       "files": [
         "data/tenders.json"
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-16T23:17:52.785Z",
+      "fetchedAt": "2026-08-17T03:17:44.859Z",
       "status": "ok",
-      "rows": 150,
+      "rows": 147,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "16 published geometry · 134 unpublished"
+      "note": "16 published geometry · 131 unpublished"
     }
   }
 }
