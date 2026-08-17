@@ -842,7 +842,7 @@ gated, PDF-only) — see the note.
 - **GLA Group / TfL transparency** 🟢 🟡 — board papers, business plan, budget. https://tfl.gov.uk/corporate/publications-and-reports/
 
 #### Regulatory & licensing
-- **VOL Operator Licence Records (DVSA, data.gov.uk)** 🟢 🟡 weekly — operator/licence/operating-centre/authorised-fleet ceiling. CKAN API. https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/
+- **VOL Operator Licence Records (DVSA, data.gov.uk)** 🟢 🟡 weekly — operator/licence/operating-centre/authorised-fleet ceiling. CKAN API. **Wired in: `sources/dvsa-vol.js` postcode-matches PSV operating centres to garages (`garages[].licence` — licence-wide ceiling, kept separate from physical `capacity`). The VOL search FRONT-END is Incapsula-protected + session-tokened — human-only, never scrape it; the bulk CSVs are the machine route.** https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/
 - **Find lorry or bus operators** 🟢 🔴 — human VOL search front-end. https://www.gov.uk/find-vehicle-operators
 - **Find registered local bus services** 🟢 🔴 — service-registration records. https://www.gov.uk/find-local-bus-services
 - **DVSA VOL statistical dataset** 🟢 🔵 — licence application stats. https://open.data.dvsa.gov.uk/vehicle-operator-licensing/index.html

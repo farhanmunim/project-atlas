@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-08-17 — Garage operator licences from the DVSA VOL register (automated)
+
+Farhan asked for automated licensed capacities per garage. The VOL search
+front-end is Incapsula-protected and session-tokened (human-only), so the
+source is the DVSA bulk register export on data.gov.uk (OGL, ~weekly,
+observed 0–14 days behind the live register):
+
+- sources/dvsa-vol.js — fetches the London & SE OLBS CSV once per daily
+  run, dedupes licence rows (repeat per director/TM), filters to PSV
+  (P-prefix), indexes by operating-centre postcodes. Pure helpers
+  (extractPostcodes, pickLicence) unit-tested (test-functions 60/60).
+- build/garages.js — postcode-matches each garage to its best valid PSV
+  licence → garages[].licence { number, holder, type, status,
+  authorisedVehicles }. SEMANTICS GUARDED: authorisedVehicles is the
+  LICENCE-wide legal ceiling (Ash Grove shows capacity 130 physical vs
+  930 licence-wide for East London Bus & Coach across all its depots) —
+  it never feeds utilisation. Soft-fail carries last-good licence blocks;
+  a <20-match run is treated as degraded. First run: 63–65/86 garages
+  matched (rest = postcode drift between garage and registered OC
+  addresses — a future matching refinement).
+- App: garage dossier gains an "Operator licence" section; the popup's
+  capacity stat tooltips the licence-wide figure. Docs: /docs garages
+  section (sources, capacity-vs-licence distinction, fallback), cadence
+  row, API.md, README, CLAUDE.md source-catalogue note (front-end is
+  never to be scraped).
+
+Fully automated: rides the existing daily refresh; no new tasks, keys or
+Coolify action.
+
 ## 2026-08-16 — Documentation audit sweep (all surfaces)
 
 Full stale-spot audit after the week's features. Fixed: CLAUDE.md history

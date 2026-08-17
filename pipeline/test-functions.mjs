@@ -184,5 +184,20 @@ console.log("\nsources/bustimes.js — vehicle record normalisation");
   ok("fleet_number fallback when fleet_code absent", normaliseVehicle({ fleet_number: 123, vehicle_type: {} }).fleetCode === 123);
 }
 
+console.log("\nsources/dvsa-vol.js — postcode extraction & licence selection");
+{
+  const { extractPostcodes, pickLicence } = await import("./sources/dvsa-vol.js");
+  const pcs = extractPostcodes("ASH GROVE ASH GROVE BUS DEPOT   LONDON  GB E8 4RH; UNIT 5, THE YARD, DAGENHAM GB RM109QQ");
+  ok("extracts + normalises postcodes from ;-joined OC blob", pcs.includes("E8 4RH") && pcs.includes("RM10 9QQ"), pcs.join(" | "));
+  ok("no false postcode from plain words", extractPostcodes("BUS DEPOT LONDON").length === 0);
+  const picked = pickLicence([
+    { number: "PK1", status: "Valid", authorisedVehicles: 12 },
+    { number: "PK2", status: "Valid", authorisedVehicles: 930 },
+    { number: "PK3", status: "Surrendered", authorisedVehicles: 2000 },
+  ]);
+  ok("picks the largest VALID licence (930 beats surrendered 2000)", picked.number === "PK2", picked.number);
+  ok("empty candidates → null", pickLicence([]) === null && pickLicence(null) === null);
+}
+
 console.log(`\n${"=".repeat(48)}\ntest-functions: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

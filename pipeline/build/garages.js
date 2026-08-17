@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { fetchGarages } from "../sources/londonbusroutes.js";
 import { geocode } from "../sources/postcodes.js";
+import { fetchVolLicences, pickLicence } from "../sources/dvsa-vol.js";
 import { rowsWithin, notAllNull } from "../lib/validate.js";
 
 // Curated postcode overrides for garages whose CSV row carries no extractable
@@ -55,6 +56,33 @@ export async function build(ctx) {
       pvr: g.pvr, capacity: cap, utilisation, routes: g.routes };
   });
 
+  // ── DVSA VOL licence enrichment (register-backed, weekly upstream) ─────────
+  // Postcode-match each garage to the PSV licence at its operating centre and
+  // attach the licensed-operator facts. licence.authorisedVehicles is the
+  // LICENCE-level ceiling shared across all that operator's centres — a
+  // different truth from `capacity` (physical depot estimate), so it is a
+  // separate block and never feeds `utilisation`. Soft: a failed or thin VOL
+  // fetch carries the previous run's licence blocks forward (never blanks).
+  let volNote = "";
+  try {
+    const vol = await fetchVolLicences();
+    let matched = 0;
+    for (const g of out) {
+      const lic = pickLicence(vol.byPostcode[(g.postcode || "").toUpperCase()]);
+      if (lic) { g.licence = lic; matched++; }
+    }
+    if (matched < 20) throw new Error(`only ${matched} garages matched a PSV licence — treating as degraded`);
+    volNote = `${matched} licensed (VOL, ${vol.licences} PSV licences scanned)`;
+    log.info(`garages: ${volNote}`);
+  } catch (e) {
+    log.warn(`garages: VOL licence enrichment failed (${e.message}) — carrying last-good licence blocks`);
+    const prev = await sink.readDataset("garages");
+    const prevByCode = Object.fromEntries((prev?.garages || []).filter((p) => p.licence).map((p) => [p.code, p.licence]));
+    let carried = 0;
+    for (const g of out) if (prevByCode[g.code]) { g.licence = prevByCode[g.code]; carried++; }
+    volNote = carried ? `licences carried from last-good (${carried})` : "no licence data";
+  }
+
   // Drop stale duplicate garages: a garage with NO routes sitting on top of (<150 m) an
   // active route-serving garage is a historical/duplicate listing — e.g. Ash Grove is
   // still listed under its former Arriva code (AE) while Stagecoach now runs it as HK.
@@ -76,8 +104,8 @@ export async function build(ctx) {
   // kept without coords by design, but ALL coords going null is an outage, not design).
   rowsWithin(deduped, 50, undefined, "garages");
   notAllNull(deduped, "lat", "garages");
-  await sink.writeDataset("garages", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net + postcodes.io", garages: deduped });
+  await sink.writeDataset("garages", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net + postcodes.io + DVSA VOL (OGL)", garages: deduped });
   const withCap = deduped.filter((g) => g.capacity != null).length;
   log.info(`garages: ${deduped.length} (${placed} geocoded · ${overridden} override · ${fromCompany} company-addr fallback · ${withCap} with capacity · ${out.length - deduped.length} stale dupes dropped)`);
-  return { source: "londonbusroutes.net garages.csv + postcodes.io", rows: deduped.length, files: ["data/garages.json"], note: `${placed} geocoded${overridden?`, ${overridden} override`:""}` };
+  return { source: "londonbusroutes.net garages.csv + postcodes.io + DVSA VOL", rows: deduped.length, files: ["data/garages.json"], note: `${placed} geocoded${volNote ? `, ${volNote}` : ""}` };
 }
