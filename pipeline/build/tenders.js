@@ -31,7 +31,15 @@ export async function build(ctx) {
   // means we'd overwrite a good store with a corrupt/partial one — refuse it.
   const previousCount = prev.count ?? Object.keys(prev.byId || {}).length;
 
-  const index = await fetchTenderIndex();
+  // Index fetch is soft when a cache exists: awards are immutable and byRoute is
+  // recomposed from the cache every run, so a TfL outage (or a network-restricted
+  // dev run) still re-derives the read layer — it just adds no NEW awards.
+  let index = [];
+  try { index = await fetchTenderIndex(); }
+  catch (e) {
+    if (!Object.keys(byId).length) throw e;   // cold cache — nothing to recompose from
+    log.warn(`tenders: index fetch failed (${e.message}) — recomposing byRoute from the ${Object.keys(byId).length}-award cache, no new fetches this run`);
+  }
   let todo = index.filter((x) => !byId[x.btID]);
   if (args.limit) todo = todo.slice(0, Number(args.limit));
   log.info(`tenders: ${index.length} awards in index · ${Object.keys(byId).length} cached · ${todo.length} to fetch`);

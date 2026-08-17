@@ -812,7 +812,7 @@ const OP_COLORS = {
   "Metroline":"#009a93",            // Metroline teal
   "Stagecoach London":"#1f3a68",    // Stagecoach navy
   "First Bus London":"#6e2c91",     // First purple
-  "Transport UK London Bus (RATP)":"#e5006d",  // TUK / RATP magenta
+  "Transport UK London Bus":"#e5006d",  // TUK magenta (ex-RATP)
   "Uno":"#5aa632",                  // Uno green
 };
 function operatorColor(op){ return OP_COLORS[op] || "#647691"; }
@@ -939,7 +939,7 @@ function corridorGradientLayer(coords, vcs, weight){
 function colorLabel(){ return colorMode==="crowding" ? "crowding" : colorMode==="operator" ? "operator" : "type"; }
 const OP_INITIALS = {
   "Arriva London":"ARL", "Go-Ahead London":"GAL", "Metroline":"MLN", "Stagecoach London":"SCL",
-  "First Bus London":"FRG", "Transport UK London Bus (RATP)":"TUK", "Uno":"UNO",
+  "First Bus London":"FRG", "Transport UK London Bus":"TUK", "Uno":"UNO",
   "Falcon Coaches":"FAL",
 };
 function opInitials(op){ return OP_INITIALS[op] || (op ? op.split(/\s+/).map(w=>w[0]).join("").slice(0,3).toUpperCase() : "?"); }
@@ -997,9 +997,9 @@ const ROUTE_META = {
   "257":{op:"Stagecoach London",prop:"diesel"},"425":{op:"Stagecoach London",prop:"electric"},
   "3":{op:"Abellio London",prop:"electric"},  "40":{op:"Abellio London",prop:"hybrid"},
   "211":{op:"Abellio London",prop:"electric"},"C10":{op:"Abellio London",prop:"electric"},
-  "P5":{op:"Abellio London",prop:"electric"}, "27":{op:"Transport UK London Bus (RATP)",prop:"hybrid"},
-  "72":{op:"Transport UK London Bus (RATP)",prop:"electric"},"94":{op:"Transport UK London Bus (RATP)",prop:"hybrid"},
-  "148":{op:"Transport UK London Bus (RATP)",prop:"diesel"},"452":{op:"Transport UK London Bus (RATP)",prop:"electric"},
+  "P5":{op:"Abellio London",prop:"electric"}, "27":{op:"Transport UK London Bus",prop:"hybrid"},
+  "72":{op:"Transport UK London Bus",prop:"electric"},"94":{op:"Transport UK London Bus",prop:"hybrid"},
+  "148":{op:"Transport UK London Bus",prop:"diesel"},"452":{op:"Transport UK London Bus",prop:"electric"},
   "7":{op:"Metroline",prop:"hydrogen"},       "245":{op:"Metroline",prop:"hydrogen"},
 };
 const PROP_DEFS = { electric:"Electric", hydrogen:"Hydrogen", hybrid:"Hybrid", diesel:"Diesel" };
@@ -2099,7 +2099,7 @@ function renderFilters(){
   const opSet=new Set(); routes.forEach(r=>{ const o=metaOf(r).op; if(o) opSet.add(o); });
   const opsPresent=[...opSet].sort();
   const opChips=opsPresent.map(o=>{ const on=filters.operator.has(o);
-    const short=o.replace(" London","").replace("Transport UK London Bus (RATP)","RATP").replace(" Bus","");
+    const short=o.replace(" London","").replace("Transport UK London Bus","Transport UK").replace(" Bus","");
     return `<button type="button" class="chip" data-g="operator" data-v="${esc(o)}" aria-pressed="${on}">${dotOp?`<span class="cdot" style="background:${operatorColor(o)}"></span>`:""}${esc(short)}</button>`; }).join("");
   const propChips=Object.keys(PROP_DEFS).map(p=>{ const on=filters.propulsion.has(p);
     return `<button type="button" class="chip" data-g="propulsion" data-v="${p}" aria-pressed="${on}">${PROP_DEFS[p]}</button>`; }).join("");
@@ -2483,7 +2483,7 @@ function group(key, title, accent, body, summary=""){
 // the small monospace "→ Tool" cross-link footer used across the dossier.
 const crossLink=(html)=>`<div class="xlink">${html}</div>`;
 function statusTone(sev){ return sev>=10?{c:"var(--green)",h:"#3fb87a"}:sev>=8?{c:"var(--amber)",h:"#f5a524"}:{c:"var(--alert)",h:"#ff5470"}; }
-function shortOp(o){ return o.replace(" London","").replace("Transport UK London Bus (RATP)","RATP"); }
+function shortOp(o){ return o.replace("Transport UK London Bus","Transport UK").replace(" London",""); }
 function fmtMoney(n){ return n==null ? "—" : "£"+Number(n).toLocaleString("en-GB"); }
 function fmtMoneyShort(n){ if(n==null) return "—"; if(n>=1e6) return "£"+(n/1e6).toFixed(n>=1e7?0:1)+"m"; if(n>=1e3) return "£"+Math.round(n/1e3)+"k"; return "£"+Math.round(n); }
 /* operator network footprint (→ Cohort): routes/PVR/propulsion this operator runs */
@@ -2896,12 +2896,12 @@ function renderContext(){
     const top=fdata.makes&&fdata.makes[0];
     fleetProfileBlock=metricBlock(`Fleet profile <span class="mono" style="color:var(--paper-4)">DVLA</span>`,
       metrics([
-        mcard("Avg age", fdata.avgAgeYears!=null?`${fdata.avgAgeYears}<span class="u">yrs</span>`:"—", `${fdata.enriched} sampled`),
+        mcard("Avg age", fdata.avgAgeYears!=null?`${fdata.avgAgeYears}<span class="u">yrs</span>`:"—", `${fdata.enriched} rostered`),
         mcard("Top make", top?esc(top.make.split(" ")[0]):"—", top?`${top.n} vehicles`:""),
       ])+
       (tot?`<div style="margin-top:12px">`+fleetMixHtml(prop,{heading:false})+`</div>`:"")+
       ((fdata.makes&&fdata.makes.length)?`<div style="margin-top:12px"><div class="metric-h" style="margin-bottom:4px">Make breakdown</div>`+fdata.makes.map(m=>kv(`<span class="kc">${esc(m.make)}</span>`,m.n)).join("")+`</div>`:"")+
-      crossLink(`from live regs (TfL) enriched via DVLA · full fleet &amp; age`));
+      crossLink(`daily roster (TfL live + tracked assignments) enriched via DVLA`));
   }
 
   // live status block: only flag when not a plain good service

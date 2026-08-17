@@ -1491,7 +1491,7 @@ function renderDossier(){
     // Fleet subsection — the LIVE DVLA sample of what's actually rostered, vs the contracted Spec above.
     if(fl && (fl.count||fl.avgAgeYears!=null)){
       var f='';
-      f+=drow('On road', fl.count);
+      f+=drow('Rostered', fl.count);
       if(fl.avgAgeYears!=null) f+=drow('Avg age', fl.avgAgeYears+' yrs');
       // Only surface the zero-emission count when it ADDS to the Propulsion line above (i.e. the live
       // sample shows electric/hydrogen the contracted propulsion doesn't already state). When the route
@@ -1503,7 +1503,7 @@ function renderDossier(){
       // Make = the chassis maker DVLA records for the plates running (e.g. BYD) — complements the Spec
       // body type above (e.g. BYD chassis + ADL Enviro400EV City body = one bus, two facts).
       if(fl.makes&&fl.makes.length) f+=drow('Make', fl.makes.slice(0,2).map(function(mk){return mk.make+' ('+mk.n+')';}).join(', '));
-      if(f) rc+=dsec('Fleet', 'live sample')+f;
+      if(f) rc+=dsec('Fleet', 'daily roster')+f;
     }
 
     // Crowding subsection (TfL BUSTO) — the route's busiest point: peak V/C, busiest stop + time.

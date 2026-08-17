@@ -39,8 +39,8 @@ function parseCsv(text) {
 
 const GROUP_TO_OPERATOR = {
   "arriva": "Arriva London", "go-ahead": "Go-Ahead London", "metroline": "Metroline",
-  "stagecoach": "Stagecoach London", "ratp": "Transport UK London Bus (RATP)",
-  "transport uk": "Transport UK London Bus (RATP)", "first": "First Bus London",
+  "stagecoach": "Stagecoach London", "ratp": "Transport UK London Bus",
+  "transport uk": "Transport UK London Bus", "first": "First Bus London",
   "abellio": "Abellio London", "uno": "Uno", "sullivan": "Sullivan Buses", "hct": "HCT Group",
 };
 function normaliseOperator(group) {

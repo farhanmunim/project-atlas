@@ -20,11 +20,13 @@ import { overrideFor } from "../lib/overrides.js";
 import { reconcilePropulsion } from "../lib/normalize.js";
 import { rowsWithin, notAllNull } from "../lib/validate.js";
 
-function propFromVehicle(v) {
+export function propFromVehicle(v) {
   if (!v) return null;
   const s = v.toLowerCase();
   if (/hydrogen|fuel ?cell|fcev|hydroliner/.test(s)) return "hydrogen";
-  if (/\bbev\b|electric|\bev\b|\bbyd\b|enviro400 ?ev|e40ev|electroliner|e-?bus/.test(s)) return "electric";
+  // e\d{2,3}\s?ev catches ADL's electric range as LBR writes it (E400EV/E200EV, with or
+  // without a space); BZL is Volvo's electric chassis (e.g. "BZL (sd) 10.4m/MCV" — route 314).
+  if (/\bbev\b|electric|\bev\b|\bbyd\b|enviro\d{3} ?ev|e\d{2,3}\s?ev\b|\bbzl\b|electroliner|e-?bus/.test(s)) return "electric";
   if (/\blh\b|hybrid|new bus for london|nbfl|\bh\b|b5lh|e40h|mmc h/.test(s)) return "hybrid";
   return "diesel";
 }

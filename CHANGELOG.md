@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-08-17 — External-audit fix batch: propulsion classifier, fleet roster union, RATP purge, history offset
+
+Fixes driven by Farhan's external audit feedback (Bromley TB staleness, registry
+coverage gaps, Transport UK branding):
+
+- **Propulsion classifier** (build/route-meta.js `propFromVehicle`, now exported +
+  unit-tested): electric regex learns ADL's `E400EV`/`E200EV` spellings and Volvo's
+  `BZL` chassis — fixes routes 314 and SL3, which LBR already described as electric
+  but the classifier read as diesel. Routes whose LBR strings are genuinely stale
+  (61, N171, 4, 365) self-correct via the fleet→reconcilePropulsion path below.
+- **Fleet = daily roster** (build/fleet.js): the overnight live-arrivals sweep now
+  unions yesterday's per-vehicle route assignments from our own public API
+  (`history/vehicle-assignments`, paginated via the new `offset` param) — day-only
+  and school routes (all of Bromley's) get regs, DVLA enrichment, and thereby
+  propulsion reconciliation, despite the 03:17 UTC build time. Labels/docs across
+  `/`, `/v2`, /docs, API.md, README, llms.txt now say "rostered"/"daily roster".
+- **History API pagination**: `offset` (≤100k, PostgREST-native) added to
+  `/api/v1/history/*` in both the prod Function and the serve.js dev mirror +
+  discovery text + docs — enables walking full days of vehicle-assignments.
+- **Transport UK ≠ RATP**: canonical operator renamed "Transport UK London Bus"
+  (was "… (RATP)") in operator-aliases.json, londonbusroutes.js, both apps'
+  colour keys/initials/samples; tenders recomposed offline from the 2,521-award
+  byId cache (raw variants preserved on operatorRaw). "(RATP)" now appears 0
+  times across route-meta/garages/tenders.
+- **Tenders resilience**: index fetch soft-fails — a 403/network failure
+  recomposes byRoute from the append-only award cache instead of aborting.
+- Audit facts verified, not patched: 638/684 are absent from TfL's own Line API
+  ("not recognised") — a TfL network-model scoping fact, not an Atlas data loss;
+  the N18-class observed-electric routes were already corrected by the existing
+  fleet-supermajority reconcile.
+
+test-functions 66/66 (5 new propFromVehicle cases, rename check, VOL helpers).
+
 ## 2026-08-17 — Garage operator licences from the DVSA VOL register (automated)
 
 Farhan asked for automated licensed capacities per garage. The VOL search

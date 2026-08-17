@@ -184,7 +184,7 @@ function liveDiscovery(req) { const origin = `http://${req.headers.host || "loca
     livePositions: { path: "/api/live/vehicles?line=<route>", note: "Real-time bus GPS (BODS SIRI-VM) — separate keyed endpoint." },
     endpoints: Object.entries(LIVE_EP).map(([k, v]) => ({ name: k, path: `/api/v1/live/${k}`, url: `${origin}/api/v1/live/${k}`, description: v.desc, ...(v.retired ? { retired: true } : {}) })) }; }
 function histDiscovery(req) { const origin = `http://${req.headers.host || "localhost:" + PORT}`;
-  return { group: "history", version: "v1", description: "Historical / time-series data from the Atlas Supabase warehouse. Params: route, from, to, reg, year, limit (max 1000), order.",
+  return { group: "history", version: "v1", description: "Historical / time-series data from the Atlas Supabase warehouse. Params: route, from, to, reg, year, limit (max 1000), offset (≤100k), order.",
     endpoints: Object.entries(HIST_EP).map(([k, v]) => ({ name: k, path: `/api/v1/history/${k}`, url: `${origin}/api/v1/history/${k}`, description: v.desc })) }; }
 async function serveLive(req, res, name) {
   const ep = LIVE_EP[name]; if (!ep) return jsonCors(res, 404, { error: "unknown live feed: " + name, available: Object.keys(LIVE_EP) });
@@ -271,6 +271,8 @@ async function serveHistory(req, res, name) {
   const parts = [];
   for (const [param, [col, op]] of Object.entries(ep.filters)) { const v = q.get(param); if (v) parts.push(`${col}=${op}.${encodeURIComponent(v)}`); }
   parts.push(`order=${order}`, `limit=${limit}`);
+  const offset = parseInt(q.get("offset"), 10);
+  if (Number.isFinite(offset) && offset > 0) parts.push(`offset=${Math.min(offset, 100000)}`);   // page past the limit cap (keep `order` stable)
   let warehouseOrigin; try { warehouseOrigin = new URL(base).origin; } catch { return jsonCors(res, 503, { error: "WAREHOUSE_URL is not a valid URL" }); }
   const url = `${warehouseOrigin}/rest/v1/${ep.table}?select=*&${parts.join("&")}`;
   try { const r = await fetch(url, { headers: { apikey: key, Authorization: `Bearer ${key}` } });

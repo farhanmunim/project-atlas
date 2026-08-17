@@ -6,7 +6,7 @@
     { "brand": "Metroline", "aliases": ["metroline travel", "metroline west", "metroline london"] },
     { "brand": "Stagecoach London", "aliases": ["selkent", "east london bus", "east london", "thameside", "stagecoach selkent", "stagecoach east london", "stagecoach"] },
     { "brand": "Abellio London", "aliases": ["abellio", "travel london", "travel london (abellio)"] },
-    { "brand": "Transport UK London Bus (RATP)", "aliases": ["transport uk london bus", "ratp dev transit london", "ratp dev", "ratp", "london united", "london sovereign", "quality line", "nsl", "epsom buses", "tower transit"] },
+    { "brand": "Transport UK London Bus", "aliases": ["transport uk london bus", "ratp dev transit london", "ratp dev", "ratp", "london united", "london sovereign", "quality line", "nsl", "epsom buses", "tower transit"] },
     { "brand": "Uno", "aliases": ["universitybus", "uno buses", "uno"] },
     { "brand": "First Bus London", "aliases": ["first bus london", "first london", "first capital", "first centrewest", "first"] },
     { "brand": "Sullivan Buses", "aliases": ["sullivan buses", "sullivans"] },

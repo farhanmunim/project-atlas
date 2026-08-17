@@ -16,7 +16,8 @@
 - No caller key ever. Server-side keys (BODS/TfL/DVLA/warehouse) never appear in responses.
 - No enforced per-caller rate limit today; edge caches make fast polling pointless:
   current group 5–10 min; live feeds 10–120 s (matches upstream cadence); history limit<=1000 (default 200).
-- Pagination: order=col.asc|col.desc + from/to date filters; no offset param.
+- Pagination: order=col.asc|col.desc + from/to date filters + offset (history group only,
+  capped 100k — keep `order` stable across pages).
 
 ## Route keys — the #1 integration rule
 Three conventions, carried verbatim from upstreams. From GET /api/v1/routes take BOTH:
@@ -62,8 +63,10 @@ Numeric routes ("25") coincide across all three.
   Route/Sequence against a frozen canonical baseline. missedStops = not served now;
   addedStops = temporary; diversionSegments = the real diverted path (per direction).
   route-stops/routes-overview always keep the CANONICAL (pre-diversion) route.
-- fleet is a point-in-time 03:17 UTC sample (night/school routes often empty); the
-  history group accrues the full roster over time.
+- fleet is a DAILY ROSTER: the nightly live-arrivals sweep unioned with yesterday's
+  continuous-tracking vehicle assignments (history/vehicle-assignments), so day-only
+  and school routes are covered even though the build runs overnight; the history
+  group still accrues the long-run roster over time.
 - vehicles enrichment chain: DVLA VES first (make/year/fuel — never overwritten);
   bustimes.org community API fills body (chassis+bodywork type), deck, fleetCode, and
   upgrades DVLA's known hybrid/FCEV fuel misreports (flagged propulsionSource:"bustimes");
