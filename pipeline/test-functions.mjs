@@ -184,6 +184,20 @@ console.log("\nsources/bustimes.js — vehicle record normalisation");
   ok("fleet_number fallback when fleet_code absent", normaliseVehicle({ fleet_number: 123, vehicle_type: {} }).fleetCode === 123);
 }
 
+console.log("\nbuild/route-meta.js — fleet-string propulsion classifier");
+{
+  const { propFromVehicle } = await import("./build/route-meta.js");
+  ok("E400EV reads electric (the SL3 case)", propFromVehicle("E400EV 10.5m") === "electric");
+  ok("Volvo BZL reads electric (the 314 case)", propFromVehicle("BZL (sd) 10.4m/MCV 2D") === "electric");
+  ok("Electroliner reads electric", propFromVehicle("Streetdeck Electroliner 10.5m") === "electric");
+  ok("E40H stays hybrid", propFromVehicle("E40H 10.2m/Enviro400H MMC 2D") === "hybrid");
+  ok("old Tridents stay diesel", propFromVehicle("Trident 10.5m/Enviro400 2D") === "diesel");
+  const { canonicalOperator } = await import("./lib/normalize.js");
+  ok("RATP-era names roll to Transport UK London Bus (no RATP suffix)",
+    canonicalOperator("RATP Dev Transit London") === "Transport UK London Bus" && canonicalOperator("London United") === "Transport UK London Bus",
+    canonicalOperator("RATP Dev Transit London"));
+}
+
 console.log("\nsources/dvsa-vol.js — postcode extraction & licence selection");
 {
   const { extractPostcodes, pickLicence } = await import("./sources/dvsa-vol.js");

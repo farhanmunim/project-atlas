@@ -43,6 +43,34 @@ export async function build(ctx) {
     } catch (e) { byRoute[r.name] = { route: r.name, regs: [], count: 0 }; }
   });
 
+  // 1.5 — union in YESTERDAY'S full-day roster from the continuous tracker
+  // (public API history/vehicle-assignments). The arrivals snapshot above is a
+  // moment-in-time sample taken at build hour (03:17 UTC — day-route depots are
+  // asleep, so e.g. Bromley's routes read empty); the tracker saw every vehicle
+  // all day, nights included, so new batches (LV75/LJ25/SK25…) enter the DVLA
+  // chain the morning after they first run. Soft: a 503/timeout skips the union.
+  const nameSet = new Set(list.map((r) => r.name));
+  let assignRegs = 0, assignPages = 0;
+  try {
+    const apiBase = (process.env.ATLAS_API_BASE ?? "https://atlas.farhan.app/api/v1").replace(/\/+$/, "");
+    const day = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    for (let off = 0; off < 20_000; off += 1000) {   // ~9–10k assignment rows/day
+      const resp = await (await fetch(`${apiBase}/history/vehicle-assignments?from=${day}&to=${day}&limit=1000&offset=${off}&order=registration.asc`)).json();
+      const rows = resp?.rows || [];
+      assignPages++;
+      for (const a of rows) {
+        const reg = String(a.registration || "").replace(/\s+/g, "").toUpperCase();
+        const name = String(a.route_id || "").toUpperCase();
+        if (!reg || !nameSet.has(name)) continue;
+        const b = (byRoute[name] ||= { route: name, regs: [], count: 0 });
+        if (!b.regs.includes(reg)) { b.regs.push(reg); b.count = b.regs.length; assignRegs++; }
+        allRegs.add(reg);
+      }
+      if (rows.length < 1000) break;
+    }
+    log.info(`fleet: tracker roster union — ${assignRegs} regs added across ${assignPages} page(s) (day ${day})`);
+  } catch (e) { log.warn(`fleet: tracker roster unavailable (${e.message}) — arrivals sample only this run`); }
+
   // 2 — DVLA enrichment (cached; no-op without a key).
   const enriched = hasKey();
   let cache = {}, dvla = { looked: 0, deferred: 0, stopped: false };

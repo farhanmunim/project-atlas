@@ -238,6 +238,10 @@ export async function onRequest(context) {
     if (v != null && v !== "") parts.push(`${col}=${op}.${encodeURIComponent(v)}`);
   }
   parts.push(`order=${order}`, `limit=${limit}`);
+  // offset — page past the 1000-row limit cap (PostgREST-native). Capped so a bad
+  // client can't request absurd scans; pair with a stable `order` for correctness.
+  const offset = parseInt(q.get("offset"), 10);
+  if (Number.isFinite(offset) && offset > 0) parts.push(`offset=${Math.min(offset, 100000)}`);
 
   // Use only the origin of WAREHOUSE_URL, so a pasted trailing path/slash (e.g. ".../rest/v1")
   // can't produce a malformed "/rest/v1/rest/v1/..." path (PostgREST PGRST125).

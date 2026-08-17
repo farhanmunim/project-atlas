@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T19:37:54.479Z",
+  "generatedAt": "2026-08-17T20:22:35.765Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -29,7 +29,7 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-08-17T03:17:45.425Z",
+      "fetchedAt": "2026-08-17T20:22:35.765Z",
       "status": "ok",
       "rows": 641,
       "files": [
@@ -51,7 +51,7 @@
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io + DVSA VOL",
-      "fetchedAt": "2026-08-17T19:37:54.479Z",
+      "fetchedAt": "2026-08-17T20:13:32.249Z",
       "status": "ok",
       "rows": 86,
       "files": [
@@ -62,14 +62,14 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-08-16T03:21:37.109Z",
+      "fetchedAt": "2026-08-17T20:16:40.228Z",
       "status": "ok",
       "rows": 641,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "157 routes with vehicles, DVLA-enriched"
+      "note": "535 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache + bustimes.org",
@@ -87,7 +87,7 @@
       "lastError": "GET https://tfl.gov.uk/forms/13923.aspx → HTTP 403",
       "lastAttempt": "2026-08-16T12:12:39.389Z",
       "source": "TfL tender award results (13923/13796.aspx)",
-      "fetchedAt": "2026-08-17T03:17:45.796Z",
+      "fetchedAt": "2026-08-17T20:13:32.798Z",
       "rows": 2521,
       "files": [
         "data/tenders.json"
