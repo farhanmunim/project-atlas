@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T23:17:58.593Z",
+  "generatedAt": "2026-08-18T03:18:02.130Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -19,7 +19,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-17T03:17:48.348Z",
+      "fetchedAt": "2026-08-18T03:18:01.468Z",
       "status": "ok",
       "rows": 676,
       "files": [
@@ -40,14 +40,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-17T03:17:48.849Z",
+      "fetchedAt": "2026-08-18T03:18:02.130Z",
       "status": "ok",
-      "rows": 7818,
+      "rows": 13940,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 641 (641△); route_meta 641 (641△); route_stops 641 (641△); tender 2521 (2521△); garage 86 (86△); fleet 641 (641△); vehicle 700 (700△); line_status 676 (676△); route_geometry 1271 (1271△)"
+      "note": "route 641 (641△); route_meta 676 (676△); route_stops 641 (641△); tender 2521 (2521△); garage 86 (86△); fleet 641 (641△); vehicle 6786 (6786△); line_status 676 (676△); route_geometry 1272 (1272△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io + DVSA VOL",
@@ -97,7 +97,7 @@
     },
     "performance": {
       "source": "TfL Bus Performance (QSI) + per-route MPS PDFs",
-      "fetchedAt": "2026-08-16T03:23:05.327Z",
+      "fetchedAt": "2026-08-18T03:17:57.962Z",
       "status": "ok",
       "rows": 738,
       "files": [
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-17T23:17:58.592Z",
+      "fetchedAt": "2026-08-18T03:17:57.700Z",
       "status": "ok",
-      "rows": 193,
+      "rows": 189,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "17 published geometry · 176 unpublished"
+      "note": "17 published geometry · 172 unpublished"
     }
   }
 }
