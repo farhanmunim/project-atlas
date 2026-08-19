@@ -154,6 +154,23 @@ export async function build(ctx) {
     log.info(`  diversion freeze: ${frozen.size} routes flagged — kept last-good stops for ${keptStops}, geometry for ${keptGeom}; detail written for ${detailKept} unchanged, withheld for ${detailHeld} structurally-changed`);
   }
 
+  // Stop-letter backfill — the flag letter is a property of the PHYSICAL stop,
+  // not the route pattern, so it is safe to share across routes: stops carried
+  // from a pre-letter last-good copy (diversion-frozen or failed-fetch routes)
+  // inherit the letter any freshly-fetched route recorded for the same NaPTAN id.
+  // Fill-only — an existing letter is never overwritten.
+  {
+    const idLetter = {};
+    for (const dirs of Object.values(routeStops))
+      for (const d of ["outbound", "inbound"])
+        for (const st of dirs[d] || []) if (st.letter) idLetter[st.id] = st.letter;
+    let filled = 0;
+    for (const dirs of Object.values(routeStops))
+      for (const d of ["outbound", "inbound"])
+        for (const st of dirs[d] || []) if (!st.letter && idLetter[st.id]) { st.letter = idLetter[st.id]; filled++; }
+    if (filled) log.info(`  stop letters: backfilled ${filled} stops from cross-route copies`);
+  }
+
   notAllNull(features, "geometry", "overview features");
   // ~676 routes × 2 directions → ~1,350 features on a full run; floor well below
   // that catches a partial upstream outage that returned a near-empty FeatureCollection.

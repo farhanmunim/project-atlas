@@ -170,7 +170,10 @@ function parseDetailsBlock(block) {
       route: rte.replace(/\*$/, ""),
       vehicleType: slice(line, cols[C.veh]) || null,
       garage: (slice(line, cols[C.gar]) || "").replace(/\*$/, "") || null,
-      pvr: Number.isFinite(pvr) ? pvr : null,
+      // PVR 0 → null: a running route cannot need zero peak vehicles — LBR prints 0
+      // where a route shares its bus with a paired route (389/399's single Barnet
+      // circular bus); 0 is a wrong value, null is an honest unknown.
+      pvr: Number.isFinite(pvr) && pvr > 0 ? pvr : null,
       lengthKm: Number.isFinite(km) ? km : null,
       contractDate: dates.length > 1 ? dates[dates.length - 1]            // last date = contract spec date
                   : (dates.length === 1 && !seeRef ? dates[0] : null),
