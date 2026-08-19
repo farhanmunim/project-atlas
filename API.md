@@ -46,7 +46,7 @@ The API has **three groups**, all listed in the discovery index:
 |---|---|
 | `GET /api/v1` | Discovery index — service info + every endpoint |
 | `GET /api/v1/routes` | All London bus routes — `[{ id, name, type }]` (`type`: `regular` \| `night` \| `twentyfour` \| `school`) |
-| `GET /api/v1/route-meta` | Per-route metadata keyed by route name — operator, company, propulsion, garage (+ name), PVR, TVR (derived: `floor(pvr × 1.13)` — total incl. engineering float), vehicle spec, route length, contract date |
+| `GET /api/v1/route-meta` | Per-route metadata keyed by route name — operator, company, propulsion, garage (+ name), PVR, TVR (derived: `floor(pvr × 1.13)` — total incl. engineering float), vehicle spec, route length, contract date. A **superset** of `routes` (~676 vs ~641): school-band routes keep their meta while TfL's API delists them outside term time |
 | `GET /api/v1/route-classifications` | Route type classification keyed by route name |
 | `GET /api/v1/route-stops` | Ordered stop sequences per route and direction — `{ routes: { "25": { outbound: [{ id, name, lat, lng, letter, lines }], inbound: […] } } }`. `letter` is the physical stop-flag letter ("A", "B"…, null where unlettered) — disambiguates same-named stops |
 | `GET /api/v1/route-destinations` | Termini per route and direction — `{ routes: { [id]: { name, outbound: { origin, destination }, inbound: {…} } } }`. The lightweight "A → B" label dataset (derived from the canonical, diversion-frozen sequences; either direction may be absent for loop workings) |
