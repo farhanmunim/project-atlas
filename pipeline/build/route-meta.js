@@ -81,7 +81,20 @@ export async function build(ctx) {
   let fleetByRoute = {};
   try { const fl = await sink.readDataset("fleet"); fleetByRoute = (fl && fl.byRoute) || {}; }
   catch { /* no last-good fleet yet — vehicle-type string stands */ }
-  let propUpgrades = 0;
+  // Prefer the vehicles registry's per-route mix over fleet's raw DVLA mix: the
+  // registry carries bustimes' hybrid/FCEV corrections (DVLA reports most hybrids
+  // as plain diesel), so downgrades land on "hybrid" where that's the street truth
+  // (e.g. N7's six E40Hs read diesel in DVLA, hybrid after correction).
+  let mixByRoute = {};
+  try {
+    const veh = await sink.readDataset("vehicles");
+    for (const rec of Object.values(veh?.byReg || {})) {
+      const p = rec.propulsion;
+      if (p !== "electric" && p !== "hydrogen" && p !== "hybrid" && p !== "diesel") continue;
+      for (const rt of rec.routes || []) ((mixByRoute[rt] ||= { electric: 0, hydrogen: 0, hybrid: 0, diesel: 0 })[p]++);
+    }
+  } catch { /* no last-good vehicles yet — fleet mix stands */ }
+  let propUpgrades = 0, propDowngrades = 0;
 
   const meta = {};
   let withOperator = 0, withFleet = 0;
@@ -91,8 +104,15 @@ export async function build(ctx) {
     const [cs, ce] = CONTRACT[rt] || [];
     const ov = overrideFor(rt);
     const metaProp = propFromVehicle(d.vehicleType);
-    const reconProp = reconcilePropulsion(metaProp, (fleetByRoute[rt] || {}).propulsion);
-    if (reconProp !== metaProp) propUpgrades++;
+    // whichever mix carries more evidence wins (vehicles registry is bustimes-
+    // corrected but can lag a fleet rebuild; never trade a rich mix for a thin one)
+    const tot = (m) => (m ? (m.electric || 0) + (m.hydrogen || 0) + (m.hybrid || 0) + (m.diesel || 0) : 0);
+    const vm = mixByRoute[rt], fm = (fleetByRoute[rt] || {}).propulsion;
+    const obsMix = tot(vm) >= tot(fm) ? vm : fm;
+    const reconProp = reconcilePropulsion(metaProp, obsMix);
+    if (reconProp !== metaProp) {
+      if (reconProp === "electric" || reconProp === "hydrogen") propUpgrades++; else propDowngrades++;
+    }
     meta[rt] = {
       type: ov.type || deriveType(rt),         // regular | night | twentyfour | school
       operator: g.operator || null,
@@ -125,6 +145,6 @@ export async function build(ctx) {
   rowsWithin(metaRows, 400, undefined, "route-meta routes");
   notAllNull(metaRows, "operator", "route-meta");
   await sink.writeDataset("route-meta", { generatedAt: new Date().toISOString(), source: "londonbusroutes.net (garages.csv + details.htm)", routes: meta });
-  log.info(`route-meta: ${allRoutes.size} routes · ${withOperator} operator · ${withFleet} fleet · ${propUpgrades} propulsion upgraded from fleet (ZEV)`);
+  log.info(`route-meta: ${allRoutes.size} routes · ${withOperator} operator · ${withFleet} fleet · ${propUpgrades} propulsion upgraded from fleet (ZEV) · ${propDowngrades} downgraded (spec ahead of street)`);
   return { source: "londonbusroutes.net (garages.csv + details.htm)", rows: allRoutes.size, files: ["data/route-meta.json"], note: `${withOperator} operators` };
 }

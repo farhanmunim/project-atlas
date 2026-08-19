@@ -360,6 +360,10 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   gate writes with `lib/validate.js` (`rowsWithin` etc.) so a degraded fetch can't
   overwrite last-good. **`lib/normalize.js`** is the shared cleanup the builders apply so
   the warehouse lands already-clean: `cleanMake` (DVLA ALL-CAPS chassis → tidy brand),
+  `reconcilePropulsion` (two-way: observed roster ≥75% ZEV upgrades a stale
+  diesel spec; ≥6 observed ≤25% ZEV downgrades an over-claiming EV/FCEV spec to
+  the observed majority — electric counts toward hydrogen claims since DVLA
+  reports FCEV as ELECTRICITY, so real hydrogen routes never downgrade),
   `propulsionOf` (fuelType → electric/hybrid/hydrogen/diesel/gas, incl. the DVLA edge
   cases — but DVLA reports most hybrids as plain diesel, so route-meta/londonbusroutes
   stays the hybrid authority), and `canonicalOperator` (+ `operator-aliases.json`) which
