@@ -101,13 +101,11 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
-  <a class="brand" href="/" title="Back to the Atlas app">
+  <a class="brand" href="/docs" title="Atlas API documentation">
     <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="none" stroke="var(--line-2)"/><circle cx="16" cy="16" r="9" fill="none" stroke="var(--amber)" stroke-width="3"/><path d="M4 16h24" stroke="var(--paper)" stroke-width="3"/></svg>
     Atlas <span class="sub">· API documentation</span>
   </a>
   <span class="sp"></span>
-  <a class="tblink" href="/">Map app</a>
-  <a class="tblink" href="/v2">Route Lens</a>
   <a class="tblink" href="/api/v1">GET /api/v1</a>
   <button type="button" class="tblink" id="themeBtn" aria-pressed="false" title="Toggle dark / light theme">◐ theme</button>
 </header>
@@ -154,7 +152,7 @@ ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22
   <h2>History</h2>
   <ul><li><a href="#history">The <span class="mono">/history</span> group</a></li></ul>
   <h2>Appendix</h2>
-  <ul><li><a href="#licensing">Licensing &amp; attribution</a></li></ul>
+  <ul><li><a href="#licensing">Sources, licensing &amp; access</a></li></ul>
 </nav>
 <main id="main">
 <h1>Atlas API — the complete data reference</h1>
@@ -849,18 +847,27 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
   <li><strong>Politeness &amp; resilience</strong>: 30&nbsp;s timeouts and up to 4 retries with jittered exponential backoff honouring <code>Retry-After</code>; conditional requests (ETag/Last-Modified) wherever upstreams support them; bounded concurrency everywhere; per-source rate caps (e.g. 4&nbsp;req/s on TfL's PDF host, ~4.5&nbsp;req/s on DVLA with a hard-stop-and-resume).</li>
 </ul>
 
-<h2 class="sec" id="licensing">Licensing &amp; attribution</h2>
+<h2 class="sec" id="licensing">Upstream sources, licensing &amp; access</h2>
+<p>Every upstream Atlas ingests, with the exact endpoint we fetch, whether it needs a key, and its licence. <strong>Key rule:</strong> where a key is listed it is held <em>server-side only</em> (Cloudflare secret or pipeline environment) and never reaches the browser or this API's responses — <a href="#keys">callers of the Atlas API itself never need any key</a>.</p>
 <div class="tw"><table>
-<thead><tr><th>Source</th><th>Feeds</th><th>Licence / terms</th></tr></thead>
+<thead><tr><th>Source</th><th>Endpoint we use</th><th>Feeds</th><th>Key?</th><th>Licence / terms</th></tr></thead>
 <tbody>
-<tr><td>TfL Unified API, iBus static drops, BUSTO, EPOWR, QSI/MPS reports</td><td>routes, stops, geometry, status, diversions, crowding, bridges, performance, live feeds</td><td>TfL Transport Data Service terms (free with attribution) — <em>Powered by TfL Open Data</em></td></tr>
-<tr><td>DfT — Bus Open Data Service (SIRI-VM), STATS19</td><td>live bus GPS, collisions</td><td>Open Government Licence v3.0</td></tr>
-<tr><td>DVLA Vehicle Enquiry Service</td><td>vehicle make/year/fuel</td><td>OGL; keyed server-side, one lookup per vehicle ever</td></tr>
-<tr><td>OpenStreetMap (Overpass)</td><td>localities</td><td>ODbL — © OpenStreetMap contributors</td></tr>
-<tr><td>postcodes.io</td><td>garage geocoding</td><td>Open (ONS/OS open data)</td></tr>
-<tr><td>londonbusroutes.net</td><td>operators, garages, PVR, vehicle types</td><td>Community reference — scraped politely in-pipeline only, credited; TfL-sourced values are never overwritten by it</td></tr>
+<tr><td><strong>TfL Unified API</strong></td><td><a href="https://api.tfl.gov.uk/" rel="noopener">api.tfl.gov.uk</a> — Line, Route/Sequence, StopPoint, Status, Disruption, Arrivals, Timetable, Road</td><td>routes, route-stops (incl. stop letters), geometry, destinations, line-status, diversions, all <code>/live</code> proxies, warehouse schedules</td><td>Optional — works keyless; <code>TFL_APP_KEY</code> only raises our rate allowance</td><td rowspan="6"><a href="https://tfl.gov.uk/info-for/open-data-users/" rel="noopener">TfL Transport Data Service terms</a> (free with attribution) — <em>Powered by TfL Open Data</em>. Contains OS data © Crown copyright</td></tr>
+<tr><td><strong>TfL iBus schedule drops</strong></td><td><a href="https://ibus.data.tfl.gov.uk/" rel="noopener">ibus.data.tfl.gov.uk</a> — dated fortnightly <code>Route_Geometry_&lt;ver&gt;.zip</code></td><td>diversion-baseline recovery (pre-diversion geometry archive)</td><td>None</td></tr>
+<tr><td><strong>TfL route QSI reports</strong></td><td><a href="https://bus.data.tfl.gov.uk/" rel="noopener">bus.data.tfl.gov.uk</a> — <code>/boroughreports/routes/performance-route-&lt;id&gt;.pdf</code></td><td>route-performance (EWT/OTP vs MPS, % mileage)</td><td>None</td></tr>
+<tr><td><strong>TfL BUSTO crowding</strong></td><td><a href="https://s3-eu-west-1.amazonaws.com/crowding.data.tfl.gov.uk/" rel="noopener">crowding.data.tfl.gov.uk</a> — "MAX DEMAND HOUR BY ROUTE BY TIMEBAND" CSV (~98&nbsp;MB, streamed)</td><td>crowding, crowding-profile</td><td>None</td></tr>
+<tr><td><strong>TfL / OS bridge heights (EPOWR)</strong></td><td><a href="https://roads.data.tfl.gov.uk/BridgesRestrictions/height-restrictions-in-london.xlsx" rel="noopener">roads.data.tfl.gov.uk</a> — height-restrictions XLSX</td><td>bridges (low-bridge layer, diversion risk)</td><td>None</td></tr>
+<tr><td><strong>TfL bus tender results + LBSL programme</strong></td><td><a href="https://tfl.gov.uk/forms/13923.aspx" rel="noopener">tfl.gov.uk/forms/13923.aspx</a> (results index) + per-award PDFs at <code>content.tfl.gov.uk</code> + the annual <a href="https://tfl.gov.uk/corporate/publications-and-reports/" rel="noopener">LBSL tendering-programme PDF</a></td><td>tenders (awards, bid spread, contracted miles, forward programme)</td><td>None</td></tr>
+<tr><td><strong>DfT Bus Open Data Service (BODS)</strong></td><td><a href="https://data.bus-data.dft.gov.uk/" rel="noopener">data.bus-data.dft.gov.uk</a> — SIRI-VM datafeed (whole-London bbox)</td><td><code>/api/live/vehicles</code> (live GPS) + the continuous trip tracker behind lost-mileage, reliability-tracked, vehicle-assignments</td><td><strong>Required</strong> — <code>BODS_API_KEY</code>, server-side only (free <a href="https://data.bus-data.dft.gov.uk/account/signup/" rel="noopener">registration</a>)</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence v3.0</a></td></tr>
+<tr><td><strong>DfT STATS19 road casualty data</strong></td><td><a href="https://data.dft.gov.uk/road-accidents-safety-data/" rel="noopener">data.dft.gov.uk/road-accidents-safety-data</a> — collision + vehicle CSVs per year (streamed)</td><td>accidents (bus/coach-involved collisions + decoded context)</td><td>None</td><td>OGL v3.0</td></tr>
+<tr><td><strong>DVLA Vehicle Enquiry Service</strong></td><td><a href="https://developer-portal.driver-vehicle-licensing.api.gov.uk/apis/vehicle-enquiry-service/vehicle-enquiry-service-description.html" rel="noopener">driver-vehicle-licensing.api.gov.uk</a> — <code>/vehicle-enquiry/v1/vehicles</code></td><td>fleet + vehicles enrichment (make, year, fuel)</td><td><strong>Required</strong> — <code>DVLA_API_KEY</code>, pipeline-only, one lookup per reg ever</td><td>OGL; free key via the DVLA developer portal</td></tr>
+<tr><td><strong>DVSA VOL operator-licence register</strong></td><td><a href="https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/traffic-commissioners-local-bus-service-registration" rel="noopener">data.gov.uk bulk export</a> — London &amp; South East OLBS licence CSV (~weekly)</td><td>garages[].licence (PSV licence, authorised-vehicle ceiling)</td><td>None (the interactive <a href="https://www.gov.uk/find-vehicle-operators" rel="noopener">VOL search</a> is human-only; the bulk CSV is the machine route)</td><td>OGL v3.0</td></tr>
+<tr><td><strong>OpenStreetMap (Overpass)</strong></td><td><a href="https://overpass-api.de/" rel="noopener">overpass-api.de</a> — place=town|suburb nodes, London bbox</td><td>localities (place-name map layer)</td><td>None</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a> — © OpenStreetMap contributors</td></tr>
+<tr><td><strong>postcodes.io</strong></td><td><a href="https://postcodes.io/" rel="noopener">api.postcodes.io</a> — bulk postcode geocoder</td><td>garage coordinates</td><td>None</td><td>Open (ONS/OS open data)</td></tr>
+<tr><td><strong>londonbusroutes.net</strong></td><td><a href="http://www.londonbusroutes.net/" rel="noopener">londonbusroutes.net</a> — <code>garages.csv</code> + <code>details.htm</code></td><td>route-meta (operator, garage, PVR, vehicle spec, contract dates)</td><td>None</td><td>Community reference (Ian Armstrong) — scraped politely in-pipeline only, credited; TfL-sourced values are never overwritten by it</td></tr>
+<tr><td><strong>bustimes.org</strong></td><td><a href="https://bustimes.org/api/vehicles/" rel="noopener">bustimes.org/api/vehicles</a></td><td>vehicles body/deck/fleetCode + hybrid/FCEV fuel corrections</td><td>None (open API; one lookup per reg ever, capped per run)</td><td>Community open data — credited</td></tr>
 </tbody></table></div>
-<p class="small">Respect the upstream licences when reusing this API. Data is provided as-is; the <a href="#manifest">manifest</a> tells you exactly how fresh each dataset is.</p>
+<p class="small">Respect the upstream licences when reusing this API. Data is provided as-is; the <a href="#manifest">manifest</a> tells you exactly how fresh each dataset is. Map tiles in the apps are OpenStreetMap/CARTO (the one allowed CDN dependency) and are not part of the API.</p>
 </main>
 </div>
 <script>
