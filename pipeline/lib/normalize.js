@@ -68,11 +68,22 @@ export function propulsionOf(fuel) {
 // { electric, hydrogen, hybrid, diesel } count.
 export function reconcilePropulsion(metaProp, mix) {
   if (!mix) return metaProp;
-  // Keep an explicit hydrogen claim: DVLA reports fuel-cell (FCEV) buses as ELECTRICITY, so the
-  // fleet can't tell hydrogen from electric — the route-meta spec ("…FCEV") is the authority there.
-  if (metaProp === "hydrogen") return metaProp;
   const e = mix.electric || 0, hy = mix.hydrogen || 0, d = mix.diesel || 0, hb = mix.hybrid || 0;
   const total = e + hy + d + hb;
+  // DOWNGRADE an over-claiming zero-emission spec: LBR's vehicle-type string is the
+  // CONTRACTED fleet, and a route awaiting delivery can run diesel/hybrid loans for
+  // months (audit 2026-08-19: H20/23/200 specced "…EV", N7 "…FCEV", all observed
+  // running diesel/hybrid). With a strong observed roster (≥6 enriched) showing ≤25%
+  // zero-emission, street reality wins: fall back to the observed majority (hybrid
+  // beats diesel on a tie — DVLA under-reports hybrids as diesel, so the observed
+  // hybrid count is a floor). Electric counts TOWARD a hydrogen claim here (DVLA
+  // reports FCEV as ELECTRICITY), so genuinely-hydrogen routes (7's Streetdeck
+  // FCEVs read as "electric" in the registry) never downgrade.
+  if ((metaProp === "electric" || metaProp === "hydrogen") && total >= 6 && (e + hy) / total <= 0.25)
+    return hb >= d ? "hybrid" : "diesel";
+  // Keep a surviving hydrogen claim: the fleet can't tell hydrogen from electric —
+  // the route-meta spec ("…FCEV") is the authority there.
+  if (metaProp === "hydrogen") return metaProp;
   if (total < 4) return metaProp;                 // sample too small to trust
   // Only upgrade on a CLEAR zero-emission supermajority (≥75%) — a bare majority can be a
   // half-electrified route or cross-running noise, where route-meta's hybrid/diesel still holds.

@@ -124,6 +124,13 @@ console.log("\nlib/normalize.js — DVLA/operator canonicalisation");
   ok("reconcilePropulsion: bare majority does NOT upgrade", reconcilePropulsion("diesel", { electric: 5, diesel: 4 }) === "diesel");
   ok("reconcilePropulsion: tiny sample (<4) does NOT upgrade", reconcilePropulsion("diesel", { electric: 3 }) === "diesel");
   ok("reconcilePropulsion: explicit hydrogen claim kept", reconcilePropulsion("hydrogen", { electric: 10 }) === "hydrogen");
+  // downgrade path — an over-claiming ZEV spec vs street reality (audit 2026-08-19)
+  ok("reconcilePropulsion: electric claim vs 6 observed diesel → diesel (H20)", reconcilePropulsion("electric", { diesel: 6 }) === "diesel");
+  ok("reconcilePropulsion: hydrogen claim vs 6 observed hybrid → hybrid (N7)", reconcilePropulsion("hydrogen", { hybrid: 6 }) === "hybrid");
+  ok("reconcilePropulsion: electric claim, 4e/7hb/8d (21% ZEV) → diesel (200)", reconcilePropulsion("electric", { electric: 4, hybrid: 7, diesel: 8 }) === "diesel");
+  ok("reconcilePropulsion: hydrogen claim, 10e/8other (56% ZEV) NOT downgraded (route 7 FCEV-as-electric)", reconcilePropulsion("hydrogen", { electric: 10, diesel: 6, hybrid: 2 }) === "hydrogen");
+  ok("reconcilePropulsion: electric claim, only 5 observed → kept (sample too small)", reconcilePropulsion("electric", { diesel: 5 }) === "electric");
+  ok("reconcilePropulsion: hybrid ties beat diesel on downgrade", reconcilePropulsion("electric", { hybrid: 4, diesel: 4 }) === "hybrid");
 }
 
 console.log("\nsources/ibus.js — zip reader & Route_Geometry parser");

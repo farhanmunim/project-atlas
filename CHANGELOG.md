@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-08-19 — Audit follow-up: propulsion downgrade path; 533 confirmed withdrawn
+
+- **Propulsion downgrades** (reconcilePropulsion, lib/normalize.js): LBR's
+  vehicle-type string is the CONTRACTED fleet — routes awaiting delivery run
+  diesel/hybrid loans for months, so an EV/FCEV spec can over-claim. New guarded
+  downgrade: ≥6 observed vehicles with ≤25% zero-emission overrides an
+  electric/hydrogen claim with the observed majority (hybrid beats diesel on a
+  tie). Electric counts toward hydrogen claims (DVLA reports FCEV as
+  ELECTRICITY) so genuinely-hydrogen routes (7) never downgrade. route-meta now
+  reconciles against the bustimes-corrected vehicles registry (falling back to
+  the raw DVLA fleet mix), so N7's DVLA-diesel E40Hs land "hybrid" correctly.
+  Result: exactly the four audited routes changed — 23 electric→diesel,
+  200 electric→diesel, H20 electric→diesel, N7 hydrogen→hybrid; zero collateral
+  (all 41 upgrades intact). test-functions 72/72 (6 new cases).
+- **Route 533 stays absent — correctly**: withdrawn 15 Aug 2026 after 7 years
+  (the Hammersmith Bridge shuttle, Hammersmith–Castelnau), replaced by the
+  restructured 209. Both TfL's API and LBR have removed it; restoring it would
+  fabricate a dead route.
+- Verified stop letters ARE live in prod (auditor hit a stale edge cache) and
+  that the tracked-reliability fixes are NOT yet running on the VPS — the
+  atlas-ingest container needs a redeploy to pick up the merged code (nightly
+  00:39 run still wrote SWT 24.63/306 deps with old code).
+
 ## 2026-08-17 — Audit batch 2: school routes restored, stop letters, garage corrections, tracked-reliability fixes
 
 Second external-audit batch. Each claim verified before fixing:
