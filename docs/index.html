@@ -349,7 +349,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td class="f">routes · route-stops · route-destinations · routes-overview · route-geometry · route-classifications</td><td>network revisions land within a day</td><td>daily</td><td>conditional requests; per-route failures don't abort the run</td></tr>
 <tr><td class="f">route-diversions</td><td>live status ~30&nbsp;s · sequences on change</td><td>daily full build + intraday diversions-only refresh every ~4&nbsp;h</td><td>sequence diffs only for flagged routes; iBus fetched only when a recovery is needed; a no-change intraday run commits (and deploys) nothing</td></tr>
 <tr><td class="f">route-meta · garages</td><td>daily (londonbusroutes.net) · ~weekly (DVSA VOL licences)</td><td>daily</td><td>geocodes cached; overrides pinned; VOL is one bulk CSV per run</td></tr>
-<tr><td class="f">fleet · vehicles</td><td>continuous (live arrivals) · DVLA static</td><td>daily sample</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
+<tr><td class="f">fleet · vehicles</td><td>live arrivals ∪ tracked assignments · DVLA static</td><td>daily roster</td><td>DVLA per-run cap + 429 backoff; hit/miss cache persists</td></tr>
 <tr><td class="f">tenders</td><td>event-driven awards</td><td>daily incremental</td><td>append-only by tender id — only NEW ids fetched</td></tr>
 <tr><td class="f">route-performance</td><td>~4-weekly (QSI) · quarterly (MPS)</td><td>daily check</td><td>Last-Modified skip makes the daily check ~free</td></tr>
 <tr><td class="f">accidents (STATS19)</td><td>annual</td><td>monthly re-check</td><td>bulk CSV, conditional</td></tr>

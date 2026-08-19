@@ -309,9 +309,17 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   zoom (`drawAccidents`).
 - **Responsive**: ≤820px → simple single-column, page-scrolling layout (route list →
   map → analysis all reachable); map `invalidateSize` on resize.
-- **Atlas data files** (seam-read): routes, route-meta, route-stops, **route-destinations**
+- **Atlas data files** (seam-read): routes, route-meta (a SUPERSET of routes, ~676 vs
+  ~641 — numeric school-band routes with live LBR contracts are kept while TfL's Line
+  API delists them outside term time), route-stops (each stop carries the stop-flag
+  **`letter`** from TfL `stopLetter` — shown as a roundel in `/` popups, "· Stop A" in
+  `/v2` tooltips; disambiguates same-named stops), **route-destinations**
   (termini per direction, derived from the canonical frozen sequences — the "A → B" label
-  dataset), garages, fleet,
+  dataset), garages (curated corrections: `garage-postcodes.json` operating-centre
+  overrides incl. CP/NM, `garage-route-fixes.json` removes CSV-mis-attributed routes,
+  e.g. 86 from LI), fleet (a DAILY ROSTER — the overnight live-arrivals sweep unioned
+  with yesterday's `history/vehicle-assignments` via offset pagination, so day/school
+  routes are covered),
   vehicles, tenders, routes-overview.geojson (simplified ~11 m — the network layer) +
   **route-geometry/<id>.json** (full-fidelity per-route rings, lazy-loaded on selection
   by both apps so drawn lines are road-faithful to TfL; freeze-aware — structurally
@@ -456,10 +464,16 @@ can never block the Cloudflare site.
 - **Live reliability (our own, supplementing TfL's quarterly figures).** EWT =
   AWT − SWT where AWT/SWT = Σ(h²)/(2·Σh) over observed/scheduled headways; OTD =
   % departures 2 min early–5 min late (low-freq); lost mileage = scheduled − operated
-  km. Scheduled side from TfL Timetable (`fetch-schedule.js`); observed side from
-  sampling `/Line/{id}/Arrivals` (`sample-headways.js`). Accuracy improves as
-  samples accrue and is bounded by sampling frequency — it's an estimate, labelled
-  as such; TfL's published `route_performance` remains the authoritative quarterly.
+  km. Scheduled side from TfL Timetable (`fetch-schedule.js` — departures come from
+  the SINGLE most representative schedule per day-type via `_lib/schedule-pick.js`,
+  never a concatenation: TfL's separate "Mon–Thu" + "Friday" schedules both classify
+  weekday and concatenating them doubled every departure, audit 2026-08-17); observed
+  side from sampling `/Line/{id}/Arrivals` (`sample-headways.js`). The tracked core
+  (`_lib/reliability-tracked.js`) treats scheduled gaps ≥90 min (`SERVICE_BREAK_MIN`)
+  as service breaks for both series — the overnight gap is never a waiting headway.
+  Accuracy improves as samples accrue and is bounded by sampling frequency — it's an
+  estimate, labelled as such; TfL's published `route_performance` remains the
+  authoritative quarterly.
 - **Secrets:** `WAREHOUSE_URL`, `WAREHOUSE_SERVICE_KEY` (the service_role-equivalent
   JWT, signed with the PostgREST instance's own `PGRST_JWT_SECRET`), `DVLA_API_KEY`,
   `BODS_API_KEY` (the SIRI-VM collector — same key as the Cloudflare Pages secret),

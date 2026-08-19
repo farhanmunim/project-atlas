@@ -83,6 +83,9 @@ Numeric routes ("25") coincide across all three.
   trips our continuous BODS trip-tracking never saw run (lost_pct; feed outages excluded as
   unmeasured, never lost; confidence high|medium|low). No in-/out-of-control split — never
   comparable to TfL's contractual lost-mileage deductions.
+- history/reliability-tracked rows written before 2026-08-17 over-read (doubled
+  scheduled departures + the overnight break counted as a headway — both fixed);
+  filter confidence=high and prefer rows from 2026-08-18 onward.
 - history/reliability-tracked is Atlas's TRACKED EWT/OTD (v2) — EXPERIMENTAL: complete
   observed headways from the same continuous tracking (EWT = AWT − SWT, Σh²/2Σh; OTD
   −2…+5 min, non-arrivals counted). Prefer it over reliability-daily's sampled figures
