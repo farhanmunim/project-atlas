@@ -318,8 +318,8 @@ What exists in `index.html` today — don't rebuild it, and keep it working:
   dataset), garages (curated corrections: `garage-postcodes.json` operating-centre
   overrides incl. CP/NM, `garage-route-fixes.json` removes CSV-mis-attributed routes,
   e.g. 86 from LI), fleet (a DAILY ROSTER — the overnight live-arrivals sweep unioned
-  with yesterday's `history/vehicle-assignments` via offset pagination, so day/school
-  routes are covered),
+  with the last 3 tracked days' `history/vehicle-assignments` via offset pagination,
+  so day/school routes are covered and one-day feed outages can't blank a route),
   vehicles, tenders, routes-overview.geojson (simplified ~11 m — the network layer) +
   **route-geometry/<id>.json** (full-fidelity per-route rings, lazy-loaded on selection
   by both apps so drawn lines are road-faithful to TfL; freeze-aware — structurally

@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-08-19T21:26:02.508Z",
+  "generatedAt": "2026-08-19T22:57:43.857Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
-      "fetchedAt": "2026-08-19T03:20:32.865Z",
+      "fetchedAt": "2026-08-19T22:53:58.646Z",
       "status": "ok",
-      "rows": 641,
+      "rows": 642,
       "files": [
         "data/routes.json",
         "data/route-classifications.json",
@@ -15,7 +15,7 @@
         "data/route-stops.json"
       ],
       "cadence": "daily",
-      "note": "detailed geometry for 616 routes"
+      "note": "detailed geometry for 615 routes"
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
@@ -29,9 +29,9 @@
     },
     "route-meta": {
       "source": "londonbusroutes.net (garages.csv + details.htm)",
-      "fetchedAt": "2026-08-19T21:26:02.507Z",
+      "fetchedAt": "2026-08-19T22:54:16.198Z",
       "status": "ok",
-      "rows": 676,
+      "rows": 677,
       "files": [
         "data/route-meta.json"
       ],
@@ -62,25 +62,25 @@
     },
     "fleet": {
       "source": "TfL Line Arrivals + DVLA VES",
-      "fetchedAt": "2026-08-19T03:22:03.598Z",
+      "fetchedAt": "2026-08-19T22:55:37.177Z",
       "status": "ok",
-      "rows": 641,
+      "rows": 642,
       "files": [
         "data/fleet.json"
       ],
       "cadence": "daily · TfL Line Arrivals (+ DVLA VES when keyed)",
-      "note": "604 routes with vehicles, DVLA-enriched"
+      "note": "608 routes with vehicles, DVLA-enriched"
     },
     "vehicles": {
       "source": "fleet (inverted) + DVLA cache + bustimes.org",
-      "fetchedAt": "2026-08-19T03:23:31.963Z",
+      "fetchedAt": "2026-08-19T22:57:43.857Z",
       "status": "ok",
-      "rows": 7202,
+      "rows": 7986,
       "files": [
         "data/vehicles.json"
       ],
       "cadence": "daily · fleet (inverted) + bustimes.org body enrichment (capped)",
-      "note": "1794 multi-route · 1777 with body"
+      "note": "4837 multi-route · 2167 with body"
     },
     "tenders": {
       "status": "ok",

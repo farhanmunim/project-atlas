@@ -68,10 +68,11 @@ Numeric routes ("25") coincide across all three.
   Route/Sequence against a frozen canonical baseline. missedStops = not served now;
   addedStops = temporary; diversionSegments = the real diverted path (per direction).
   route-stops/routes-overview always keep the CANONICAL (pre-diversion) route.
-- fleet is a DAILY ROSTER: the nightly live-arrivals sweep unioned with yesterday's
-  continuous-tracking vehicle assignments (history/vehicle-assignments), so day-only
-  and school routes are covered even though the build runs overnight; the history
-  group still accrues the long-run roster over time.
+- fleet is a DAILY ROSTER: the nightly live-arrivals sweep unioned with the last
+  three tracked days' vehicle assignments (history/vehicle-assignments), so
+  day-only and school routes are covered despite the overnight build and a
+  one-day feed outage can't blank a route; the history group still accrues the
+  long-run roster over time.
 - vehicles enrichment chain: DVLA VES first (make/year/fuel — never overwritten);
   bustimes.org community API fills body (chassis+bodywork type), deck, fleetCode, and
   upgrades DVLA's known hybrid/FCEV fuel misreports (flagged propulsionSource:"bustimes");

@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-08-19 — Gap-sweep fixes: letter backfill, 3-day roster union, PVR-0 honesty
+
+From the external programmatic gap sweep:
+
+- **Stop-letter backfill** (build/routes.js): the flag letter is a property of the
+  physical stop, so bare stops (diversion-frozen or failed-fetch routes serving
+  pre-letter last-good copies) now inherit the letter any freshly-fetched route
+  recorded for the same NaPTAN id — fill-only, never overwrites. First run filled
+  9,215 stops; zero unlettered routes and zero fillable gaps remain.
+- **Fleet roster: 3-day union** (build/fleet.js): the assignments union now spans
+  the last three tracked days, not just yesterday — a one-day operator feed
+  outage (67/191/377/W6 had zero Aug-18 rows) can no longer blank a route's
+  roster. Fleet: 7,986 regs, 608/642 routes with vehicles; remaining 34 empties
+  are school routes that aren't running in the holidays.
+- **PVR 0 → null** (sources/londonbusroutes.js): LBR prints PVR 0 where a route
+  shares its bus with a paired route (389/399's single Barnet circular bus) —
+  0 is a wrong value, null is an honest unknown; TVR follows.
+- Verified-not-fixable (upstream absences, documented): 969/R10 PVR (absent from
+  LBR AND the tender awards), 493 fleet string (LBR), tenders for 378/N118/SCS
+  (absent from all 2,521 published TfL awards — N118 runs under a different
+  operator than 118, so not bundled; SCS is a direct award), crowding for 34
+  school routes + N118/N472/SCS/SL11 (all newer than the BUSTO year), garage
+  PVR/capacity for out-of-area depots with no TfL allocations (Byfleet,
+  Purfleet, Slough, Crawley… — derivation from route allocations gives 0).
+
 ## 2026-08-19 — Audit follow-up: propulsion downgrade path; 533 confirmed withdrawn
 
 - **Propulsion downgrades** (reconcilePropulsion, lib/normalize.js): LBR's

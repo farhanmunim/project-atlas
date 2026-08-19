@@ -53,9 +53,13 @@ export async function build(ctx) {
   let assignRegs = 0, assignPages = 0;
   try {
     const apiBase = (process.env.ATLAS_API_BASE ?? "https://atlas.farhan.app/api/v1").replace(/\/+$/, "");
-    const day = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-    for (let off = 0; off < 20_000; off += 1000) {   // ~9–10k assignment rows/day
-      const resp = await (await fetch(`${apiBase}/history/vehicle-assignments?from=${day}&to=${day}&limit=1000&offset=${off}&order=registration.asc`)).json();
+    // Union the last THREE tracked days, not just yesterday: a one-day operator
+    // feed outage (audited 2026-08-19: 67/191/377/W6 had zero Aug-18 rows while
+    // 25 had three) would otherwise blank those routes' rosters for a day.
+    const from = new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
+    const to = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    for (let off = 0; off < 60_000; off += 1000) {   // ~9–10k assignment rows/day × 3
+      const resp = await (await fetch(`${apiBase}/history/vehicle-assignments?from=${from}&to=${to}&limit=1000&offset=${off}&order=registration.asc`)).json();
       const rows = resp?.rows || [];
       assignPages++;
       for (const a of rows) {
@@ -68,7 +72,7 @@ export async function build(ctx) {
       }
       if (rows.length < 1000) break;
     }
-    log.info(`fleet: tracker roster union — ${assignRegs} regs added across ${assignPages} page(s) (day ${day})`);
+    log.info(`fleet: tracker roster union — ${assignRegs} regs added across ${assignPages} page(s) (${from}…${to})`);
   } catch (e) { log.warn(`fleet: tracker roster unavailable (${e.message}) — arrivals sample only this run`); }
 
   // 2 — DVLA enrichment (cached; no-op without a key).
