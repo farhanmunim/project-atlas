@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T03:23:48.977Z",
+  "generatedAt": "2026-08-21T07:18:28.173Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-21T03:18:11.389Z",
+      "fetchedAt": "2026-08-21T07:18:28.173Z",
       "status": "ok",
-      "rows": 181,
+      "rows": 168,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "16 published geometry · 165 unpublished"
+      "note": "16 published geometry · 152 unpublished"
     }
   }
 }
