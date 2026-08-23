@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T07:18:40.806Z",
+  "generatedAt": "2026-08-23T11:18:13.100Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -152,7 +152,7 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-23T07:18:40.806Z",
+      "fetchedAt": "2026-08-23T11:18:13.100Z",
       "status": "ok",
       "rows": 166,
       "files": [
