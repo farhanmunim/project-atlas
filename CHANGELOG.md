@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-08-20 — Road-data source audit: STATS19 2025, OSM bridge cross-check
+
+Farhan asked whether the accidents / roadworks / incidents / low-bridges sources
+are the best available open sources. Audit findings + actions:
+
+- **Accidents (STATS19)**: the full validated 2025 collision + vehicle files were
+  live upstream while our year window stopped at 2024 — a whole year missed.
+  YEARS now leads with 2026 (404s harmlessly until published, so future years
+  arrive the day DfT ships them). Rebuilt: 7,507 collisions, 2021–2025 (1,464
+  from 2025). STATS19 remains the only collision-level open source; TfL's Bus
+  Safety quarterly dashboard is a candidate complement but tfl.gov.uk 403s this
+  environment so it could not be validated — parked, not implemented.
+- **Low bridges**: the EPOWR workbook's upstream Last-Modified is Oct 2019 — the
+  "annual" refresh never happened. New `sources/osm-maxheight.js` (Overpass,
+  POST + UA + Kumi mirror fallback, drivable-public-road classes only, segments
+  clustered per physical bridge, metres+imperial parsed, unit-tested 7 cases):
+  every EPOWR structure gets the nearest OSM reading within 75 m attached
+  (osmHeightM/osmDeltaM), and OSM-only restrictions ≤4.5 m are appended as
+  src:"osm" records — 516 cross-checked, 159 added (Rotherhithe Tunnel 2.0 m,
+  Inner Temple 3.4 m…), 877 → ~1,036 structures. Enrichment is soft (Overpass
+  down → EPOWR base stands); OSM_MAXHEIGHT_FILE env = dev fixture.
+- **Roadworks / live incidents**: TfL Road Disruptions stays the right source
+  (126 live rows, 121 works, at audit time). DfT Street Manager evaluated and
+  rejected for now: registration-gated JWT API (not open), England-wide payload
+  for marginal London gain over TfL's feed.
+
 ## 2026-08-19 — Gap-sweep fixes: letter backfill, 3-day roster union, PVR-0 honesty
 
 From the external programmatic gap sweep:

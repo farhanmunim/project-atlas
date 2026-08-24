@@ -892,7 +892,7 @@ gated, PDF-only) — see the note.
 #### Bridge clearances & strike avoidance
 - **TfL/OS London Bridge Height Restrictions** 🟢 🔵 annual — 877 low bridges (CSV). Primary London source. ⚠️ Datastore landing JS-rendered; CSV downloads directly. https://data.london.gov.uk/dataset/bridges-tunnels-road-barriers-height-restrictions-epowr/
 - **Network Rail Bridge Strike Data** 🟢 🟡 — 5,000+ rail bridges + strike frequency. https://www.networkrail.co.uk/.../prevention-of-bridge-strikes/
-- **OpenStreetMap maxheight** 🟢 🟡 — crowd-sourced clearance tags (incomplete). https://wiki.openstreetmap.org/wiki/Bridge_heights_in_the_United_Kingdom
+- **OpenStreetMap maxheight** 🟢 🟡 — crowd-sourced clearance tags. **Wired in (2026-08 source audit):** `sources/osm-maxheight.js` cross-checks every EPOWR structure (whose upstream workbook has been frozen since 2019) and tops up OSM-only restrictions ≤4.5 m on drivable public roads — soft, EPOWR base stands alone on Overpass failure. https://wiki.openstreetmap.org/wiki/Bridge_heights_in_the_United_Kingdom
 - **Low Clearance Map** 🟠 🟡 — commercial clearance dataset + routing API. https://lowclearancemap.com/
 
 #### PCN enforcement & camera locations

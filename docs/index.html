@@ -660,7 +660,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
   <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/accidents</div></div>
   <div class="mg"><div class="k">Source</div><div class="v">DfT STATS19 (collision + vehicle tables)</div></div>
   <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, sample, period, count, bbox, accidents[] }</div></div>
-  <div class="mg"><div class="k">Rows</div><div class="v">~7,100 · 2020–2024 (cap 12,000)</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~8,000 · 2020–2025 (cap 12,000)</div></div>
 </div>
 <p>Bus/coach-involved road collisions in Greater London from the national STATS19 casualty statistics. Two CSV tables per year are <em>streamed</em> (never buffered — 100k+ rows/year): the vehicle table first, collecting collision ids where a bus, coach or minibus was involved (vehicle types 10/11), then the collision table filtered to those ids, to finite coordinates inside the London bounding box, and to a decodable severity. All coded attributes are decoded to human labels; an unknown code becomes <code>null</code>, never a wrong label (e.g. the historic junction column is preferred because the newer one uses an incompatible code set).</p>
 <div class="tw"><table>
@@ -680,11 +680,11 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <h2 class="sec" id="bridges">bridges <span class="pill green">reference</span> <span class="pill">monthly check · annual data</span></h2>
 <div class="meta-grid">
   <div class="mg"><div class="k">Endpoint</div><div class="v">GET /api/v1/bridges</div></div>
-  <div class="mg"><div class="k">Source</div><div class="v">TfL EPOWR via London Datastore (xlsx)</div></div>
+  <div class="mg"><div class="k">Source</div><div class="v">TfL EPOWR (xlsx) + OSM maxheight (Overpass)</div></div>
   <div class="mg"><div class="k">Shape</div><div class="v">{ generatedAt, sample, count, bbox, bridges[] }</div></div>
-  <div class="mg"><div class="k">Rows</div><div class="v">877 structures (floor 50)</div></div>
+  <div class="mg"><div class="k">Rows</div><div class="v">~1,030 structures (floor 50)</div></div>
 </div>
-<p>Every height-restricted structure in London — the low-bridge layer and the double-deck diversion-risk input. The workbook is discovered through the Datastore's dataset API (the landing page is JS-rendered) with a pinned TfL fallback URL, and parsed with a dependency-free xlsx reader. <strong>The safety-critical rule:</strong> published heights are bands ("Between 4.6 and 5.1"); we always normalise to the band's <em>lower</em> bound — the guaranteed clearance, never an optimistic one. Imperial values (<code>9'10"</code>) are converted exactly (ft + in/12 × 0.3048).</p>
+<p>Every height-restricted structure in London — the low-bridge layer and the double-deck diversion-risk input. The workbook is discovered through the Datastore's dataset API (the landing page is JS-rendered) with a pinned TfL fallback URL, and parsed with a dependency-free xlsx reader. <strong>The safety-critical rule:</strong> published heights are bands ("Between 4.6 and 5.1"); we always normalise to the band's <em>lower</em> bound — the guaranteed clearance, never an optimistic one. Imperial values (<code>9'10"</code>) are converted exactly (ft + in/12 × 0.3048). <strong>OSM cross-check (added 2026-08 — source-freshness audit):</strong> the EPOWR workbook has not been refreshed upstream since 2019, so each structure is cross-checked against OpenStreetMap's live-maintained <code>maxheight</code> tags (drivable public roads only — car-park barriers and service roads are excluded), and OSM restrictions ≤&nbsp;4.5&nbsp;m with no EPOWR structure within 75&nbsp;m are appended as <code>src:"osm"</code> records (e.g. the Rotherhithe Tunnel's 2.0&nbsp;m limit). Overpass failing never blocks the build — the EPOWR base stands alone.</p>
 <div class="tw"><table>
 <thead><tr><th>Field</th><th>Type</th><th>Meaning</th><th>Source &amp; processing</th></tr></thead>
 <tbody>
@@ -695,8 +695,11 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td class="f">name / road</td><td class="t">string|null</td><td>Structure / road name</td><td>EPOWR</td></tr>
 <tr><td class="f">structure_type</td><td class="t">string</td><td><code>bridge</code> · <code>tunnel</code> · <code>barrier</code></td><td>classified from road + comments text</td></tr>
 <tr><td class="f">borough</td><td class="t">string|null</td><td>Borough name</td><td>EPOWR</td></tr>
+<tr><td class="f">osmHeightM</td><td class="t">number?</td><td>OSM's signed clearance for the same structure (nearest <code>maxheight</code> within 75&nbsp;m)</td><td>OSM Overpass, metres/imperial parsed; segments clustered per physical bridge</td></tr>
+<tr><td class="f">osmDeltaM</td><td class="t">number?</td><td>osmHeightM − height_m — a signage-vs-band discrepancy signal (±0.3&nbsp;m is normal band-vs-exact difference)</td><td>derived</td></tr>
+<tr><td class="f">src</td><td class="t">"osm"?</td><td>Present on records contributed by OSM (no EPOWR structure within 75&nbsp;m; restriction ≤&nbsp;4.5&nbsp;m)</td><td>OSM top-up</td></tr>
 </tbody></table></div>
-<p class="small">Same three-tier fallback as <code>accidents</code> (live ≥50 → last-good live → labelled sample).</p>
+<p class="small">Same three-tier fallback as <code>accidents</code> (live ≥50 → last-good live → labelled sample); the OSM enrichment is additionally soft — its failure leaves the EPOWR base intact.</p>
 
 <h2 class="sec" id="crowding">crowding <span class="pill cyan">official stats</span> <span class="pill">monthly check · annual data</span></h2>
 <div class="meta-grid">
@@ -862,7 +865,7 @@ every 25s  continuous BODS vehicle tracker (trip state machine) → daily trip l
 <tr><td><strong>DfT STATS19 road casualty data</strong></td><td><a href="https://data.dft.gov.uk/road-accidents-safety-data/" rel="noopener">data.dft.gov.uk/road-accidents-safety-data</a> — collision + vehicle CSVs per year (streamed)</td><td>accidents (bus/coach-involved collisions + decoded context)</td><td>None</td><td>OGL v3.0</td></tr>
 <tr><td><strong>DVLA Vehicle Enquiry Service</strong></td><td><a href="https://developer-portal.driver-vehicle-licensing.api.gov.uk/apis/vehicle-enquiry-service/vehicle-enquiry-service-description.html" rel="noopener">driver-vehicle-licensing.api.gov.uk</a> — <code>/vehicle-enquiry/v1/vehicles</code></td><td>fleet + vehicles enrichment (make, year, fuel)</td><td><strong>Required</strong> — <code>DVLA_API_KEY</code>, pipeline-only, one lookup per reg ever</td><td>OGL; free key via the DVLA developer portal</td></tr>
 <tr><td><strong>DVSA VOL operator-licence register</strong></td><td><a href="https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/traffic-commissioners-local-bus-service-registration" rel="noopener">data.gov.uk bulk export</a> — London &amp; South East OLBS licence CSV (~weekly)</td><td>garages[].licence (PSV licence, authorised-vehicle ceiling)</td><td>None (the interactive <a href="https://www.gov.uk/find-vehicle-operators" rel="noopener">VOL search</a> is human-only; the bulk CSV is the machine route)</td><td>OGL v3.0</td></tr>
-<tr><td><strong>OpenStreetMap (Overpass)</strong></td><td><a href="https://overpass-api.de/" rel="noopener">overpass-api.de</a> — place=town|suburb nodes, London bbox</td><td>localities (place-name map layer)</td><td>None</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a> — © OpenStreetMap contributors</td></tr>
+<tr><td><strong>OpenStreetMap (Overpass)</strong></td><td><a href="https://overpass-api.de/" rel="noopener">overpass-api.de</a> (Kumi Systems mirror fallback) — place=town|suburb nodes + <code>maxheight</code>-tagged roads, London bbox</td><td>localities (place-name layer) · bridges (live cross-check + top-up of the 2019-frozen EPOWR workbook)</td><td>None</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a> — © OpenStreetMap contributors</td></tr>
 <tr><td><strong>postcodes.io</strong></td><td><a href="https://postcodes.io/" rel="noopener">api.postcodes.io</a> — bulk postcode geocoder</td><td>garage coordinates</td><td>None</td><td>Open (ONS/OS open data)</td></tr>
 <tr><td><strong>londonbusroutes.net</strong></td><td><a href="http://www.londonbusroutes.net/" rel="noopener">londonbusroutes.net</a> — <code>garages.csv</code> + <code>details.htm</code></td><td>route-meta (operator, garage, PVR, vehicle spec, contract dates)</td><td>None</td><td>Community reference (Ian Armstrong) — scraped politely in-pipeline only, credited; TfL-sourced values are never overwritten by it</td></tr>
 <tr><td><strong>bustimes.org</strong></td><td><a href="https://bustimes.org/api/vehicles/" rel="noopener">bustimes.org/api/vehicles</a></td><td>vehicles body/deck/fleetCode + hybrid/FCEV fuel corrections</td><td>None (open API; one lookup per reg ever, capped per run)</td><td>Community open data — credited</td></tr>
