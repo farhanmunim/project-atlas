@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-23T23:18:14.327Z",
+  "generatedAt": "2026-08-24T03:18:13.938Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -19,7 +19,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-23T03:24:26.936Z",
+      "fetchedAt": "2026-08-24T03:18:13.305Z",
       "status": "ok",
       "rows": 675,
       "files": [
@@ -40,7 +40,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-23T03:24:30.323Z",
+      "fetchedAt": "2026-08-24T03:18:13.938Z",
       "status": "ok",
       "rows": 15212,
       "files": [
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-23T23:18:14.327Z",
+      "fetchedAt": "2026-08-24T03:18:13.129Z",
       "status": "ok",
-      "rows": 157,
+      "rows": 150,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "14 published geometry · 143 unpublished"
+      "note": "14 published geometry · 136 unpublished"
     }
   }
 }
