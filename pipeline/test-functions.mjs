@@ -17,6 +17,7 @@ import { distToLineM, deviatingSegments } from "./build/diversions.js";
 import { lengthKm, simplify, round } from "./lib/geo.js";
 import { cleanMake, propulsionOf, canonicalOperator, reconcilePropulsion } from "./lib/normalize.js";
 import { zipEntries, parseRouteGeometry } from "./sources/ibus.js";
+import { parseMaxheight } from "./sources/osm-maxheight.js";
 import { normaliseVehicle } from "./sources/bustimes.js";
 import { deflateRawSync, crc32 } from "node:zlib";
 
@@ -131,6 +132,17 @@ console.log("\nlib/normalize.js — DVLA/operator canonicalisation");
   ok("reconcilePropulsion: hydrogen claim, 10e/8other (56% ZEV) NOT downgraded (route 7 FCEV-as-electric)", reconcilePropulsion("hydrogen", { electric: 10, diesel: 6, hybrid: 2 }) === "hydrogen");
   ok("reconcilePropulsion: electric claim, only 5 observed → kept (sample too small)", reconcilePropulsion("electric", { diesel: 5 }) === "electric");
   ok("reconcilePropulsion: hybrid ties beat diesel on downgrade", reconcilePropulsion("electric", { hybrid: 4, diesel: 4 }) === "hybrid");
+}
+
+console.log("\nsources/osm-maxheight.js — maxheight tag parser");
+{
+  ok('metres plain: "4.1" → 4.1', parseMaxheight("4.1") === 4.1);
+  ok('metres suffixed: "4.1 m" → 4.1', parseMaxheight("4.1 m") === 4.1);
+  ok(`imperial: "13'6\\"" → 4.11`, parseMaxheight(`13'6"`) === 4.11);
+  ok('imperial ft-only: "14ft" → 4.27', parseMaxheight("14ft") === 4.27);
+  ok('"default" → null', parseMaxheight("default") === null);
+  ok('junk → null', parseMaxheight("below_default") === null);
+  ok('implausible (0.4) → null', parseMaxheight("0.4") === null);
 }
 
 console.log("\nsources/ibus.js — zip reader & Route_Geometry parser");

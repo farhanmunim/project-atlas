@@ -17,6 +17,7 @@
  */
 
 import { fetchLondonBridges, LONDON_BBOX } from "../sources/london-bridges.js";
+import { fetchMaxheights, distM } from "../sources/osm-maxheight.js";
 import { rowsWithin } from "../lib/validate.js";
 
 const SAMPLE_SOURCE = "sample — synthetic (EPOWR ingest pending)";
@@ -56,6 +57,48 @@ export async function build(ctx) {
     const bridges = synthSample();
     data = finalise(bridges, { source: SAMPLE_SOURCE, sample: true });
     log.info(`bridges: wrote synthetic sample (${bridges.length} rows)`);
+  }
+
+  // ── 3. OSM maxheight cross-check + top-up (soft) ────────────────────────────
+  // The EPOWR workbook hasn't been refreshed upstream since 2019 (Last-Modified
+  // audited 2026-08-19), while OSM's maxheight tags are live-maintained. Each
+  // EPOWR structure gets the nearest OSM reading within 75 m attached
+  // (osmHeightM + osmDeltaM = osm − epowr, a signage-change signal); OSM
+  // restrictions ≤ 4.5 m with NO EPOWR structure within 75 m are appended as
+  // src:"osm" records so newer low bridges aren't invisible. Overpass failing
+  // never blocks the build — the EPOWR base stands alone.
+  if (!data.sample) {
+    try {
+      const osm = await fetchMaxheights({ log });
+      let matched = 0, added = 0;
+      for (const b of data.bridges) {
+        let best = null, bestD = 75;
+        for (const o of osm) { const d = distM(b.lat, b.lng, o.lat, o.lng); if (d < bestD) { bestD = d; best = o; } }
+        if (best) {
+          b.osmHeightM = best.heightM;
+          if (typeof b.height_m === "number") b.osmDeltaM = +(best.heightM - b.height_m).toFixed(2);
+          matched++;
+        }
+      }
+      for (const o of osm) {
+        if (o.heightM > 4.5) continue;                       // top-up only the double-deck-relevant band
+        let near = false;
+        for (const b of data.bridges) if (distM(b.lat, b.lng, o.lat, o.lng) < 75) { near = true; break; }
+        if (near) continue;
+        data.bridges.push({
+          id: `osm-${o.lat.toFixed(5)}_${o.lng.toFixed(5)}`, lat: +o.lat.toFixed(6), lng: +o.lng.toFixed(6),
+          height_m: o.heightM, height_imperial: null,
+          name: o.name || (o.ref ? `Bridge ${o.ref}` : "Height restriction (OSM)"),
+          road: null, structure_type: null, borough: null, src: "osm",
+        });
+        added++;
+      }
+      data.count = data.bridges.length;
+      data.source += " + OSM maxheight cross-check (ODbL)";
+      log.info(`bridges: OSM maxheight — ${osm.length} restrictions pulled · ${matched} EPOWR structures cross-checked · ${added} OSM-only low bridges added`);
+    } catch (e) {
+      log.warn(`bridges: OSM maxheight enrichment failed (${e.message}) — EPOWR base stands alone this run`);
+    }
   }
 
   // Gate: sample floors low (1), live floors high. A cratered pull throws → last-good kept.
