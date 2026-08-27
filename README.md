@@ -1,12 +1,20 @@
-# Atlas — London Bus Network
+# Atlas — London Bus Network API
 
-An interactive map + analytics deep-dive for the London bus network, served as a single
-self-contained `index.html`. Toggleable map layers (route lines · garages · stops · live
-buses · collisions · low bridges) and one unified context panel (route info · network
-analysis · live operations · fleet · tenders · risk & accidents).
+An open, keyless, CORS-enabled API for the London bus network: routes, stops,
+road-faithful geometry, garages, fleet, vehicles, tenders, reliability, crowding,
+collisions, low bridges, live diversions and real-time feeds — refreshed daily
+from the primary sources. Served as a static Cloudflare Pages site (no build
+step); all data flows through our own warehouse pipeline.
 
-The site is a static Cloudflare Pages app (no build step). All data flows through our own
-warehouse pipeline and is served from our own public API.
+**Atlas is API-only** (decision 2026-08-27 — the map front-ends were removed;
+they live in git history before that date). The two pages that remain, and the
+canonical documentation for everything here:
+
+- **[/docs](https://atlas.farhan.app/docs)** — the complete field-level API
+  reference: every dataset, every field, source, processing, validation, cadence.
+- **[/docs/replicate](https://atlas.farhan.app/docs/replicate)** — the
+  replication guide: how to run this whole data platform on free GitHub +
+  GitHub Actions, plugging directly into the primary sources.
 
 ## Local development
 
@@ -14,8 +22,9 @@ warehouse pipeline and is served from our own public API.
 node pipeline/serve.js        # dev server on http://localhost:8000
 ```
 
-`serve.js` serves `index.html`, the `/api/v1/*` data API (from the warehouse DB, falling
-back to `data/*.json`), and the live-positions route. Use a fixed port per session.
+`serve.js` serves the API landing page, `/docs` + `/docs/replicate`, the `/api/v1/*`
+data API (from the warehouse DB, falling back to `data/*.json`), and the
+live-positions route. Use a fixed port per session.
 
 Refresh the data warehouse:
 
