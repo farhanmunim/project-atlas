@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Replication Guide · Atlas — London Bus Network</title>
+<meta name="description" content="How to replicate the entire Atlas data platform — gathering, cleansing, validation, refresh — on free GitHub + GitHub Actions, pulling directly from the primary sources with no intermediary API and no paid infrastructure.">
+<meta property="og:title" content="Replication Guide · Atlas — London Bus Network">
+<meta property="og:description" content="Run the whole London-bus data pipeline on free GitHub Actions: sources, workflows, schedules, limits and file-as-database storage.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://atlas.farhan.app/docs/replicate">
+<meta name="twitter:card" content="summary">
+<link rel="icon" type="image/svg+xml" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="%230a0e16"/><circle cx="16" cy="16" r="9" fill="none" stroke="%23f5a524" stroke-width="3"/><path d="M4 16h24" stroke="%23e7edf6" stroke-width="3"/></svg>'>
+<style>
+:root, [data-theme="dark"]{
+  --ink:#0a0e16; --ink-2:#0c111b; --panel:#111725; --panel-2:#151c2c; --panel-3:#1a2233;
+  --line:#1f2a3d; --line-2:#2a384f; --line-3:#3a4a66;
+  --paper:#e7edf6; --paper-2:#9fb0c8; --paper-3:#647691; --paper-4:#3f4d63;
+  --amber:#f5a524; --cyan:#37c5c5; --violet:#8b7bf0; --green:#3fb87a; --alert:#ff5470;
+  --ease:cubic-bezier(0.4,0,0.2,1);
+  --mono:"SF Mono","Cascadia Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+[data-theme="light"]{
+  --ink:#f4f7fb; --ink-2:#eef2f8; --panel:#ffffff; --panel-2:#f7fafd; --panel-3:#eef2f8;
+  --line:#dbe3ee; --line-2:#c8d3e2; --line-3:#aab8cc;
+  --paper:#1f2733; --paper-2:#46566b; --paper-3:#68788e; --paper-4:#93a2b5;
+  --amber:#b26f04; --cyan:#0e7c7c; --violet:#5b47c9; --green:#177a48; --alert:#c92a4e;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--ink);color:var(--paper);font:14px/1.65 var(--sans)}
+a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.92em}
+code{background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--paper);white-space:nowrap}
+.skip{position:absolute;left:-9999px;top:0;background:var(--amber);color:#0a0e16;padding:8px 14px;z-index:99;border-radius:0 0 6px 0}
+.skip:focus{left:0}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+header.topbar{position:sticky;top:0;z-index:50;height:52px;display:flex;align-items:center;gap:12px;padding:0 18px;background:color-mix(in srgb,var(--ink) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;color:var(--paper);font-weight:650;letter-spacing:.2px}
+.brand svg{width:22px;height:22px}
+.brand .sub{color:var(--paper-3);font-weight:450;font-size:12.5px}
+.topbar .sp{flex:1}
+.tblink{font-family:var(--mono);font-size:11.5px;color:var(--paper-2);border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 10px}
+.tblink:hover{text-decoration:none;border-color:var(--line-2);color:var(--paper)}
+button.tblink{cursor:pointer}
+.layout{display:grid;grid-template-columns:248px minmax(0,1fr);gap:0;max-width:1280px;margin:0 auto}
+nav.side{position:sticky;top:52px;align-self:start;height:calc(100vh - 52px);overflow-y:auto;padding:20px 8px 40px 18px;border-right:1px solid var(--line)}
+nav.side h2{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-3);margin:18px 0 6px;font-weight:600}
+nav.side ul{list-style:none;margin:0;padding:0}
+nav.side a{display:block;padding:3.5px 10px;border-radius:6px;color:var(--paper-2);font-size:12.8px}
+nav.side a:hover{background:var(--panel);color:var(--paper);text-decoration:none}
+nav.side a .mono{color:var(--paper-3);font-size:11px}
+main{padding:28px 34px 90px;min-width:0}
+h1{font-size:25px;margin:.2em 0 .35em;letter-spacing:-.01em}
+.lede{color:var(--paper-2);max-width:72ch;margin:0 0 8px}
+h2.sec{font-size:19px;margin:2.2em 0 .4em;padding-top:1em;border-top:1px solid var(--line);letter-spacing:-.01em}
+h3{font-size:15.5px;margin:1.8em 0 .3em}
+h3 code{font-size:14px;background:var(--panel);border-color:var(--line-2)}
+p{max-width:78ch}
+.pill{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;border-radius:999px;padding:2px 9px;border:1px solid var(--line-2);color:var(--paper-2);vertical-align:2px;margin-left:6px}
+.pill.amber{color:var(--amber);border-color:color-mix(in srgb,var(--amber) 45%,transparent)}
+.pill.cyan{color:var(--cyan);border-color:color-mix(in srgb,var(--cyan) 45%,transparent)}
+.pill.green{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.pill.alert{color:var(--alert);border-color:color-mix(in srgb,var(--alert) 45%,transparent)}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));gap:8px;margin:12px 0 6px}
+.meta-grid .mg{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+.meta-grid .mg .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--paper-3)}
+.meta-grid .mg .v{font-family:var(--mono);font-size:12.2px;color:var(--paper);margin-top:2px;word-break:break-word}
+.tw{overflow-x:auto;margin:10px 0 4px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:12.6px}
+th{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--paper-3);text-align:left;font-weight:600;padding:9px 12px;border-bottom:1px solid var(--line-2);background:var(--panel-2);white-space:nowrap}
+td{padding:7.5px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.f{font-family:var(--mono);font-size:12px;white-space:nowrap;color:var(--paper)}
+td.t{font-family:var(--mono);font-size:11px;color:var(--violet);white-space:nowrap}
+td.num{font-family:var(--mono)}
+.callout{border:1px solid var(--line-2);border-left:3px solid var(--amber);background:var(--panel);border-radius:8px;padding:11px 15px;margin:14px 0;max-width:84ch}
+.callout.cyan{border-left-color:var(--cyan)}
+.callout.alert{border-left-color:var(--alert)}
+.callout.green{border-left-color:var(--green)}
+.callout p{margin:.25em 0}
+pre{background:var(--ink-2);border:1px solid var(--line);border-radius:9px;padding:13px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--paper-2)}
+pre .c{color:var(--paper-3)} pre .a{color:var(--amber)}
+ul.tight{margin:.3em 0;padding-left:1.3em;max-width:80ch} ul.tight li{margin:.22em 0}
+.small{font-size:12px;color:var(--paper-3)}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.side{position:static;height:auto;max-height:220px;border-right:none;border-bottom:1px solid var(--line);padding:12px 18px}
+  main{padding:20px 16px 70px}
+}
+@media (max-width:620px){
+  .topbar a.tblink{display:none}
+  code{white-space:normal;word-break:break-word}
+  .meta-grid .mg .v{word-break:break-all}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="/docs" title="Atlas API documentation">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="none" stroke="var(--line-2)"/><circle cx="16" cy="16" r="9" fill="none" stroke="var(--amber)" stroke-width="3"/><path d="M4 16h24" stroke="var(--paper)" stroke-width="3"/></svg>
+    Atlas <span class="sub">· Replication guide</span>
+  </a>
+  <span class="sp"></span>
+  <a class="tblink" href="/docs">Field reference</a>
+  <button type="button" class="tblink" id="themeBtn" aria-pressed="false" title="Toggle dark / light theme">◐ theme</button>
+</header>
+<div class="layout">
+<nav class="side" aria-label="Page contents">
+  <h2>Guide</h2>
+  <ul>
+    <li><a href="#overview">Overview &amp; architecture</a></li>
+    <li><a href="#budget">The free-tier budget</a></li>
+    <li><a href="#workflows">Workflows to set up</a></li>
+    <li><a href="#datasets">Per-dataset source map</a></li>
+    <li><a href="#storage">Files as the database</a></li>
+    <li><a href="#api">Serving an API from files</a></li>
+    <li><a href="#boundary">What Actions cannot do</a></li>
+    <li><a href="#checklist">Getting-started checklist</a></li>
+  </ul>
+</nav>
+<main id="main">
+<h1>Replicating this platform on free GitHub</h1>
+<p class="lede">A complete blueprint for running the entire Atlas data platform — gathering, cleansing, validation, storage, refresh and serving — on <strong>free GitHub + GitHub Actions</strong>, pulling <strong>directly from the primary sources</strong>. No intermediary API (not even Atlas's own), no server, no database, no paid tier of anything. Every number on this page is measured from the running Atlas pipeline, not estimated.</p>
+<p class="lede small">Written for sibling projects (e.g. <code>london-buses.farhan.app</code>) that want to reproduce the stack independently. For what each field means and how it is validated, this page links into the <a href="/docs">field-level reference</a> — the per-dataset rules there apply unchanged; only the <em>runner</em> and the <em>store</em> differ.</p>
+
+<h2 class="sec" id="overview">Overview &amp; architecture</h2>
+<p>The design principle: <strong>GitHub Actions is the scheduler and compute, the git repo is the database, and static hosting serves the API.</strong> Every dataset is fetched from its primary source on a schedule, cleaned and validated in the workflow run, committed as JSON/NDJSON files, and served as static assets (optionally wrapped by serverless functions for a queryable API).</p>
+<pre>
+ TfL Unified API ─┐
+ BODS · DfT ······│    ┌────────────────────┐     ┌───────────────────┐    ┌─────────────────┐
+ DVLA · DVSA VOL ─┼──▶ │ GitHub Actions     │ ──▶ │ git repo          │ ─▶ │ static hosting   │
+ londonbusroutes ·│    │ scheduled workflows │     │ data/*.json       │    │ (+ functions =   │
+ bustimes · OSM ──┘    │ fetch→clean→validate│     │ data/history/*    │    │  a public API)   │
+                       └────────────────────┘     └───────────────────┘    └─────────────────┘
+                         the compute                 the database             the serving layer
+</pre>
+<ul class="tight">
+  <li><strong>Fetch → Clean → Validate → Store → Serve</strong>, with validation as a <em>hard gate</em>: a run whose output fails row-count/sanity checks commits nothing, so bad upstream data can never overwrite last-good. This single rule is what makes unattended operation safe.</li>
+  <li>Each push of refreshed data triggers the static-host rebuild — data deploys are just git pushes.</li>
+  <li>Warm caches (HTTP validators, one-lookup-ever registries like DVLA) persist between runs via <code>actions/cache</code>, replacing a server's disk.</li>
+</ul>
+
+<h2 class="sec" id="budget">The free-tier budget — measured, not guessed</h2>
+<div class="meta-grid">
+  <div class="mg"><div class="k">Actions minutes (private repo)</div><div class="v">2,000 free /month</div></div>
+  <div class="mg"><div class="k">Actions minutes (public repo)</div><div class="v">unlimited (standard runners)</div></div>
+  <div class="mg"><div class="k">This workload needs</div><div class="v">~900–1,350 min /month</div></div>
+  <div class="mg"><div class="k">Job ceiling</div><div class="v">6 h/job · cron ≥ 5 min</div></div>
+</div>
+<div class="tw"><table>
+<thead><tr><th>Workload</th><th>Runtime</th><th>Cadence</th><th>Minutes/month</th></tr></thead>
+<tbody>
+<tr><td>Full nightly refresh (every dataset, TTL-gated)</td><td class="num">~20–35 min</td><td class="num">daily</td><td class="num">~600–1,050</td></tr>
+<tr><td>Diversions-only refresh (live status + sequence diffs)</td><td class="num">~2 min</td><td class="num">5×/day</td><td class="num">~300</td></tr>
+<tr><td>Fleet moves via bustimes (see <a href="#boundary">boundary</a>)</td><td class="num">~2–5 min</td><td class="num">daily</td><td class="num">~60–150</td></tr>
+</tbody></table></div>
+<p>Repo growth from committing data daily, measured on the live Atlas repo and by simulation (676 routes × 90 days of realistic history rows, extrapolated):</p>
+<div class="tw"><table>
+<thead><tr><th>What</th><th>Measured</th></tr></thead>
+<tbody>
+<tr><td>One full nightly data commit (~630 files touched)</td><td class="num">550–820 KB permanent git growth</td></tr>
+<tr><td>Diversions-only commit</td><td class="num">2–9 KB</td></tr>
+<tr><td>History rows, day-partitioned files</td><td class="num">~5 MB/year per 676-route dataset</td></tr>
+<tr><td>History rows, per-route appending files</td><td class="num">~25 MB/year per dataset (5× worse — git re-deltas the growing file)</td></tr>
+</tbody></table></div>
+<p class="small">GitHub is comfortable to ~1 GB and warns approaching 5 GB — day-partitioned history buys years of headroom. Static-host ceilings (Cloudflare Pages free): <strong>20,000 files/site · 25 MiB/file · 500 builds/month</strong>. A nightly + 5×-daily push cadence is ~180 builds/month; a per-route file layout for ~5 history datasets lands ~6,000 files growing ~1,800/year — inside all three, but the <em>build count</em> is the limit to watch if you add more intraday refreshes.</p>
+<div class="callout alert"><p><strong>Do not commit raw high-volume observations.</strong> Atlas's raw arrival samples run 460k–1.4M rows/day and its GPS trip logs are similar scale — 20–60× the durable rollups, 3–10 GB/year, and git cannot prune. Commit <em>derived daily rows only</em>; keep raw intermediates as workflow artifacts (90-day default retention) or don't keep them at all.</p></div>
+
+<h2 class="sec" id="workflows">Workflows to set up</h2>
+<p>Two scheduled workflows cover everything. Cadence rule: <strong>match the source, don't hammer it</strong> — most reference data changes at most daily; TTLs inside the pipeline make re-runs cheap no-ops (a dataset within its TTL is skipped; conditional requests via ETag/If-Modified-Since skip unchanged downloads).</p>
+
+<h3>1 — <code>refresh-data.yml</code> (nightly, the workhorse)</h3>
+<pre>
+name: refresh-data
+on:
+  schedule: [{cron: "17 3 * * *"}]      <span class="c"># 03:17 UTC — off-peak for TfL, before the day's users</span>
+  workflow_dispatch: {}                 <span class="c"># manual runs for backfills/debugging</span>
+concurrency: {group: refresh, cancel-in-progress: false}   <span class="c"># never two refreshes at once (TfL 429s)</span>
+permissions: {contents: write}         <span class="c"># lets GITHUB_TOKEN push the data commit</span>
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - uses: actions/cache@v4          <span class="c"># HTTP validator cache + one-lookup-ever registries</span>
+        with: {path: .cache, key: "http-cache-${{ github.run_id }}", restore-keys: http-cache-}
+      - run: npm ci --omit=dev
+      - run: node pipeline/run.js       <span class="c"># fetch → clean → validate per dataset</span>
+        env:
+          TFL_APP_KEY: ${{ secrets.TFL_APP_KEY }}
+          DVLA_API_KEY: ${{ secrets.DVLA_API_KEY }}
+      - run: node pipeline/validate-atlas.js    <span class="c"># HARD GATE — fail here = no commit</span>
+      - name: commit refreshed data
+        run: |
+          git config user.name  "data-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet && exit 0   <span class="c"># no change → no commit → no rebuild</span>
+          git commit -m "chore(data): scheduled refresh $(date -u +%FT%TZ)"
+          for i in 1 2 3 4 5; do git push && break || { git pull --rebase; sleep $((i*3)); }; done
+</pre>
+
+<h3>2 — <code>diversions.yml</code> (intraday freshness)</h3>
+<pre>
+on:
+  schedule: [{cron: "17 7,11,15,19,23 * * *"}]   <span class="c"># 5×/day; diversions are the one fast-moving reference set</span>
+<span class="c"># identical job, but:  run: node pipeline/run.js --only=diversions</span>
+<span class="c"># same concurrency group as refresh-data — they must never overlap</span>
+</pre>
+
+<h3>Secrets to configure <span class="pill">Settings → Secrets → Actions</span></h3>
+<div class="tw"><table>
+<thead><tr><th>Secret</th><th>Needed for</th><th>Required?</th></tr></thead>
+<tbody>
+<tr><td class="f">TFL_APP_KEY</td><td>Raises the TfL rate allowance (500 req/min keyed)</td><td>Optional — TfL works keyless at lower limits</td></tr>
+<tr><td class="f">DVLA_API_KEY</td><td>Vehicle make/year/fuel enrichment</td><td>Only if you want fleet enrichment</td></tr>
+<tr><td class="f">BODS_API_KEY</td><td>Live GPS proxy at the serving layer (not the pipeline)</td><td>Only if serving live positions</td></tr>
+</tbody></table></div>
+<p class="small">No push token needed: the workflow's own <code>GITHUB_TOKEN</code> with <code>permissions: contents: write</code> commits to the repo it runs in. Note one quirk: pushes made with <code>GITHUB_TOKEN</code> do <em>not</em> trigger other Actions workflows (loop protection) — but they <em>do</em> trigger external webhooks, so the static-host rebuild still fires.</p>
+
+<h3>Scheduling honesty</h3>
+<ul class="tight">
+  <li><strong>Cron is best-effort.</strong> Scheduled runs routinely start 10–30+ minutes late at busy times and are occasionally skipped entirely. Fine for daily/4-hourly reference data; disqualifying for anything that must sample at precise intervals (see <a href="#boundary">the boundary</a>). Schedule at odd minutes (:17, not :00) to dodge the top-of-hour stampede.</li>
+  <li><strong>Auto-disable:</strong> GitHub disables scheduled workflows after 60 days without repo activity — a data-committing pipeline keeps itself alive, but know the rule.</li>
+  <li><strong>Never two runs at once:</strong> TfL throttling punishes concurrency; one <code>concurrency</code> group across both workflows replaces a server's lock file.</li>
+</ul>
+
+<h2 class="sec" id="datasets">Per-dataset source map — plug into these directly</h2>
+<p>Every dataset, its primary source, and the cadence to run it at. The cleansing/validation rules for each are specified field-by-field in the <a href="/docs">reference</a> (linked per row) — they are runner-independent: apply them identically in an Actions job. Global rules: <strong>timeout every request; retry 429/5xx with backoff + jitter; treat every source as fallible; a failed fetch keeps last-good, never writes empty.</strong></p>
+<div class="tw"><table>
+<thead><tr><th>Dataset</th><th>Primary source (fetch this)</th><th>Key</th><th>Run cadence</th><th>Cleansing / gates (detail)</th></tr></thead>
+<tbody>
+<tr><td class="f">routes · stops · geometry</td><td><a href="https://api.tfl.gov.uk/" rel="noopener">TfL Unified API</a> — <code>/Line/Mode/bus</code> + <code>/Line/{id}/Route/Sequence/{dir}</code> (~1,350 calls, concurrency ≤10)</td><td>optional</td><td>daily</td><td>≥400 routes or refuse; dedupe stops by NaPTAN id; simplify overview geometry, keep full-fidelity per-route (<a href="/docs#routes">ref</a>)</td></tr>
+<tr><td class="f">line-status · disruptions</td><td>TfL <code>/Line/Mode/bus/Status</code>, <code>/Disruption</code></td><td>optional</td><td>on refresh + live proxy</td><td>30–60 s cache at the serving layer (<a href="/docs#line-status">ref</a>)</td></tr>
+<tr><td class="f">diversions</td><td>TfL status + Route/Sequence diffed against a frozen canonical baseline; dated <a href="https://ibus.data.tfl.gov.uk/" rel="noopener">iBus drops</a> for baseline recovery</td><td>optional</td><td>5×/day</td><td>never absorb a temporary sequence into the baseline; freeze flagged routes (<a href="/docs#route-diversions">ref</a>)</td></tr>
+<tr><td class="f">route-meta (operator/garage/PVR)</td><td><a href="http://www.londonbusroutes.net/" rel="noopener">londonbusroutes.net</a> — <code>garages.csv</code> + <code>details.htm</code></td><td>—</td><td>daily</td><td>decode entities; PVR 0→null; school-band routes kept out of term; TfL values never overwritten by scrape (<a href="/docs#route-meta">ref</a>)</td></tr>
+<tr><td class="f">garages</td><td>same CSV + <a href="https://postcodes.io/" rel="noopener">postcodes.io</a> geocoding + <a href="https://www.data.gov.uk/dataset/2a67d1ee-8f1b-43a3-8bc6-e8772d162a3c/traffic-commissioners-local-bus-service-registration" rel="noopener">DVSA VOL bulk CSV</a></td><td>—</td><td>daily (VOL ~weekly upstream)</td><td>curated postcode/route-fix overrides; licence ceiling ≠ depot capacity (<a href="/docs#garages">ref</a>)</td></tr>
+<tr><td class="f">fleet · vehicles</td><td>TfL <code>/Line/{id}/Arrivals</code> sweep + <a href="https://developer-portal.driver-vehicle-licensing.api.gov.uk/" rel="noopener">DVLA VES</a> + <a href="https://bustimes.org/api/vehicles/" rel="noopener">bustimes vehicles</a></td><td>DVLA</td><td>daily</td><td>one DVLA lookup per reg <em>ever</em> (cache via actions/cache); ~220 ms spacing, per-run cap, 429 backoff-stop; bustimes ≤250 new lookups/run (<a href="/docs#fleet">ref</a>)</td></tr>
+<tr><td class="f">fleet moves (assignments)</td><td><a href="https://bustimes.org/api/vehiclejourneys/" rel="noopener">bustimes <code>vehiclejourneys</code></a> — <code>?vehicle=&amp;date=</code> → (reg, route, day)</td><td>—</td><td>daily</td><td>volunteer-run: identify politely in User-Agent, space requests, cap per run, and reconcile attribution before trusting (~75% exact route match vs own tracking in sampling)</td></tr>
+<tr><td class="f">tenders</td><td><a href="https://tfl.gov.uk/forms/13923.aspx" rel="noopener">TfL tender results</a> + per-award pages + annual LBSL programme PDF</td><td>—</td><td>daily (new awards only; cache is append-only)</td><td>canonicalise operator via alias table, keep raw; recompose from cache when the index is unreachable (<a href="/docs#tenders">ref</a>)</td></tr>
+<tr><td class="f">performance (QSI)</td><td><a href="https://bus.data.tfl.gov.uk/" rel="noopener">bus.data.tfl.gov.uk</a> — quarterly PDFs, per-route MPS PDFs</td><td>—</td><td>daily check; content moves ~quarterly</td><td>PDF table extraction; ≤1,000 MPS PDFs/run, 28-day per-route TTL (<a href="/docs#route-performance">ref</a>)</td></tr>
+<tr><td class="f">accidents</td><td><a href="https://data.dft.gov.uk/road-accidents-safety-data/" rel="noopener">DfT STATS19</a> — collision + vehicle CSVs per year, streamed</td><td>—</td><td>monthly TTL; list next year early (404 skips harmlessly)</td><td>bus/coach vehicle types only; London bbox; decode all codes, unknown→null never wrong label (<a href="/docs#accidents">ref</a>)</td></tr>
+<tr><td class="f">bridges</td><td><a href="https://roads.data.tfl.gov.uk/BridgesRestrictions/height-restrictions-in-london.xlsx" rel="noopener">TfL EPOWR xlsx</a> + <a href="https://overpass-api.de/" rel="noopener">OSM Overpass</a> <code>maxheight</code> cross-check</td><td>—</td><td>monthly TTL</td><td>band lower bound = guaranteed clearance; EPOWR upstream frozen since 2019 → OSM tops up; drivable-road classes only (<a href="/docs#bridges">ref</a>)</td></tr>
+<tr><td class="f">crowding</td><td><a href="https://s3-eu-west-1.amazonaws.com/crowding.data.tfl.gov.uk/" rel="noopener">TfL BUSTO CSV</a> (~98 MB — <em>stream, never buffer</em>)</td><td>—</td><td>monthly TTL, conditional-skip on unchanged year</td><td>reduce to per-route peak V/C + profile split (<a href="/docs#crowding">ref</a>)</td></tr>
+<tr><td class="f">localities</td><td>OSM Overpass — <code>place=town|suburb</code>, London bbox (POST, UA required, mirror fallback)</td><td>—</td><td>monthly TTL</td><td>ODbL attribution (<a href="/docs#localities">ref</a>)</td></tr>
+<tr><td class="f">live GPS (serving only)</td><td><a href="https://data.bus-data.dft.gov.uk/" rel="noopener">BODS SIRI-VM datafeed</a>, London bbox</td><td>BODS</td><td>on request, 10 s edge cache</td><td>never store; parse ~6.5 MB XML / ~7,700 vehicles per pull (<a href="/docs#live">ref</a>)</td></tr>
+<tr><td class="f">EWT / OTD (reliability)</td><td><span class="pill amber">PLACEHOLDER</span> <a href="https://headway.plumby.io" rel="noopener">headway.plumby.io</a> — <em>to be confirmed/updated</em></td><td>tbc</td><td>tbc</td><td>see the callout below — this row is not actionable yet</td></tr>
+</tbody></table></div>
+<div class="callout alert"><p><strong>EWT/OTD placeholder — read before wiring anything.</strong> headway.plumby.io is a commercial product with <em>no published API</em>, and its <a href="https://headway.plumby.io/terms" rel="noopener">terms</a> prohibit systematic bulk download and redistribution without written permission. It is listed here purely as a placeholder while an arrangement is explored — do <strong>not</strong> scrape it. Until a licensed source exists, the only reliability figures available without running your own continuous collector are <a href="https://tfl.gov.uk/corporate/publications-and-reports/buses-performance-data" rel="noopener">TfL's official QSI</a> (authoritative, quarterly, months in arrears) — see <a href="#boundary">what Actions cannot do</a> for why daily EWT/OTD can't be self-computed on this stack.</p></div>
+
+<h2 class="sec" id="storage">Files as the database</h2>
+<p>Current-state datasets are one JSON file each, overwritten per run — exactly the Atlas static store. Time-series (history) needs a layout decision, and the measured difference is 5×:</p>
+<pre>
+data/history/&lt;dataset&gt;/day/&lt;YYYY-MM&gt;/&lt;YYYY-MM-DD&gt;.ndjson   <span class="c"># write-once → git-cheapest (~5 MB/yr), answers "all routes on a day"</span>
+data/history/&lt;dataset&gt;/route/&lt;id&gt;.ndjson                   <span class="c"># append per run (~25 MB/yr), answers "one route over time" in one read</span>
+</pre>
+<ul class="tight">
+  <li><strong>Dual-write both axes.</strong> Storage is cheap (~30 MB/yr/dataset for both); cross-file scanning at query time is not — serverless functions allow ~50 subrequests per invocation, so a year-long range over day-files would break. One query = one file read.</li>
+  <li><strong>NDJSON, stable field order, sorted rows</strong> — line-oriented diffs keep git deltas small and reviews readable.</li>
+  <li><strong>Idempotent upserts:</strong> re-running a day rewrites that day's file identically (write-once semantics survive retries).</li>
+  <li><strong>Validation before commit, always:</strong> row-count floors, not-all-null checks, plausibility bands — the gate step in the workflow is the entire integrity story. Quarantine failures in the log; never let them reach <code>git add</code>.</li>
+  <li><strong>Roll up old partitions</strong> (day-files → monthly bundles after a year) to stay far from the 20,000-file ceiling.</li>
+</ul>
+
+<h2 class="sec" id="api">Serving an API from files</h2>
+<p>A database is not required to have a real API. The pattern (Atlas's own <code>/api/v1</code> current group runs exactly this way):</p>
+<ul class="tight">
+  <li>Static hosting serves <code>data/**</code> directly — that alone is a versioned, cacheable, CORS-able read API.</li>
+  <li>A thin serverless function in front adds: a discovery index, parameter validation against a strict whitelist, filter/order/limit application <em>in memory on one fetched file</em>, consistent JSON envelopes and error shapes, and edge caching (5–10 min for reference data, 10–120 s for live proxies).</li>
+  <li>Query params map to the file layout: <code>?route=25&amp;from=…&amp;to=…</code> → read <code>route/25.ndjson</code>, filter rows; no <code>route</code> → read the day partition(s). Design the layout from the queries, then denormalise until every query is one file.</li>
+  <li>Keyed upstreams (BODS live GPS) hide behind the function with the key as a host secret and a shared short-TTL cache, so unlimited callers collapse to one upstream poll per TTL.</li>
+</ul>
+
+<h2 class="sec" id="boundary">What GitHub Actions cannot do — the honest boundary</h2>
+<p>One class of workload does not fit, at any repo visibility: <strong>continuous, stateful observation.</strong> Atlas's own daily EWT/OTD, lost-mileage and first-party fleet tracking come from a daemon polling BODS every 25 seconds, holding thousands of open bus trips in memory between polls. Actions cannot host that:</p>
+<div class="tw"><table>
+<thead><tr><th>Requirement</th><th>GitHub Actions</th></tr></thead>
+<tbody>
+<tr><td>25-second poll cadence</td><td class="num">cron floor is 5 minutes — 12× too coarse</td></tr>
+<tr><td>Punctual sampling (headway maths is timing-sensitive)</td><td>schedules are best-effort; 10–30+ min jitter, occasional skips — jitter <em>is</em> sampling bias here</td></tr>
+<tr><td>State held across polls (open trips)</td><td>lost at every job boundary; no resident memory</td></tr>
+<tr><td>Runs indefinitely</td><td class="num">6-hour job ceiling</td></tr>
+<tr><td>24/7 runner minutes (~43,200/month)</td><td class="num">21× the private-repo free tier; against acceptable-use as a service on public runners</td></tr>
+</tbody></table></div>
+<p>Consequences for a pure-GitHub replica: <strong>consume</strong> reliability figures rather than compute them (TfL QSI now; the placeholder above if licensed), and take fleet moves from bustimes' <code>vehiclejourneys</code> — the community instance of exactly this collector. Everything else on this page fits comfortably.</p>
+
+<h2 class="sec" id="checklist">Getting-started checklist</h2>
+<ul class="tight">
+  <li>① Create the repo (private is fine at ~1,350 min/month; public removes the minutes question). Add <code>data/</code> and <code>.cache/</code> conventions; gitignore raw intermediates.</li>
+  <li>② Add secrets: <code>TFL_APP_KEY</code> (recommended), <code>DVLA_API_KEY</code> (fleet enrichment), <code>BODS_API_KEY</code> (live serving only).</li>
+  <li>③ Land the two workflows above; run <code>refresh-data</code> once via <code>workflow_dispatch</code> as the cold-start backfill (first run is the slow one — DVLA/tender caches fill, then steady-state is quick).</li>
+  <li>④ Check the run summary: fetched/updated/skipped/failed per dataset, and the validation gate green <em>before</em> the commit step.</li>
+  <li>⑤ Point static hosting at the repo (no build command needed if the repo root is the site); confirm a data push triggers a rebuild and the JSON is publicly fetchable.</li>
+  <li>⑥ Watch the first week: Actions minutes used vs 2,000, repo size growth vs the measurements above, host build count vs 500/month.</li>
+  <li>⑦ Politeness pass: every fetcher sends an identifying User-Agent, respects per-source rate caps, uses conditional requests, and backs off on 429 — you are a guest on every one of these feeds.</li>
+</ul>
+<p class="small">Licensing reminder for anything you republish: TfL open data terms (attribution — "Powered by TfL Open Data"), OGL v3 (DfT/DVLA/DVSA), ODbL (OSM — attribution + share-alike), community sources credited. The full per-source table is in the <a href="/docs#licensing">reference appendix</a>.</p>
+</main>
+</div>
+<script>
+(function(){
+  var KEY="transit-instruments:settings";
+  function readTheme(){ try{ var s=JSON.parse(localStorage.getItem(KEY)||"{}"); return s.theme||null; }catch(e){ return null; } }
+  function sysTheme(){ return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"; }
+  function apply(t){ document.documentElement.setAttribute("data-theme", t); var b=document.getElementById("themeBtn"); if(b) b.setAttribute("aria-pressed", String(t==="light")); }
+  var cur = readTheme() || sysTheme();
+  apply(cur);
+  document.getElementById("themeBtn").addEventListener("click", function(){
+    cur = (document.documentElement.getAttribute("data-theme")==="light") ? "dark" : "light";
+    apply(cur);
+    try{ var s=JSON.parse(localStorage.getItem(KEY)||"{}"); s.theme=cur; localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

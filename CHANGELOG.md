@@ -2,6 +2,40 @@
 
 ---
 
+## 2026-08-27 — /docs/replicate: the free-GitHub replication guide
+
+New docs page (linked from the /docs sidebar) that blueprints running the whole
+data platform on free GitHub + GitHub Actions, pulling directly from the primary
+sources with no intermediary API — written for sibling projects (london-buses)
+to replicate from. Contents, all from measured figures, not estimates:
+
+- Architecture (Actions = compute, git repo = database, static host = API) with
+  the Fetch → Clean → Validate → Store → Serve gate as the integrity story.
+- The free-tier budget: ~900–1,350 Actions min/month vs 2,000 (private repo);
+  measured git growth (550–820 KB per full nightly commit; history-as-files
+  ~5 MB/yr day-partitioned vs ~25 MB/yr per-route — simulated 676 routes × 90
+  days); Pages ceilings (20k files / 25 MiB / 500 builds per month).
+- Two workflow skeletons (nightly refresh 03:17 + 5×-daily diversions) with
+  concurrency group, actions/cache for warm caches, validation-gate-before-
+  commit, GITHUB_TOKEN push, secrets table, and scheduling honesty (best-effort
+  cron, 10–30 min jitter, 60-day auto-disable, odd-minute scheduling).
+- Per-dataset source map: every dataset → the primary source URL to plug into,
+  key requirement, run cadence, condensed cleansing/validation gates, each row
+  linking to the field-level /docs section.
+- Files-as-database layout (dual-axis day-partition + per-route NDJSON, one
+  query = one file read) and the serving-an-API-from-files pattern.
+- The honest boundary: continuous observation (25 s BODS collection → own
+  EWT/OTD/lost-mileage) cannot run on Actions (cron floor, jitter = sampling
+  bias, no resident state, 6 h cap, ~43k min/month); fleet moves come from
+  bustimes vehiclejourneys (coverage sampled: 12/12 regs, ~75% exact route
+  match) under a politeness contract.
+- EWT/OTD source marked as a PLACEHOLDER (headway.plumby.io) with an explicit
+  do-not-scrape warning — no public API, terms prohibit bulk download and
+  redistribution without written permission; TfL quarterly QSI remains the only
+  licensed reliability figure until an arrangement exists.
+
+serve.js mirrors the /docs/replicate route (dev/prod parity).
+
 ## 2026-08-20 — Road-data source audit: STATS19 2025, OSM bridge cross-check
 
 Farhan asked whether the accidents / roadworks / incidents / low-bridges sources

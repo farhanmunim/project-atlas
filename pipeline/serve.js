@@ -51,6 +51,7 @@ function staticAllowed(rel, ext) {
   if (/^\/[\w-]+\.html$/.test(rel)) return true;
   if (rel === "/v2/index.html") return true;   // the v2 (Route Lens) page
   if (rel === "/docs/index.html") return true; // the API documentation page
+  if (rel === "/docs/replicate/index.html") return true; // the free-GitHub replication guide
   if (rel === "/llms.txt") return true;        // machine-readable API summary (llms.txt convention)
 
   if (rel.startsWith("/data/") && (ext === ".json" || ext === ".geojson")) return true;
@@ -360,6 +361,7 @@ http.createServer(async (req, res) => {
   // directory-index pages (mirrors Cloudflare Pages): /v2 and /v2/ → /v2/index.html.
   if (/^\/v2\/?$/.test(rel)) rel = "/v2/index.html";
   if (/^\/docs\/?$/.test(rel)) rel = "/docs/index.html";
+  if (/^\/docs\/replicate\/?$/.test(rel)) rel = "/docs/replicate/index.html";
   const fp = path.join(ROOT, path.normalize(rel));
   const ext = path.extname(fp).toLowerCase();
   if (!fp.startsWith(ROOT) || !staticAllowed(rel, ext)) { res.writeHead(404).end("not found"); return; }
