@@ -1,23 +1,29 @@
-# AGENTS.md — Atlas (London Bus Network tool)
+# AGENTS.md — Atlas (London Bus Network API)
 
-**Atlas is THE tool** — a single interactive map + analytics app for the London bus
-network, served at `index.html`. It consolidates what were separate instruments
-(Radius catchment, Relay live tracking, Mandate tenders, Cohort fleet, Sentinel
-accidents) into one deep-dive: **toggleable map layers** (route lines · garages ·
-stops · live buses · accidents) and **one unified context panel** (route info ·
-network analysis · live operations · fleet · tenders · accidents). The old
-`headway/mandate/cohort/sentinel/relay.html` + the hub live in `archive/`.
+**Atlas is API-only** (decision 2026-08-27, superseding the 2026-08-05
+keep-the-front-ends decision): an open, keyless `/api/v1` for the London bus
+network, with all data flowing through our own warehouse pipeline. The map
+front-ends (`/` three-pane app, `/v2` Route Lens, the archived instrument suite)
+and their browser-driving verify scripts were removed on 2026-08-27 — they live
+in git history before that date if ever needed again. What is served now:
 
-Goal: replace london-buses.farhan.app — **simple to navigate, rich on drill-down +
-analytics**, robust, with all data flowing through our own warehouse.
+- **`/`** — a minimal API landing page (signpost to `/api/v1`, `/docs`,
+  `/docs/replicate`). A signpost, not an app — keep it that way.
+- **`/docs`** — the complete field-level API reference (the public contract).
+- **`/docs/replicate`** — the free-GitHub replication guide sibling projects
+  (london-buses) build from.
+- **`/api/v1`** + `/api/live/vehicles` — the product.
 
-> **Atlas is primarily the API** (`/api/v1` — README + API.md are the public
-> reference). The `/` and `/v2` pages are kept **deliberately** as the visual
-> verification layer: the headless validation scripts (`verify-diversions.mjs`,
-> `verify-render.mjs`, `route-check.mjs`) drive them to prove the API's data
-> renders correctly, and a human can eyeball any dataset on the map in seconds.
-> Do NOT remove the front-end pages — they are part of the validation story
-> (decision recorded 2026-08-05).
+Validation is now **data-layer only**: `validate-atlas.js` (the nightly hard
+gate) plus the data-only checks (`verify-geometry.mjs`, `check-sources.mjs`,
+`test-functions.mjs`). App-specific rules in this file (three-pane shell, design
+tokens, screenshots, CSV-export-of-view, theming) are RETAINED BELOW as the
+house style for any future front-end, but are **dormant while Atlas is API-only**
+— they gate nothing today. Sections describing app features describe the
+pre-2026-08-27 apps.
+
+Goal: the London bus network's data backbone — london-buses.farhan.app (and any
+other front-end) consumes or replicates this API rather than the reverse.
 
 > **Modular by construction.** Even though it's one tool, keep processes/functions
 > modular (per-concern render helpers, the `dataSource` seam, pipeline `build/<name>.js`

@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-08-27 — Atlas goes API-only: front-end pages removed
+
+Farhan's call, superseding the 2026-08-05 keep-the-front-ends decision: Atlas
+is now purely the API; london-buses (or any front-end) consumes or replicates
+it rather than living here.
+
+- REMOVED: `/` three-pane map app, `/v2` Route Lens, `archive/` (hub + relay),
+  and the seven browser-driving verify scripts (route-check, verify-diversions,
+  verify-render, shot-panel, test-export, theme-audit, ui-audit). All live in
+  git history before this date.
+- KEPT: `/docs` (field-level reference) and `/docs/replicate` (free-GitHub
+  replication guide) — now linked prominently from the README so they're
+  findable from GitHub; the data-only checks (validate-atlas — the nightly
+  gate — verify-geometry, check-sources, test-functions); the entire pipeline
+  and API surface, unchanged.
+- NEW: minimal API landing page at `/` — a signpost to /api/v1, /docs and
+  /docs/replicate, not an app.
+- serve.js drops the /v2 routes; /docs prose de-app-ified (11 spots); CLAUDE.md
+  records the decision and marks the app-specific house rules dormant.
+
 ## 2026-08-27 — /docs/replicate: the free-GitHub replication guide
 
 New docs page (linked from the /docs sidebar) that blueprints running the whole

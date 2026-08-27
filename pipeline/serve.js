@@ -49,7 +49,6 @@ const ALLOWED_ENTITIES = new Set(["line_status"]);
 // Static allowlist: tool pages + the JSON store only — never the .db, source, or dotfiles.
 function staticAllowed(rel, ext) {
   if (/^\/[\w-]+\.html$/.test(rel)) return true;
-  if (rel === "/v2/index.html") return true;   // the v2 (Route Lens) page
   if (rel === "/docs/index.html") return true; // the API documentation page
   if (rel === "/docs/replicate/index.html") return true; // the free-GitHub replication guide
   if (rel === "/llms.txt") return true;        // machine-readable API summary (llms.txt convention)
@@ -358,8 +357,7 @@ http.createServer(async (req, res) => {
   // ── static files (allowlisted: tool pages + JSON store only) ─────────────────
   let rel = decodeURIComponent(urlPath);
   if (rel === "/") rel = "/index.html";
-  // directory-index pages (mirrors Cloudflare Pages): /v2 and /v2/ → /v2/index.html.
-  if (/^\/v2\/?$/.test(rel)) rel = "/v2/index.html";
+  // directory-index pages (mirrors Cloudflare Pages): /docs and /docs/ → /docs/index.html.
   if (/^\/docs\/?$/.test(rel)) rel = "/docs/index.html";
   if (/^\/docs\/replicate\/?$/.test(rel)) rel = "/docs/replicate/index.html";
   const fp = path.join(ROOT, path.normalize(rel));
