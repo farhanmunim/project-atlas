@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T23:19:05.201Z",
+  "generatedAt": "2026-08-28T03:18:39.045Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -19,9 +19,9 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-27T03:24:45.438Z",
+      "fetchedAt": "2026-08-28T03:18:38.367Z",
       "status": "ok",
-      "rows": 675,
+      "rows": 677,
       "files": [
         "data/line-status.json"
       ],
@@ -40,14 +40,14 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-27T03:24:46.118Z",
+      "fetchedAt": "2026-08-28T03:18:39.045Z",
       "status": "ok",
-      "rows": 15164,
+      "rows": 15166,
       "files": [
         "data/transit.db"
       ],
       "cadence": "every run · SQLite warehouse",
-      "note": "route 642 (642△); route_meta 677 (677△); route_stops 642 (642△); tender 2529 (2529△); garage 86 (86△); fleet 642 (642△); vehicle 7996 (7996△); line_status 675 (675△); route_geometry 1275 (1275△)"
+      "note": "route 642 (642△); route_meta 677 (677△); route_stops 642 (642△); tender 2529 (2529△); garage 86 (86△); fleet 642 (642△); vehicle 7996 (7996△); line_status 677 (677△); route_geometry 1275 (1275△)"
     },
     "garages": {
       "source": "londonbusroutes.net garages.csv + postcodes.io + DVSA VOL",
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-27T23:19:05.200Z",
+      "fetchedAt": "2026-08-28T03:18:27.449Z",
       "status": "ok",
-      "rows": 173,
+      "rows": 165,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "13 published geometry · 160 unpublished",
+      "note": "13 published geometry · 152 unpublished",
       "lastError": "diversions: status feed reports 0 active disruptions but last run had 154 — degraded snapshot, keeping last-good",
       "lastAttempt": "2026-08-25T15:17:14.768Z"
     }
