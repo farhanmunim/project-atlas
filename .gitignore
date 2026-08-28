@@ -12,6 +12,11 @@ data/*.db-shm
 # Design/scratch concepts — not needed in production
 Concepts/
 
+# Internal working docs — not for the public repo
+CHANGELOG.md
+AUDIT-FINDINGS.md
+audit.md
+
 # puppeteer verification artifacts
 theme-*.png
 popup-*.png
