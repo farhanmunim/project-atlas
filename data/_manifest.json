@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-29T23:18:27.082Z",
+  "generatedAt": "2026-08-30T03:18:00.721Z",
   "datasets": {
     "routes": {
       "source": "TfL Unified API · /Line/Mode/bus + /Route/Sequence",
@@ -19,7 +19,7 @@
     },
     "status": {
       "source": "TfL Unified API · /Line/Mode/bus/Status",
-      "fetchedAt": "2026-08-29T03:24:21.024Z",
+      "fetchedAt": "2026-08-30T03:18:00.114Z",
       "status": "ok",
       "rows": 678,
       "files": [
@@ -40,7 +40,7 @@
     },
     "db-mirror": {
       "source": "SQLite warehouse (CDC)",
-      "fetchedAt": "2026-08-29T03:24:21.644Z",
+      "fetchedAt": "2026-08-30T03:18:00.721Z",
       "status": "ok",
       "rows": 14446,
       "files": [
@@ -152,14 +152,14 @@
     },
     "diversions": {
       "source": "TfL Unified API · /Line/Mode/bus/Status + /Route/Sequence diff vs baseline",
-      "fetchedAt": "2026-08-29T23:18:27.081Z",
+      "fetchedAt": "2026-08-30T03:17:57.545Z",
       "status": "ok",
-      "rows": 171,
+      "rows": 166,
       "files": [
         "data/route-diversions.json"
       ],
       "cadence": "live · TfL status + Route/Sequence diff vs baseline",
-      "note": "14 published geometry · 157 unpublished",
+      "note": "14 published geometry · 152 unpublished",
       "lastError": "diversions: status feed reports 0 active disruptions but last run had 154 — degraded snapshot, keeping last-good",
       "lastAttempt": "2026-08-25T15:17:14.768Z"
     }
